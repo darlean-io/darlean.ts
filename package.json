@@ -1,0 +1,9 @@
+{
+  "workspaces": [
+    "./docgen",
+	"./base",
+	"./core",
+	"./utils",
+	"./examples"
+  ]
+}
