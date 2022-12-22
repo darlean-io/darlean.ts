@@ -14,7 +14,8 @@ import { toActorError } from './instances';
 export type ITransportActorCallRequest = IActorCallRequest;
 export type ITransportActorCallResponse = IActorCallResponse;
 
-export const TRANSPORT_ERROR = 'TRANSPORT_ERROR';
+export const INVOKE_ERROR_TRANSPORT_ERROR = 'TRANSPORT_ERROR';
+export const INVOKE_ERROR_CALL_TIMEOUT = 'CALL_TIMEOUT';
 
 interface IRemotePendingCall {
     resolve: (value: IInvokeResult) => void;
@@ -70,12 +71,21 @@ export class TransportRemote implements IRemote {
                 timeout: setTimeout(() => {
                     this.pendingCalls.delete(callId);
                     resolve({
-                        errorCode: 'CALL_TIMEOUT'
+                        errorCode: INVOKE_ERROR_CALL_TIMEOUT
                     });
                 }, 60 * 1000)
             };
             this.pendingCalls.set(callId, call);
-            this.session?.send(env, this.toTransportRequest(options.content as IActorCallRequest));
+            if (this.session) {
+                this.session.send(env, this.toTransportRequest(options.content as IActorCallRequest));
+            } else {
+                resolve({
+                    errorCode: INVOKE_ERROR_TRANSPORT_ERROR,
+                    errorParameters: {
+                        message: 'Transport not ready'
+                    }
+                })
+            }
         });
     }
 
@@ -115,7 +125,7 @@ export class TransportRemote implements IRemote {
                     this.pendingCalls.delete(env.remoteCallId);
                     if (failure) {
                         call.resolve({
-                            errorCode: TRANSPORT_ERROR,
+                            errorCode: INVOKE_ERROR_TRANSPORT_ERROR,
                             errorParameters: {
                                 message: failure.message
                             }

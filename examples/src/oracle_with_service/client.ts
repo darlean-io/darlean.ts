@@ -15,7 +15,7 @@ async function main(appId: string, servers: string[]) {
 
     natsServer.start();
     await runner.start();
-    await sleep(5000);
+    // await sleep(5000);
     try {
         const oracleService = runner.getPortal().retrieve<IOracleService>(ORACLE_SERVICE, []);
         

@@ -3,6 +3,10 @@ import { IDeSer } from './deser';
 import { ITransportFailure, ITransport, ITransportEnvelope, MessageHandler, ITransportSession } from './transport';
 import { connect, ErrorCode, NatsConnection, NatsError, Subscription } from 'nats';
 
+export const NATS_ERROR_NOT_CONNECTED = 'NOT_CONNECTED';
+export const NATS_ERROR_UNKNOWN_RECEIVER = 'UNKNOWN_RECEIVER';
+export const NATS_ERROR_SEND_FAILED = 'SEND_FAILED';
+
 export interface INatsMessage {
     envelope: ITransportEnvelope;
     contents?: Buffer;
@@ -29,19 +33,35 @@ export class NatsTransportSession implements ITransportSession {
     protected deser: IDeSer;
     protected connection?: NatsConnection;
     protected subscription?: Subscription;
+    protected appId?: string;
+    protected messageHandler?: MessageHandler;
 
     constructor(deser: IDeSer) {
         this.deser = deser;
     }
 
     public async connect(appId: string, onMessage: MessageHandler): Promise<void> {
-        this.connection = await connect({ waitOnFirstConnect: true });
+        this.appId = appId;
+        this.messageHandler = onMessage;
+        this.connection = await connect({ waitOnFirstConnect: true, maxReconnectAttempts: -1 });
         const subscription = this.connection.subscribe(appId);
         this.subscription = subscription;
         nextTick(async () => await this.listen(subscription, onMessage));
     }
 
     public async send(envelope: ITransportEnvelope, contents: unknown, failure?: ITransportFailure): Promise<void> {
+        if (envelope.receiverId == this.appId) {
+            // Bypass NATS. That is not just a performance optimization. It also ensures that when the error situation is that
+            // NATS is not available (like, NATS server not running), the error is properly fed back to the calling code.
+            this.messageHandler?.(envelope, contents, failure); 
+            return;
+        }
+
+        if (!this.connection) {
+            this.sendFailureMessage(envelope, 'SEND_ERROR', `Unable to send to  [${envelope.receiverId}]: [${NATS_ERROR_NOT_CONNECTED}]`);
+            return;
+        }
+
         const msg: INatsMessage = {
             envelope,
             contents: contents === undefined ? undefined : this.deser.serialize(contents),
@@ -54,7 +74,7 @@ export class NatsTransportSession implements ITransportSession {
             if (ne.code === ErrorCode.NoResponders) {
                 this.sendFailureMessage(
                     envelope,
-                    'UNKNOWN_RECEIVER',
+                    NATS_ERROR_UNKNOWN_RECEIVER,
                     `Receiver [${envelope.receiverId}] is not registered to the nats transport`
                 );
             } else if (ne.code === ErrorCode.Timeout) {
@@ -63,7 +83,7 @@ export class NatsTransportSession implements ITransportSession {
                 // else goes wrong. So, we can just ignore the timeout.
             } else {
                 console.log('Error during nats send:', e);
-                this.sendFailureMessage(envelope, 'SEND_ERROR', `Unable to send to  [${envelope.receiverId}]: [${e}]`);
+                this.sendFailureMessage(envelope, NATS_ERROR_SEND_FAILED, `Unable to send to  [${envelope.receiverId}]: [${e}]`);
             }
         }
     }
