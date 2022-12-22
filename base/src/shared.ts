@@ -32,6 +32,7 @@ export interface IInvokeResult {
 export interface IInvokeAttempt {
     options?: IInvokeOptions;
     result: IInvokeResult;
+    requestTime: string;
 }
 
 export class InvokeError extends Error {

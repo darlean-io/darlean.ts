@@ -172,16 +172,18 @@ export class RemotePortal implements IPortal {
                     const errors: IInvokeAttempt[] = [];
 
                     for await (const destination of self.iterateDestinations(actorType, id, info)) {
+                        const moment = Date.now();
+                        
                         if (destination !== '') {
                             info.suggestion = undefined;
                             const options: IInvokeOptions = {
                                 destination,
                                 content
                             };
-
+                        
                             const result = await self.remote.invoke(options);
                             if (result.errorCode) {
-                                errors.push({ options, result });
+                                errors.push({ requestTime: new Date(moment).toISOString(), options, result });
                                 info.suggestion = result.errorParameters?.[ERROR_PARAMETER_REDIRECT_DESTINATION] as string;
                             } else {
                                 if (result.content) {
@@ -202,6 +204,7 @@ export class RemotePortal implements IPortal {
                             }
                         } else {
                             errors.push({
+                                requestTime: new Date(moment).toISOString(), 
                                 result: {
                                     errorCode: ERROR_CODE_NO_RECEIVERS_AVAILABLE
                                 }
@@ -266,7 +269,7 @@ export class RemotePortal implements IPortal {
     protected *iterateDestinations(type: string, id: string[], info: { suggestion: string | undefined }) {
         const randomReceiversDone: string[] = [];
 
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 10; i++) {
             if (info.suggestion) {
                 const sug = info.suggestion;
                 info.suggestion = undefined;
