@@ -1,12 +1,12 @@
-import { action, actor, IActorSuite } from "@darlean/base";
-import { ActorSuite } from "@darlean/core";
-import { IOracleActor, ORACLE_ACTOR } from "./oracle.intf";
+import { action, actor, IActorSuite } from '@darlean/base';
+import { ActorSuite } from '@darlean/core';
+import { IOracleActor, ORACLE_ACTOR } from './oracle.intf';
 
 @actor()
 class OracleActor implements IOracleActor {
     protected knowledge: Map<string, number>;
 
-    constructor(knowledge?: {[fact: string]: number}) {
+    constructor(knowledge?: { [fact: string]: number }) {
         this.knowledge = new Map();
         if (knowledge) {
             for (const [fact, answer] of Object.entries(knowledge)) {
@@ -31,9 +31,13 @@ class OracleActor implements IOracleActor {
     }
 }
 
-export interface IKnowledgeFacts {[fact: string]: number}
+export interface IKnowledgeFacts {
+    [fact: string]: number;
+}
 
-export interface IKnowledgeTopics {[topic: string]: IKnowledgeFacts}
+export interface IKnowledgeTopics {
+    [topic: string]: IKnowledgeFacts;
+}
 
 export function suite(knowledge?: IKnowledgeTopics): IActorSuite {
     const suite = new ActorSuite([

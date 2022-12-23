@@ -9,4 +9,4 @@ export const knowledge = {
         bike: 250,
         wine: 15
     }
-}
+};

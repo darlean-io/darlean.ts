@@ -58,7 +58,7 @@ describe('Remote portal', () => {
         const stop = time.machineTicks();
         const duration = stop - start;
         expect(error).toBeDefined();
-        expect(error?.attempts).toHaveLength(5);
+        expect(error?.attempts.length).toBeGreaterThanOrEqual(5);
         expect(duration).toBeGreaterThan(1000);
     }, 10000);
 
@@ -80,7 +80,7 @@ describe('Remote portal', () => {
         const stop = time.machineTicks();
         const duration = stop - start;
         expect(error).toBeDefined();
-        expect(error?.attempts).toHaveLength(5);
+        expect(error?.attempts.length).toBeGreaterThanOrEqual(5);
         expect(error?.attempts[0].result.errorCode).toBe('NOT_IMPLEMENTED');
         expect(duration).toBeGreaterThan(1500);
     }, 10000);

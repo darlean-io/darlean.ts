@@ -173,14 +173,14 @@ export class RemotePortal implements IPortal {
 
                     for await (const destination of self.iterateDestinations(actorType, id, info)) {
                         const moment = Date.now();
-                        
+
                         if (destination !== '') {
                             info.suggestion = undefined;
                             const options: IInvokeOptions = {
                                 destination,
                                 content
                             };
-                        
+
                             const result = await self.remote.invoke(options);
                             if (result.errorCode) {
                                 errors.push({ requestTime: new Date(moment).toISOString(), options, result });
@@ -204,7 +204,7 @@ export class RemotePortal implements IPortal {
                             }
                         } else {
                             errors.push({
-                                requestTime: new Date(moment).toISOString(), 
+                                requestTime: new Date(moment).toISOString(),
                                 result: {
                                     errorCode: ERROR_CODE_NO_RECEIVERS_AVAILABLE
                                 }

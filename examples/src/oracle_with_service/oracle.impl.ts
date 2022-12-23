@@ -1,7 +1,7 @@
-import { action, actor, IActorSuite, ITypedPortal, service } from "@darlean/base";
-import { ActorSuite } from "@darlean/core";
-import { currentScope } from "@darlean/utils";
-import { IOracleService, ORACLE_SERVICE } from "./oracle.intf";
+import { action, actor, IActorSuite, ITypedPortal, service } from '@darlean/base';
+import { ActorSuite } from '@darlean/core';
+import { currentScope } from '@darlean/utils';
+import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 
 interface IOracleActor {
     ask(question: string): Promise<number>;
@@ -14,7 +14,7 @@ const ORACLE_ACTOR = 'OracleActor';
 class OracleActor implements IOracleActor {
     protected knowledge: Map<string, number>;
 
-    constructor(knowledge?: {[fact: string]: number}) {
+    constructor(knowledge?: { [fact: string]: number }) {
         this.knowledge = new Map();
         if (knowledge) {
             for (const [fact, answer] of Object.entries(knowledge)) {
@@ -64,9 +64,13 @@ class OracleService implements IOracleService {
     }
 }
 
-export interface IKnowledgeFacts {[fact: string]: number}
+export interface IKnowledgeFacts {
+    [fact: string]: number;
+}
 
-export interface IKnowledgeTopics {[topic: string]: IKnowledgeFacts}
+export interface IKnowledgeTopics {
+    [topic: string]: IKnowledgeFacts;
+}
 
 export function suite(knowledge?: IKnowledgeTopics, hosts?: string[]): IActorSuite {
     const suite = new ActorSuite([

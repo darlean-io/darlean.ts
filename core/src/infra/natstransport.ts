@@ -53,12 +53,16 @@ export class NatsTransportSession implements ITransportSession {
         if (envelope.receiverId == this.appId) {
             // Bypass NATS. That is not just a performance optimization. It also ensures that when the error situation is that
             // NATS is not available (like, NATS server not running), the error is properly fed back to the calling code.
-            this.messageHandler?.(envelope, contents, failure); 
+            this.messageHandler?.(envelope, contents, failure);
             return;
         }
 
         if (!this.connection) {
-            this.sendFailureMessage(envelope, 'SEND_ERROR', `Unable to send to  [${envelope.receiverId}]: [${NATS_ERROR_NOT_CONNECTED}]`);
+            this.sendFailureMessage(
+                envelope,
+                'SEND_ERROR',
+                `Unable to send to  [${envelope.receiverId}]: [${NATS_ERROR_NOT_CONNECTED}]`
+            );
             return;
         }
 

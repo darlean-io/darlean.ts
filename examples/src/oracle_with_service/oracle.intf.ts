@@ -3,5 +3,4 @@ export interface IOracleService {
     teach(topic: string, fact: string, answer: number): Promise<void>;
 }
 
-
 export const ORACLE_SERVICE = 'OracleService';

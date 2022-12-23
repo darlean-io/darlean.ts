@@ -231,7 +231,7 @@ export class ActorRunnerBuilder implements IActorRegistry {
                     }, actor.capacity ?? DEFAULT_CAPACITY);
 
                 portal.register(actor.type, container);
-                }
+            }
         }
         return portal;
     }

@@ -84,7 +84,7 @@ export class TransportRemote implements IRemote {
                     errorParameters: {
                         message: 'Transport not ready'
                     }
-                })
+                });
             }
         });
     }
