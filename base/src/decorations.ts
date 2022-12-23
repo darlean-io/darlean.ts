@@ -101,7 +101,7 @@ export interface IActorDecoration {
  * Decorator for a regular actor class.
  *
  * Standard use:
- * ```
+ * ```ts
  * @actor({name: 'mynamespace.MyActor'})
  * export class MyActor extends BaseActor {...}
  * ```
@@ -118,7 +118,7 @@ export function actor(config: IActorDecoration = {}) {
  * Decorator for a service actor class.
  *
  * Standard use:
- * ```
+ * ```ts
  * @service({name: 'mynamespace.MyService'})
  * export class MyService extends BaseActor {...}
  * ```
@@ -147,13 +147,13 @@ function _actorOrServiceDecorator(config: IActorDecoration, singleton: boolean, 
  * Decorator for an action method.
  *
  * When the method name already matches with the action name, and no additional opions are required:
- * ```
+ * ```ts
  * @action()
  * public myActor(...) {}
  * ```
  *
  * When the method name does not match with the action name, and/or when additional options are required:
- * ```
+ * ```ts
  * @action({name: 'myAction', locking: 'shared'})
  * public myActorFunction(...) {}
  * ```

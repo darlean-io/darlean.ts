@@ -3,7 +3,7 @@
  * actors that live in the same process as the code that invokes the actor.
  *
  * For local use (that is, when all code and actors live in the same process), it is possible to use {@link LocalPortal}, which
- * is a convenience wrapper around a {@link remoteinvocation.RemotePortal} with an {@link InProcessRemote} remote. This eliminates the need for
+ * is a convenience wrapper around a {@link RemotePortal} with an {@link InProcessRemote} remote. This eliminates the need for
  * a real transport implementation.
  *
  * @packageDocumentation
@@ -26,7 +26,7 @@ import { normalizeActorType } from './shared';
 export const NOT_REGISTERED = 'NOT_REGISTERED';
 
 /**
- * Implementation of {@link remoteinvocation.IRemote} that invokes actor instances that live within the current
+ * Implementation of {@link IRemote} that invokes actor instances that live within the current
  * process (instead of in other processes via a message bus, as is the typical implementation of
  * a remote). This is performed by registering an {@link instances.IInstanceContainer} for each actor type
  * by means of the {@link register} method.
@@ -62,9 +62,9 @@ export class InProcessRemote implements IRemote {
 }
 
 /**
- * Implementation of {@link remoteinvocation.IPortal} that serves actor instances that live in the current process.
- * This merely is a convenience wrapper around a {@link remoteinvocation.RemotePortal} that is configured to use
- * an {@link InProcessRemote} remote. An {@link remoteinvocation.ImmediateBackOff} is used as default backoff mechanism.
+ * Implementation of {@link IPortal} that serves actor instances that live in the current process.
+ * This merely is a convenience wrapper around a {@link RemotePortal} that is configured to use
+ * an {@link InProcessRemote} remote. An {@link ImmediateBackOff} is used as default backoff mechanism.
  */
 export class LocalPortal implements IPortal {
     protected remote: InProcessRemote;
@@ -73,7 +73,7 @@ export class LocalPortal implements IPortal {
 
     /**
      *
-     * @param backoff The backoff to be used. Defaults to an {@link remoteinvocation.ImmediateBackOff} backoff.
+     * @param backoff The backoff to be used. Defaults to an {@link ImmediateBackOff} backoff.
      */
     constructor(backoff?: IBackOff) {
         this.remote = new InProcessRemote();

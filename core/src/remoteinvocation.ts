@@ -4,10 +4,10 @@
  *
  * The default {@link IPortal} implementation, {@link RemotePortal}, has a reference to an {@link IRemote} to
  * perform the actual remote action calls (via {@link IRemote.invoke}). It converts the method calls on the
- * proxy objects to an {@link shared.IInvokeOptions} object with an {@link shared.IActorCallRequest} as content, then
- * performs the call via {@link IRemote.invoke}, awaits the answer (which is an {@link shared.IInvokeResult} with an
- * {@link shared.IActorCallResponse} as content), and returns the {@link shared.IActorCallResponse.result} or throws an
- * {@link shared.ActorError} (when the remote actor threw an exception) or an {@link shared.InvokeError} when the request
+ * proxy objects to an {@link IInvokeOptions} object with an {@link IActorCallRequest} as content, then
+ * performs the call via {@link IRemote.invoke}, awaits the answer (which is an {@link IInvokeResult} with an
+ * {@link IActorCallResponse} as content), and returns the {@link IActorCallResponse.result} or throws an
+ * {@link ActorError} (when the remote actor threw an exception) or an {@link InvokeError} when the request
  * could not be complete due to technical causes.
  *
  * ## Backoff mechanism
@@ -19,7 +19,7 @@
  *
  * ## Actor placement
  *
- * In order to know to which destination (app) an {@link shared.IActorCallRequest} should be sent to, the {@link RemotePortal}
+ * In order to know to which destination (app) an {@link IActorCallRequest} should be sent to, the {@link RemotePortal}
  * uses the {@link IActorPlacement} information it receives via the {@link RemotePortal.addMapping} and {@link RemotePortal.removeMapping} methods.
  *
  * ## Local (in process) use
@@ -48,7 +48,7 @@ import { sleep } from '@darlean/utils';
 import { ActorError, normalizeActionName, normalizeActorType } from './shared';
 
 /**
- * Implementation of {@ITypedPortal} that returns instances of a specific type
+ * Implementation of {@link ITypedPortal} that returns instances of a specific type
  * from a given portal.
  */
 export class TypedPortal<T extends object> implements ITypedPortal<T> {

@@ -4,6 +4,8 @@ import { ITsDocNode, ITsDocType, TsDocData } from './parser';
 import * as marked from 'marked';
 import * as highlight from 'highlight.js';
 
+const IGNORED_REFERENCES = ['string', 'number', 'Promise', 'void', 'Map', 'Function', 'Object', 'boolean', 'unknown'];
+
 export class Html {
     protected lines: string[];
     protected stack: string[];
@@ -37,7 +39,8 @@ export class Html {
             this.start('head');
             this.raw('<link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.7.0/styles/default.min.css">');
             this.start('style');
-            this.raw("body {font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; font-size: 14px;}");
+            // The margin-bottom ensures that #links to items on bottom of page are still kindof displayed on top.
+            this.raw("body {font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; font-size: 14px; margin-bottom: 80vh;}");
             this.raw(
                 'th, td { vertical-align: top; text-align: left; padding-top: 8px; padding-bottom: 7px; padding-left: 3px; padding-right: 3px; }'
             );
@@ -49,13 +52,18 @@ export class Html {
                 '.summary h2 {background: #FA0; padding-left: 12px; padding-right: 12px; padding-top: 5px; padding-bottom: 5px; display: inline-block; margin-bottom: 0px;}'
             );
             this.raw('.comment h2 {background: none}');
-            this.raw('.comment {font-family: \'DejaVu Serif\', Georgia, "Times New Roman", Times, serif;}');
+            this.raw('.comment {font-family: \'DejaVu Serif\', Georgia, "Times New Roman", Times, serif; font-size: 16px;}');
             this.raw('a {font-weight: bold; text-decoration: none; }');
             this.raw(
                 ".comment a {font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; text-decoration: none; font-weight: normal; }"
             );
+            this.raw('.details { margin-left: 3rem; }');
             this.raw('table {border-spacing: 0px; border-collapse: collapse; width: 100%;}');
             this.raw('pre { margin-left: 1.5rem; }');
+
+            this.raw('h2, h3 { margin-top: 2rem; }');
+            this.raw('li { margin-top: 0.3rem; margin-bottom: 0.3rem; }');
+
             this.end(); // style
             this.end(); // head
         }
@@ -93,7 +101,9 @@ export class Html {
     }
 
     public linkToNode(base: string, ref: string, text: string) {
-        const to = `${base}.html#${ref}`;
+        const normalizedBase = replaceAll(base, '/', '_');
+
+        const to = `${normalizedBase}.html#${ref}`;
         this.link(to, text);
     }
 
@@ -231,7 +241,7 @@ export class Generator {
                         html.start('td', undefined);
                         html.start('div', 'function-signature');
                         html.start('code');
-                        html.text(item.name);
+                        this.generateLink(html, data, item.id, item.name);
                         this.generateSignature(html, sig, data);
                         html.text(': ');
                         this.generateType(html, sig.type, data);
@@ -268,7 +278,7 @@ export class Generator {
 
                     html.start('td');
                     html.start('code');
-                    html.text(item.name);
+                    this.generateLink(html, data, item.id, item.name);
                     if (item.typeParameters && item.typeParameters.length > 0) {
                         html.text('<');
                         let first = true;
@@ -306,8 +316,79 @@ export class Generator {
         html.end();
 
         html.tag('h2', undefined, `${packmod} ${node.name} Description`, { id: 'description' });
-
+        html.start('div', 'details');
         this.generateComment(html, node, data, false);
+        html.end(); // div
+
+        for (const kindName of ['Function']) {
+            const items = byKind(kindName).sort((a, b) => a.name.localeCompare(b.name));
+            if (items.length > 0) {
+                html.tag('h2', undefined, `${kindName} details`);
+
+                for (const item of items) {
+                    //const modifier = item.flags?.isProtected ? 'protected' :
+                    //    item.flags?.isPrivate ? 'private' : 'public';
+                    for (const sig of item.signatures ?? []) {
+                        const asnc = sig.type?.name === 'Promise' ? 'async' : '';
+                        html.start('h3', undefined, {id: item.name});
+                        html.text(asnc);
+                        html.text(item.name);
+                        this.generateSignature(html, sig, data);
+                        html.text(': ');
+                        this.generateType(html, sig.type, data);
+                        html.end(); // h3
+                        html.start('div', 'details');
+                        html.start('div', 'function-description');
+                        this.generateComment(html, sig, data, false);
+                        html.end(); // descr
+                        html.end(); // details
+                    }
+                }
+            }
+        }
+
+        for (const kindName of ['Type alias']) {
+            const items = byKind(kindName).sort((a, b) => a.name.localeCompare(b.name));
+            if (items.length > 0) {
+                html.tag('h2', undefined, `${kindName} details`);
+
+                for (const item of items) {
+                    //const modifier = item.flags?.isProtected ? 'protected' :
+                    //    item.flags?.isPrivate ? 'private' : 'public';
+                    html.start('h3', undefined, {id: item.name});
+                    {
+                        html.text(item.name);
+                        if (item.typeParameters && item.typeParameters.length > 0) {
+                            html.text('<');
+                            let first = true;
+                            for (const arg of item.typeParameters) {
+                                if (!first) {
+                                    html.text(', ');
+                                }
+                                first = false;
+                                this.generateType(html, arg, data);
+                            }
+                            html.text('>');
+                        }
+                    }
+                    html.end(); // h3
+                    
+                    html.start('div', 'details');
+
+                    html.start('div', 'type-alias-signature');
+                    html.start('code');
+                    this.generateType(html, item.type, data);
+                    html.end(); // code
+                    html.end(); // div
+
+                    html.start('div', 'type-alias-description');
+                    this.generateComment(html, item, data, false);
+                    html.end();
+
+                    html.end(); // details
+                }
+            }
+        }
     }
 
     protected generateObjectInterface(node: ITsDocNode, html: Html) {
@@ -380,7 +461,7 @@ export class Generator {
             html.end();
 
             for (const child of fields.sort((a, b) => a.name.localeCompare(b.name))) {
-                const modifier = node.flags?.isProtected ? 'protected' : node.flags?.isPrivate ? 'private' : 'public';
+                const modifier = child.flags?.isProtected ? 'protected' : child.flags?.isPrivate ? 'private' : 'public';
                 html.start('tr');
                 html.start('td');
                 html.start('code');
@@ -406,28 +487,22 @@ export class Generator {
     }
 
     protected generateLink(html: Html, data: TsDocData | undefined, id: number, name: string | undefined, text?: string) {
-        const node = id >= 0 ? data?.tryById(id) : name ? data?.tryByName(name) : undefined;
+        const normalizedName = (name?.startsWith('@')) ? name.slice(1) : name || '';
+        const node = id >= 0 ? data?.tryById(id) : name ? data?.tryByName(normalizedName) : undefined;
         if (!node) {
-            if (name?.startsWith('ext:')) {
-                /*const parts = name.split(':');
-                if (parts.length === 4) {
-                    const package = parts[1];
-                    const kind = parts[2].toLowerCase();
-                    const item = parts[3];
-                    let suburl = 'index.html';
-                    if ( (kind === 'class') || (kind === 'interface') ) {
-                        suburl = `${item}.html`;
-                    }
-
-                }*/
-            }
             html.text(text || name || '');
-            console.log('Reference not found:', id, name);
+            if (!IGNORED_REFERENCES.includes(name || '')) {
+                console.log('Reference not found:', id, name);
+            }
             return;
         }
         if (node.kindString === 'Method' || node.kindString === 'Property') {
             html.linkToNode(node.parent?.name ?? '', node.name, text || name || node.name || '');
         } else if (node.kindString === 'Class' || node.kindString === 'Interface') {
+            html.linkToNode(node.name, '', text || name || node.name);
+        } else if ( (node.kindString === 'Function') || ((node.kindString === 'Type alias')) ) {
+            html.linkToNode(node.parent?.name ?? '', node.name, text || name || node.name);
+        } else if (node.kindString === 'Module') {
             html.linkToNode(node.name, '', text || name || node.name);
         } else {
             html.text(text || name || '');
@@ -543,9 +618,9 @@ export class Generator {
                 for (const item of comment.summary) {
                     if (item.kind === 'inline-tag') {
                         parts.push(marker);
-                        const textParts = item.text?.split('|') ?? [];
+                        const textParts = (item.text?.split('|') ?? []).map(x => x.trim());
                         actions.push(() => {
-                            this.generateLink(html, data, -1, textParts[0] || '', textParts[1]);
+                            this.generateLink(html, data, item.target ?? -1, textParts[0] || '', textParts[1]);
                         });
                     } else if (item.kind === 'code') {
                         parts.push(item.text || '');
@@ -567,7 +642,6 @@ export class Generator {
                 marked.marked.setOptions({
                     highlight: function (code, lang, callback) {
                         const highlighted = highlight.default.highlight(lang, code);
-                        console.log('HIGHLIGHT', code, lang, highlighted.value);
                         callback?.(undefined, highlighted.value);
                         return highlighted.value;
                     }

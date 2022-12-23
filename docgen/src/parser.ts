@@ -66,7 +66,11 @@ export class TsDocData {
         this.nodesByName.set(name, node.id);
         if (node.kindString !== 'Reference') {
             this.nodesByName.set(node.name, node.id);
+            if (scoped) {
+                this.nodesByName.set(`${parent?.name}.${node.name}`, node.id);
+            }
         }
+            
         let k = this.nodesByKind.get(node.kindString);
         if (!k) {
             k = {

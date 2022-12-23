@@ -5,5 +5,10 @@
 	"./core",
 	"./utils",
 	"./examples"
-  ]
+  ],
+  "scripts": {
+	"doc1": "npx typedoc --skipErrorChecking --json typedoc-out.json",
+	"doc2": "npx docgen typedoc-out.json ./docs/",
+	"doc": "npm run doc1 & npm run doc2"
+  }
 }

@@ -77,15 +77,15 @@ export interface IRemote {
     /**
      * Invoke a remote action
      * @param options The options that specify what to invoke
-     * @returns The result of the invocation, which can either be erroneous ({@link shared.IInvokeResult.errorCode} is filled in)
-     * or successful (otherwise, {@link shared.IInvokeResult.content} is filled in).
+     * @returns The result of the invocation, which can either be erroneous ({@link IInvokeResult.errorCode} is filled in)
+     * or successful (otherwise, {@link IInvokeResult.content} is filled in).
      * @remarks
-     * `invoke` should *never* throw an error. Errors must always be caught internally and the {@link shared.IInvokeResult.errorCode}
+     * `invoke` should *never* throw an error. Errors must always be caught internally and the {@link IInvokeResult.errorCode}
      * must be filled accordingly.
      *
      * Errors that occur *within the user code of the remote actor* are not considered erroneous. Such user errors
-     * are reported in the {@link shared.IActorCallResponse.error} field of the {@link shared.IActorCallResponse} object
-     * in {@link shared.IInvokeResult.content}.
+     * are reported in the {@link IActorCallResponse.error} field of the {@link IActorCallResponse} object
+     * in {@link IInvokeResult.content}.
      */
     invoke(options: IInvokeOptions): Promise<IInvokeResult>;
 }

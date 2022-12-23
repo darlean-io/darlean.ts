@@ -1,0 +1,4 @@
+{
+    "entryPoints": ["base", "core", "utils"],
+    "entryPointStrategy": "packages",
+}
