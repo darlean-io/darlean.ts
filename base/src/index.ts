@@ -5,13 +5,22 @@
  *
  * This library provides the types and abstractions that can be used to build custom actors.
  * 
- * *Note: This library purposely
- * only contains interfaces and type definitions (not implementations!) to allow the implementation of lightweight actor libraries
- * that are not coupled with the actual implementation of the Darlean framework (which is available in the  {@link @darlean/core} library).*
- *
+ * An actor is a combination of state (data) and actions (logic), implemented as an object with one or more 
+ * private fields that contain the state, and one or more asynchronous methods that implement the actions. What
+ * makes actors different from regular objects is that they can be moved from one node (process) to the other
+ * without noticable loss of availability. This is achieved by providing actors with a persistence interface that
+ * allows actors to easily load and store their state, in combination with a distributed actor placement administration
+ * that knows which actor is active at which node at any given moment.
+ * 
+ * The complexity of querying this administration, 
+ * invoking remote actors via a message bus and performing automatic retries when actors are momentarily not available 
+ * while they are reincarnating on a different node are hidden from the
+ * developer by means of interfaces like {@link IPortal} that provides and proxies (stubs) that allow the developer to execute
+ * actions on a remote actor as if it were a regular local object. 
+ * 
  * The functionality of this library is divided into 3 parts: defining actors; hosting actors; and invoking remote actors.
  * 
- * ## Defining actors
+ * ## Part 1: Defining actors
  *
  * Actors are just plain typescript objects with some decoration applied. The decorators help Darlean understand
  * that the object is a virtual actor ({@link @actor}) or a service actor ({@link @service}), and that a method is an action that 
@@ -32,23 +41,31 @@
  * 
  * ### Example
  * 
- * Contents of `thermostat.intf.ts`:
+ * As an illustration, we provide a simple thermostat actor that can be used to get the current temperature and to make
+ * it warmer (or colder).
+ * 
+ * It is good practice to define the interface to the actor in a separate file. This allows a developer to invoke the actor
+ * from anotehr process without having to include the implementation (and associated dependencies) of the remote actor in his
+ * application.
+ * 
  * ```ts
- *
- * // It is good practice not to declare just the actor implementation, but also an
- * // interface for invoking the actor without introducing dependencies to the implementation.
- * // This can (and should) be done in a different file than where the implementation resides.
+ * // thermostat.intf.ts
+ * 
  * interface IThermostatActor {
  *     makeWarmer(amount: number): Promise<number>;
  *     getTemperature(): Promise<number>;
  * }
  * ```
  *
- * Contents of `thermostat.impl.ts`:
+ * The implementation goes in a separate file, that is only required for the process(es) that host the actor:
+ * 
  * ```ts
+ * // thermostat.impl.ts
+ * 
  * import { IThermostatActor } from './thermostat.intf';
  *
  * // It is useful to combine all state fields into a structure to ease persistence of all data.
+ * // So if we would have more state fields than just temperature, we would add them to this structure.
  * interface IThermostatState {
  *     temperature: number;
  * }
@@ -58,14 +75,17 @@
  * @actor()
  * class ThermostatActor implements IThermostatActor, IActivatable, IDeactivatable {
  *     protected state: IThermostatState;
+ *     protected persistence: IPersistence<IThermostatState>;
  *
- *     constructor(persistence: IPersistence, initialTemperature?: number) {
+ *     constructor(persistence: IPersistence<IThermostatState>, initialTemperature?: number) {
  *         this.persistence = persistence;
  *         this.state = {
  *             temperature: initialTemperature ? 16
  *         };
  *     }
  *
+ *     // Automatically invoked by the framework just before the first action is called
+ *     // Typically loads a previously stored state.
  *     public async activate(): Promise<void> {
  *         this.state = await this.persistence.load(['state']) ?? this.state;
  *     }
@@ -83,13 +103,15 @@
  *         return this.temperature;
  *     }
  *
+ *     // Automatically invoked when the actor is deactivated.
+ *     // Typically stores the latest state.
  *     public async deactivate(): Promise<void> {
  *         await this.persistence.store(['state'], this.state);
  *     }
  * }
  * ```
  *
- * ## Hosting actors
+ * ## Part 2: Hosting actors
  * 
  * When an actor is defined, it also needs to be hosted (made accessible for remote invocation).
  * 
@@ -98,11 +120,31 @@
  * The {@link IActorSuite} provides Darlean with a {@link IActorSuite.getRegistrationOptions} method that tells
  * Darlean which actors are defined and how to host them.
  * 
- * In addition to that, it is necessary to to create, configure and instantiate an {@link ActorRunner}, typically
- * by means of an {@link ActorRunnerBuilder}, but that is out of scope for this package (which is just about types
- * and interfaces, not about implementations that are in {@link @darlean/core}).
+ * ```ts
+ * // thermostat.impl.ts (continued)
+ * export const TEMPERATURE_ACTOR = 'io.darlean.example.TemperatureActor';
  * 
- * This package does, however, define certain more generic interfaces that the {@link ActorRunner} depends on for doing
+ * export function suite(defaultTemperature: number) {
+ *     return new ActorSuite([
+ *     {
+ *          type: TEMPERATURE_ACTOR,
+ *          creator: (context) => {
+ *              return new TemperatureActor( 
+ *                  context.persistence as IPersistence<IThermostatState>,
+ *                  defaultTemperature
+ *              );
+ *          }
+ *     }
+ *     ]);
+ * }
+ * ```
+ * 
+ * In addition to that, it is necessary to to create, configure and instantiate an {@link ActorRunner}, typically
+ * by means of an {@link ActorRunnerBuilder}, and to register our suite via the builder to the runner, but that 
+ * is out of scope for this package (which is just about creating actors, not about the details of hosting them, 
+ * which is in {@link @darlean/core}).
+ * 
+ * This package defines certain generic interfaces that the {@link ActorRunner} depends on for doing
  * its job. The interfaces that play a role in the hosting of actors are {@link IInstanceContainer} and {@link IInstanceWrapper}.
  * 
  * Darlean wraps every actor instances in an {@link IInstanceWrapper} instance (of which {@link InstanceWrapper} is the default 
@@ -122,7 +164,7 @@
  * 
  * More information about hosting actors is in the documentation for {@link @darlean/core}.  
  *
- * ## Invoking remote actors
+ * ## Part 3: Invoking remote actors
  * 
  * An actor can invoke remote actors by means of an {@link IPortal} or {@link ITypedPortal} to {@link IPortal.retrieve} a 
  * proxy object to a remote actor. A proxy object can be used as if it were a local object, and
@@ -141,13 +183,16 @@
  * const actor = myActorPortal.retrieve(['123']);
  * await actor.doSomething('a', 345);
  * ```
+ * ### Exception propagation
  * Exceptions thrown within the action methods of remote actors are automatically caught, converted into an {@link IActorError}, and propagated to the
  * caller where they are raised as {@link ActorError}.
  * 
+ * ### Retries and backoff
  * When the remote actor is (temporarily) unavailable, the portal will perform retries using a configurable {@link IBackOff} mechanism
  * (like an {@link ExponentialBackOff} for a backoff that increases exponentially with every retry).
  * When all retries fail after a certain timeout, an {@link InvokeError} is raised.
  *
+ * ### Remotes and transports
  * The default portal implementation, {@link RemotePortal}, uses an {@link IRemote} to {@link IRemote.invoke} actions on remote actors. A
  * remote typically uses an {@link ITransport} (like {@link NatsTransport}) to perform the underlying calls by {@link ITransportSession.send | send}ing
  * an {@link ITransportEnvelope} with an {@link ITransportActorCallRequest} content to another process, and waiting for an 
