@@ -15,10 +15,11 @@
  * The complexity of querying this administration, 
  * invoking remote actors via a message bus and performing automatic retries when actors are momentarily not available 
  * while they are reincarnating on a different node are hidden from the
- * developer by means of interfaces like {@link IPortal} that provides and proxies (stubs) that allow the developer to execute
+ * developer by means of interfaces like {@link IPortal} and {@link ITypedPortal} that provide proxies (stubs) that allow the developer to execute
  * actions on a remote actor as if it were a regular local object. 
  * 
- * The functionality of this library is divided into 3 parts: defining actors; hosting actors; and invoking remote actors.
+ * The functionality of this library is divided into 3 parts: defining actors; hosting actors; and invoking remote actors, 
+ * that are further described in the sections below.
  * 
  * ## Part 1: Defining actors
  *
@@ -39,18 +40,23 @@
  * be enabled/disabled and configured via the {@link actor | @actor}/{@link service | @service} and {@link action | @action}
  * decorators, respectively.
  * 
- * ### Example
+ * ### Actor Example
  * 
- * As an illustration, we provide a simple thermostat actor that can be used to get the current temperature and to make
+ * As an illustration, we provide a simple thermostat virtual actor that can be used to get the current temperature and to make
  * it warmer (or colder).
  * 
- * It is good practice to define the interface to the actor in a separate file. This allows a developer to invoke the actor
- * from anotehr process without having to include the implementation (and associated dependencies) of the remote actor in his
- * application.
+ * It is good practice to define the interface to the actor and the formal name of the actor in a separate file. This 
+ * allows a developer to invoke the actor from another process without having to include the implementation (and 
+ * associated dependencies) of the remote actor in his application.
+ * 
+ * *Note: Because of Darlean's internal {@link normalizeActionName | normalization} of actor and action names, it is even possible to invoke 
+ * the same actor from another programming languages using the language-native name casing, like `make_warmer` for python, or `MakeWarmer` for C#).*
  * 
  * ```ts
  * // thermostat.intf.ts
  * 
+ * export const TEMPERATURE_ACTOR = 'io.darlean.example.TemperatureActor';
+ *
  * interface IThermostatActor {
  *     makeWarmer(amount: number): Promise<number>;
  *     getTemperature(): Promise<number>;
@@ -122,7 +128,6 @@
  * 
  * ```ts
  * // thermostat.impl.ts (continued)
- * export const TEMPERATURE_ACTOR = 'io.darlean.example.TemperatureActor';
  * 
  * export function suite(defaultTemperature: number) {
  *     return new ActorSuite([

@@ -64,14 +64,14 @@ export class Html {
             this.raw('table {border-spacing: 0px; border-collapse: collapse; width: 100%;}');
             this.raw('pre { margin-left: 1.5rem; }');
 
-            this.raw('h2, h3 { margin-top: 2rem; }');
+            this.raw('h2, h3 { padding-top: 2rem; }');
             this.raw('li { margin-top: 0.3rem; margin-bottom: 0.3rem; }');
 
             this.raw('.documentation { max-width: 1024px; margin: 0 auto; }');
 
             this.raw('.navigator { position: sticky; top: 0px; background: rgba(250, 250, 250, 0.8); padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; }');
 
-            this.raw('.breadcrumb { font-size: smaller; margin: 1rem; }');
+            this.raw('.breadcrumb { font-size: smaller }');
 
             this.raw('.chevron { font-size: smaller; color: #888; }');
 
@@ -547,6 +547,7 @@ export class Generator {
 
             for (const child of fields.sort((a, b) => a.name.localeCompare(b.name))) {
                 const modifier = child.flags?.isProtected ? 'protected' : child.flags?.isPrivate ? 'private' : 'public';
+                const optional = child.flags?.isOptional ? '?' : '';
                 html.start('tr');
                 html.start('td');
                 html.start('code');
@@ -556,7 +557,7 @@ export class Generator {
                 html.start('td', undefined);
                 html.start('div', 'field-signature');
                 html.start('code');
-                html.text(`${child.name}`);
+                html.text(`${child.name}${optional}`);
                 html.text(': ');
                 this.generateType(html, child.type, child.data, child);
                 html.end(); // code

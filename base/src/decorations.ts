@@ -1,11 +1,16 @@
 import { IInstancePrototype } from '.';
 
+/**
+ * Defines the field that can be set on a method of an actor object to instruct Darlean
+ * on how to handle the method (like which kind of locking to apply).
+ */
 export interface IActionDecorable {
     _darlean_options?: IActionDecoration;
 }
 
 /**
- * Options that can be used to decorate an action method.
+ * Options that can be used to decorate an action method via {@link @action}, {@link @activator}, {@link @deactivator} and 
+ * {@link @timer}.
  */
 export interface IActionDecoration {
     /**
@@ -98,14 +103,19 @@ export interface IActorDecoration {
 }
 
 /**
- * Decorator for a regular actor class.
- *
+ * Decorator for a class that implements a virtual actor of which no more than one simultaneous instance
+ * is allowed be active at any moment within the entire Darlean cluster. 
+ * 
  * Standard use:
  * ```ts
  * @actor({name: 'mynamespace.MyActor'})
- * export class MyActor extends BaseActor {...}
+ * export class MyActor {
+ *    ...
+ * }
  * ```
- * For the list of options, see [[IActorDecoration]]. To decorate a *service actor*, use [[service|@service]] instead.
+ * @see {@link IActorDecoration} for the list of options that can be provided. 
+ * @see {@link service|@service} for how to decorate a *service actor* that does not have the restriction of only
+ * allowing one active simultaneous instance.
  */
 export function actor(config: IActorDecoration = {}) {
     // eslint-disable-next-line @typescript-eslint/ban-types
@@ -115,14 +125,23 @@ export function actor(config: IActorDecoration = {}) {
 }
 
 /**
- * Decorator for a service actor class.
+ * Decorator for a service actor class of which more than one simultaneous instance can be active within the
+ * Darlean cluster.
+ * 
+ * Service actors are typically used to hide the implementation details that regular virtual actors provide. This makes
+ * it possible to change the virtual actor implementation (like renaming virtual actor types, splitting them up or combining
+ * them, and/or changing how their id's are formed).
  *
  * Standard use:
  * ```ts
  * @service({name: 'mynamespace.MyService'})
- * export class MyService extends BaseActor {...}
+ * export class MyService {
+ *    ...
+ * }
  * ```
- * For the list of options, see [[IActorDecoration]]. To decorate a *regular (non-service) actor*, use [[actor|@actor]] instead.
+ * @see {@link IActorDecoration} for the list of options that can be provided.
+ * @see {@link actor | @actor} for how to decorate a regular virtual actor that has the restriction of only allowing
+ * one simultaneous instance active at any moment.
  */
 export function service(config: IActorDecoration = {}) {
     // eslint-disable-next-line @typescript-eslint/ban-types
@@ -190,6 +209,10 @@ export function timer(config?: IActionDecoration) {
 /**
  * Decorator for a deactivate method that can be used to provide additional configuration to
  * the deactivate method.
+ * 
+ * @remarks This decorator should only be used when the actor class does not implement the standard 
+ * {@link IDeactivatable.deactivate} method, or when it is necessary to change the default options
+ * for the standard eactivate method.
  * @decorator
  */
 export function deactivator(config?: IActionDecoration) {
@@ -205,6 +228,10 @@ export function deactivator(config?: IActionDecoration) {
 /**
  * Decorator for an activate method that can be used to provide additional configuration to
  * the activate method.
+ * 
+ * @remarks This decorator should only be used when the actor class does not implement the standard 
+ * {@link IActivatable.activate} method, or when it is necessary to change the default options
+ * for the standard eactivate method.
  * @decorator
  */
 export function activator(config?: IActionDecoration) {
