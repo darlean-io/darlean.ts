@@ -18,10 +18,21 @@ export interface ITsDocNode {
     indexSignature?: ITsDocNode; // for a dictionary: has parameters (the key) and type (the value)
     typeParameters?: ITsDocType[]; // Generics types
     data?: TsDocData;
+    implementedTypes: ITsDocType[];
+    extendedTypes: ITsDocType[];
+    subClasses?: ITsDocNode[];
+    subInterfaces?: ITsDocNode[];
 }
 
 export interface ITsDocComment {
     summary?: ISummaryItem[];
+    blockTags: ITsDocBlockTag[];
+}
+
+
+export interface ITsDocBlockTag {
+    tag: string;
+    content?: ISummaryItem[];
 }
 
 export interface ISummaryItem {
@@ -33,9 +44,10 @@ export interface ISummaryItem {
 
 export interface ITsDocType {
     id: number;
-    type: 'reference' | 'array' | 'intrinsic' | 'union' | 'reflection';
+    type: 'reference' | 'array' | 'intrinsic' | 'union' | 'reflection' | 'literal';
     types?: ITsDocType[]; // In case of union
     name?: string; // In case of intrinsic (built-in type) or reference
+    value?: string; // In case of literal
     elementType?: ITsDocType; // In case of array
     typeArguments?: ITsDocType[]; // Generics types
     declaration?: ITsDocNode;
@@ -46,14 +58,24 @@ export interface ITsDocKind {
     nodes: ITsDocNode[];
 }
 
+export function getCanonicalParts(node: ITsDocNode): ITsDocNode[] {
+    if (node.parent) {
+        const parts = getCanonicalParts(node.parent);
+        return [...parts, node];
+    }
+    return [node];
+}
+
 export class TsDocData {
     protected nodes: Map<number, ITsDocNode>;
     protected nodesByName: Map<string, number>;
+    protected nodesByCanonical: Map<string, number>;
     protected nodesByKind: Map<string, ITsDocKind>;
 
     constructor() {
         this.nodes = new Map();
         this.nodesByName = new Map();
+        this.nodesByCanonical = new Map();
         this.nodesByKind = new Map();
     }
 
@@ -69,6 +91,14 @@ export class TsDocData {
             if (scoped) {
                 this.nodesByName.set(`${parent?.name}.${node.name}`, node.id);
             }
+        }
+        let canonicalParts = parent ? getCanonicalParts(parent) : [];
+        while (true) {
+            this.nodesByCanonical.set([...canonicalParts.map(x => x.name).filter(x => x !== ''), node.name].join('.'), node.id);
+            if (canonicalParts.length === 0) {
+                break;
+            }
+            canonicalParts = canonicalParts.slice(0, -1);
         }
             
         let k = this.nodesByKind.get(node.kindString);
@@ -106,6 +136,64 @@ export class TsDocData {
         return item;
     }
 
+    public tryByCanonical(scope: ITsDocNode|undefined, name: string): ITsDocNode | undefined {
+        const nameparts = name.split('.');
+        const main = nameparts[nameparts.length - 1];
+        const prefix = nameparts[nameparts.length - 2];
+        const canonical = scope ? getCanonicalParts(scope) : [];
+        let bestlen = -1;
+        let bestnode: ITsDocNode | undefined;
+        for (const node of this.nodes.values()) {
+            if (node.name === main) {
+                if (prefix) {
+                    if (node.parent?.name !== prefix) {
+                        continue;
+                    }
+                }
+
+                // main and prefix match
+                const c = getCanonicalParts(node);
+                let idx = 0;
+                for (idx=0; idx < Math.min(c.length, canonical.length); idx++) {
+                    if (c[idx].name !== canonical[idx].name) {
+                        break;
+                    }
+                }
+                if (idx > bestlen) {
+                    bestlen = idx;
+                    bestnode = node;
+                }
+            }
+        }
+        return bestnode;
+    }
+
+    public tryByCanonical2(parent: ITsDocNode|undefined, name: string): ITsDocNode | undefined {
+        let scope = parent;
+        while (true) {
+            const parts = scope ? getCanonicalParts(scope) : [];
+            const canonical = [...parts.map(x => x.name), name].join('.');
+            const id = this.nodesByCanonical.get(canonical);
+            if (id !== undefined) {
+                const item = this.nodes.get(id);
+                if (!item) {
+                    throw new Error('Item not found');
+                }
+                return item;            
+            }
+            if (!scope) {
+                break;
+            }
+            scope = scope.parent;
+        }
+        if (name === 'IDeactivatable.deactivate') {
+            console.log('Not found', parent ? getCanonicalParts(parent).map(x => x.name) : '-', name);
+            console.log('KEYS', Array.from(this.nodesByCanonical.keys()).filter(x => x.includes('IDeactivatable.deactivate')));
+            throw new Error('NOT FOUND');
+        }
+        // return this.tryByName(name);
+    }
+
     public byName(name: string): ITsDocNode {
         const id = this.nodesByName.get(name);
         if (id === undefined) {
@@ -129,6 +217,36 @@ export class TsDocData {
     public getKindNames(): string[] {
         return Array.from(this.nodesByKind.keys());
     }
+
+    public findImplementors(name: string): ITsDocNode[] {
+        const result: ITsDocNode[] = [];
+
+        for (const node of this.nodes.values()) {
+            if (node.implementedTypes) {
+                for (const t of node.implementedTypes) {
+                    if (t.name === name) {
+                        result.push(node);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    public findExtenders(name: string): ITsDocNode[] {
+        const result: ITsDocNode[] = [];
+
+        for (const node of this.nodes.values()) {
+            if (node.extendedTypes) {
+                for (const t of node.extendedTypes) {
+                    if (t.name === name) {
+                        result.push(node);
+                    }
+                }
+            }
+        }
+        return result;
+    }
 }
 
 export class TsdocParser {
@@ -136,7 +254,7 @@ export class TsdocParser {
         const data = new TsDocData();
 
         this.parseImpl(data, tsdoc, undefined);
-
+        
         return data;
     }
 
@@ -146,6 +264,12 @@ export class TsdocParser {
         if (node.children) {
             for (const child of node.children) {
                 this.parseImpl(data, child, node);
+            }
+        }
+
+        if (node.signatures) {
+            for (const sig of node.signatures) {
+                this.parseImpl(data, sig, node);
             }
         }
     }

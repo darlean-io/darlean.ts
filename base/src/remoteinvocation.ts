@@ -15,6 +15,11 @@ export interface IPortal {
      * @param id The id of the remote actor for which a proxy is to be obtained
      * @returns A proxy object of type T that internally takes care of all the networking and
      * other complexity of invoking the remote actor.
+     * @remarks Even when the requested type is not known to the system, the call returns a valid
+     * proxy object. Any errors resulting from the type not being known to the system are thrown when
+     * actions are actually being performed on the returned proxy. This behaviour makes it possible to already initialize
+     * actors with their proper portals at application startup (dependency injection) when the rest of the
+     * system is not yet up. 
      */
     retrieve<T extends object>(type: string, id: string[]): T;
 
@@ -24,6 +29,11 @@ export interface IPortal {
      * {@link ITypedPortal} only have to include the remaining id parts.
      * @param type The type of the actors that the sub portal can retrieve
      * @param idPrefix An optial prefix of the id of actors to be retrieved by the sub portal.
+     * @remarks Even when the requested type is not known to the system, the call returns a valid
+     * {@link ITypedPortal} instance. Any errors resulting from the type not being known to the system are thrown when
+     * actions are actually being performed on the returned portal. This behaviour makes it possible to already initialize
+     * actors with their proper portals at application startup (dependency injection) when the rest of the
+     * system is not yet up. 
      */
     sub<T extends object>(type: string, idPrefix?: string[]): ITypedPortal<T>;
 }

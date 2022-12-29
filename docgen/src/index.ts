@@ -11,7 +11,7 @@ export function generate(source: string, dest: string) {
     const parser = new TsdocParser();
     const data = parser.parse(sourceJson);
     const generator = new Generator();
-    const html = new Html(dest, 'index.html');
+    const html = new Html([dest], 'index.html');
     generator.generate(data, html);
     html.finalize();
 }

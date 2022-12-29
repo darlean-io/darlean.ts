@@ -80,6 +80,12 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
         return this.wrapper(id).getProxy();
     }
 
+    /**
+     * 
+     * @param id 
+     * @returns
+     * @throws {@link InstanceInvokeError} when something goes wrong.  
+     */
     public wrapper(id: string[]): IInstanceWrapper<T> {
         const idt = idToText(id);
         const current = this.instances.get(idt);
@@ -154,6 +160,14 @@ export class MultiTypeInstanceContainer implements IMultiTypeInstanceContainer {
         this.containers.set(normalizeActorType(type), container);
     }
 
+    /**
+     * 
+     * @param type 
+     * @param id 
+     * @returns 
+     * @throws {@link InstanceInvokeError} with code {@link INSTANCE_INVOKE_ERROR_UNKNOWN_ACTOR_TYPE} 
+     * when the actor type is unknown
+     */
     public obtain<T extends object>(type: string, id: string[]): T {
         const container = this.containers.get(type) as IInstanceContainer<T>;
         if (container) {
@@ -188,6 +202,8 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
     /**
      * Creates a new wrapper around the provided instance of type T.
      * @param instance The instance around which the wrapper should be created.
+     * @throws {@link InstanceInvokeError} with code {@link INSTANCE_INVOKE_ERROR_UNKNOWN_ACTION}
+     * when methods on this object are invokes that do not exist in the underlying instance. 
      */
     public constructor(instance: T) {
         super();

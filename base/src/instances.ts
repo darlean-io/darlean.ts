@@ -22,6 +22,9 @@ export const INSTANCE_INVOKE_ERROR_UNKNOWN_ACTOR_TYPE = 'UNKNOWN_ACTOR_TYPE';
 export const INSTANCE_INVOKE_ERROR_GLOBAL_LOCK_FAILED = 'GLOBAL_LOCK_FAILED';
 export const INSTANCE_INVOKE_ERROR_FINALIZING = 'FINALIZING';
 
+/**
+ * Error when invoking a local actor instance goes wrong.
+ */
 export class InstanceInvokeError extends Error {}
 
 /**

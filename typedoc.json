@@ -1,4 +1,5 @@
 {
     "entryPoints": ["base", "core", "utils"],
     "entryPointStrategy": "packages",
+    "excludeExternals": true
 }
