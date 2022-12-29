@@ -121,14 +121,20 @@ export class ActorRunnerBuilder implements IActorRegistry {
     }
 
     /**
-     * Registers an actor that must be hosted by the actor runner.
+     * Registers an individual actor that must be hosted by the actor runner.
      * @param options The options for the actor.
+     * @returns The builder
      */
     public registerActor<T extends object>(options: IActorRegistrationOptions<T>): ActorRunnerBuilder {
         this.actors.push(options);
         return this;
     }
 
+    /**
+     * Registers a suite of actors that must be hosted by the actor runner.
+     * @param suite The suite to be registered
+     * @returns The builder
+     */
     public registerSuite(suite: IActorSuite): ActorRunnerBuilder {
         for (const options of suite.getRegistrationOptions()) {
             this.registerActor(options);
@@ -141,8 +147,9 @@ export class ActorRunnerBuilder implements IActorRegistry {
      * explicitly have their hosts setting configured.
      * @param hosts
      */
-    public setDefaultHosts(hosts: string[]) {
+    public setDefaultHosts(hosts: string[]): ActorRunnerBuilder {
         this.defaultHosts = hosts;
+        return this;
     }
 
     /**
@@ -179,15 +186,15 @@ export class ActorRunnerBuilder implements IActorRegistry {
         return this.persistence;
     }
 
-    protected createTime(): ITime {
+    private createTime(): ITime {
         return new Time();
     }
 
-    protected createBackOff(time: ITime): IBackOff {
+    private createBackOff(time: ITime): IBackOff {
         return new ExponentialBackOff(time, 10, 4);
     }
 
-    protected createPortal(backoff: IBackOff, transport?: ITransport): IPortal {
+    private createPortal(backoff: IBackOff, transport?: ITransport): IPortal {
         if (this.appId) {
             return this.createRemotePortal(backoff, this.appId, transport);
         } else {
@@ -195,7 +202,7 @@ export class ActorRunnerBuilder implements IActorRegistry {
         }
     }
 
-    protected configurePortal(ar: ActorRunner) {
+    private configurePortal(ar: ActorRunner) {
         if (this.transport) {
             ar.on('start', () => {
                 if (this.remote) {
@@ -210,7 +217,7 @@ export class ActorRunnerBuilder implements IActorRegistry {
         }
     }
 
-    protected createLocalPortal(backoff: IBackOff): IPortal {
+    private createLocalPortal(backoff: IBackOff): IPortal {
         const portal = new LocalPortal(backoff);
         for (const actor of this.actors) {
             const creator = actor.creator;
@@ -236,7 +243,7 @@ export class ActorRunnerBuilder implements IActorRegistry {
         return portal;
     }
 
-    protected createRemotePortal(backoff: IBackOff, appId: string, transport?: ITransport): IPortal {
+    private createRemotePortal(backoff: IBackOff, appId: string, transport?: ITransport): IPortal {
         const multiContainer = new MultiTypeInstanceContainer();
         const remote = this.createRemote(appId, multiContainer, transport);
         this.remote = remote;
@@ -272,7 +279,7 @@ export class ActorRunnerBuilder implements IActorRegistry {
         return portal;
     }
 
-    protected createRemote(appId: string, container: IMultiTypeInstanceContainer, transport?: ITransport): IRemote {
+    private createRemote(appId: string, container: IMultiTypeInstanceContainer, transport?: ITransport): IRemote {
         if (!transport) {
             const deser = new BsonDeSer();
             transport = new NatsTransport(deser);
@@ -281,11 +288,11 @@ export class ActorRunnerBuilder implements IActorRegistry {
         return new TransportRemote(appId, transport, container);
     }
 
-    protected createPersistence(): IPersistence<unknown> {
+    private createPersistence(): IPersistence<unknown> {
         return new MemoryPersistence();
     }
 
-    protected createActorCreateContext(type: string, id: string[], timers: IVolatileTimer[]): IActorCreateContext {
+    private createActorCreateContext(type: string, id: string[], timers: IVolatileTimer[]): IActorCreateContext {
         if (!this.portal) {
             throw new Error('No portal assigned');
         }

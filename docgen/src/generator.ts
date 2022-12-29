@@ -492,7 +492,7 @@ export class Generator {
                 html.end();
 
                 for (const child of methods.sort((a, b) => a.name.localeCompare(b.name))) {
-                    const modifier = node.flags?.isProtected ? 'protected' : node.flags?.isPrivate ? 'private' : 'public';
+                    const modifier = child.flags?.isProtected ? 'protected' : child.flags?.isPrivate ? 'private' : 'public';
 
                     for (const sig of child.signatures ?? []) {
                         const asnc = sig.type?.name === 'Promise' ? 'async' : '';
@@ -508,9 +508,9 @@ export class Generator {
                         html.start('div', 'method-signature');
                         html.start('code');
                         if (kind === 'Constructor') {
-                            this.generateType(html, sig.type, node.data, child, false);
+                            this.generateType(html, sig.type, node.data, child, child.name);
                         } else {
-                            html.text(child.name);
+                            html.link(`#${child.name}`, child.name);
                         }
                         this.generateSignature(html, sig, node.data, child);
 
@@ -629,7 +629,7 @@ export class Generator {
         }
     }
 
-    protected generateType(html: Html, t: ITsDocType | undefined, data: TsDocData | undefined, scope: ITsDocNode|undefined, link = true) {
+    protected generateType(html: Html, t: ITsDocType | undefined, data: TsDocData | undefined, scope: ITsDocNode|undefined, link: boolean | string = true) {
         if (!t) {
             html.text('void');
             return;
@@ -680,8 +680,10 @@ export class Generator {
         } else if (t.type === 'literal') {
             html.text(`'${t.value}'`);
         } else {
-            if (data && link) {
+            if (data && link === true) {
                 this.generateLink(html, data, scope, t.id, t.name || '');
+            } else if (typeof link === 'string') {
+                html.link(`#${link}`, t.name ?? '');
             } else {
                 html.text(t.name ?? '');
             }

@@ -96,14 +96,14 @@
  *         this.state = await this.persistence.load(['state']) ?? this.state;
  *     }
  *
- *     // Actions must be decorated to differ from regular methods
+ *     // Action methods must be decorated to make them accessible for remote invocation
  *     @action()
  *     public async makeWarmer(amount: number): Promise<number> {
  *         this.state.temperature += amount;
  *         return this.temperature;
  *     }
  *
- *     // Decorator arguments set specific behaviour of actions
+ *     // To alter the default behaviour of actions, add options to the decorator
  *     @action({ locking='shared' })
  *     public async getTemperature(): Promise<number> {
  *         return this.temperature;
@@ -126,6 +126,7 @@
  * The {@link IActorSuite} provides Darlean with a {@link IActorSuite.getRegistrationOptions} method that tells
  * Darlean which actors are defined and how to host them.
  * 
+ * Example:
  * ```ts
  * // thermostat.impl.ts (continued)
  * 
