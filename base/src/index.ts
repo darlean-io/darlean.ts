@@ -55,7 +55,7 @@
  * ```ts
  * // thermostat.intf.ts
  * 
- * export const TEMPERATURE_ACTOR = 'io.darlean.example.TemperatureActor';
+ * export const THERMOSTAT_ACTOR = 'io.darlean.example.ThermostatActor';
  *
  * interface IThermostatActor {
  *     makeWarmer(amount: number): Promise<number>;
@@ -133,9 +133,9 @@
  * export function suite(defaultTemperature: number) {
  *     return new ActorSuite([
  *     {
- *          type: TEMPERATURE_ACTOR,
+ *          type: THERMOSTAT_ACTOR,
  *          creator: (context) => {
- *              return new TemperatureActor( 
+ *              return new ThermostatActor( 
  *                  context.persistence as IPersistence<IThermostatState>,
  *                  defaultTemperature
  *              );
@@ -177,17 +177,18 @@
  * action methods on these proxies can be invoked as if the remote actor were running locally (within the same process).
  *
  * ```ts
- * const actor = portal.retrieve<IMyActor>('MyActor', ['123']);
- * await actor.doSomething('a', 345);
+ * const actor = portal.retrieve<IThermostatActor>(THERMOSTAT_ACTOR, ['LivingRoom']);
+ * ...
+ * const newTemperature = await actor.makeWarmer(-0.2);
  * ```
  *
  * When the type of the actor is already known, an {@link ITypedPortal} can be used. This simplifies
  * the code that invokes the actor and removes dependencies there on the actor type:
  * ```ts
- * const myActorPortal = portal.sub<IMyActor>('MyActor');
+ * const thermostatPortal = portal.sub<IThermostatActor>(THERMOSTAT_ACTOR);
  * ...
- * const actor = myActorPortal.retrieve(['123']);
- * await actor.doSomething('a', 345);
+ * const actor = thermostatPortal.retrieve(['LivingRoom']);
+ * const newTemperature = await actor.makeWarmer(-0.3);
  * ```
  * ### Exception propagation
  * Exceptions thrown within the action methods of remote actors are automatically caught, converted into an {@link IActorError}, and propagated to the
