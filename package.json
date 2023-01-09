@@ -4,7 +4,8 @@
 	"./base",
 	"./core",
 	"./utils",
-	"./examples"
+	"./examples",
+	"./suites/actor-lock-suite"
   ],
   "scripts": {
 	"doc1": "npx typedoc --skipErrorChecking --json typedoc-out.json",

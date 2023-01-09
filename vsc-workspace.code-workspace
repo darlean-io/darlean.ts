@@ -16,6 +16,9 @@
 			"path": "utils"
 		},
 		{
+		    "path": "suites/actor-lock-suite"
+		}, 
+		{
 			"path": "."
 		}
 	],

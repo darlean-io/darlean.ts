@@ -1,5 +1,5 @@
 {
-    "entryPoints": ["base", "core", "utils"],
+    "entryPoints": ["base", "core", "utils", "suites/actor-lock-suite"],
     "entryPointStrategy": "packages",
     "excludeExternals": true
 }
