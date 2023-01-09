@@ -40,11 +40,13 @@ import {
     IInvokeOptions,
     IPortal,
     IRemote,
-    ITypedPortal
+    ITypedPortal,
+    ApplicationError,
+    FrameworkError
 } from '@darlean/base';
 import { ITime } from '@darlean/utils';
 import { sleep } from '@darlean/utils';
-import { ApplicationError, FrameworkError, normalizeActionName, normalizeActorType } from './shared';
+import { normalizeActionName, normalizeActorType } from './shared';
 
 /**
  * Implementation of {@link ITypedPortal} that returns instances of a specific type
@@ -53,26 +55,23 @@ import { ApplicationError, FrameworkError, normalizeActionName, normalizeActorTy
 export class TypedPortal<T extends object> implements ITypedPortal<T> {
     protected portal: IPortal;
     protected type: string;
-    protected idPrefix?: string[];
 
     /**
      *
      * @param portal The portal from which instances are to be retrieved
      * @param type The type of actors of which instances are to be retrieved
-     * @param idPrefix AN optional prefix with which id's are prefixed during {@link retreive}.
      */
-    constructor(portal: IPortal, type: string, idPrefix?: string[]) {
+    constructor(portal: IPortal, type: string) {
         this.portal = portal;
         this.type = type;
-        this.idPrefix = idPrefix;
     }
 
     public retrieve(id: string[]): T {
-        return this.portal.retrieve(this.type, this.idPrefix ? [...this.idPrefix, ...id] : id);
+        return this.portal.retrieve(this.type, id);
     }
 
     public prefix(idPrefix: string[]): ITypedPortal<T> {
-        return new TypedPortal<T>(this.portal, this.type, [...(this.idPrefix ?? []), ...idPrefix]);
+        return new PrefixTypedPortal<T>(this, idPrefix);
     }
 }
 
@@ -275,8 +274,12 @@ export class RemotePortal implements IPortal {
         }
     }
 
-    public typed<T extends object>(type: string, idPrefix?: string[]): ITypedPortal<T> {
-        return new TypedPortal<T>(this, type, idPrefix);
+    public typed<T extends object>(type: string): ITypedPortal<T> {
+        return new TypedPortal<T>(this, type);
+    }
+
+    public prefix(idPrefix: string[]): IPortal {
+        return new PrefixPortal(this, idPrefix);
     }
 
     protected findReceivers(actorType: string) {
@@ -337,5 +340,45 @@ export class RemotePortal implements IPortal {
                 }
             }
         }
+    }
+}
+
+export class PrefixPortal implements IPortal {
+    private parent: IPortal;
+    private idPrefix: string[];
+
+    constructor(parent: IPortal, idPrefix: string[]) {
+        this.parent = parent;
+        this.idPrefix = idPrefix;
+    }
+
+    public retrieve<T extends object>(type: string, id: string[]): T {
+        return this.parent.retrieve(type, [...this.idPrefix, ...id]);
+    }
+
+    typed<T extends object>(type: string): ITypedPortal<T> {
+        return new TypedPortal(this, type);
+    }
+
+    prefix(idPrefix: string[]): IPortal {
+        return new PrefixPortal(this, idPrefix);
+    }
+}
+
+export class PrefixTypedPortal<T extends object> implements ITypedPortal<T> {
+    private parent: ITypedPortal<T>;
+    private idPrefix: string[];
+
+    constructor(parent: ITypedPortal<T>, idPrefix: string[]) {
+        this.parent = parent;
+        this.idPrefix = idPrefix;
+    }
+
+    retrieve(id: string[]): T {
+        return this.parent.retrieve([...this.idPrefix, ...id]);
+    }
+
+    prefix(idPrefix: string[]): ITypedPortal<T> {
+        return new PrefixTypedPortal<T>(this, idPrefix);
     }
 }

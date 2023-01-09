@@ -25,18 +25,24 @@ export interface IPortal {
     retrieve<T extends object>(type: string, id: string[]): T;
 
     /**
-     * Returns a new portal that retrieves actors from the current portal that have a specified type
-     * and an optional id prefix. Callers to the {@link ITypedPortal.retrieve} method of the returned
-     * {@link ITypedPortal} only have to include the remaining id parts.
+     * Returns a new portal that retrieves actors from the current portal that have a specified type.
      * @param type The type of the actors that the sub portal can retrieve
-     * @param idPrefix An optial prefix of the id of actors to be retrieved by the sub portal.
      * @remarks Even when the requested type is not known to the system, the call returns a valid
      * {@link ITypedPortal} instance. Any errors resulting from the type not being known to the system are thrown when
      * actions are actually being performed on the returned portal. This behaviour makes it possible to already initialize
      * actors with their proper portals at application startup (dependency injection) when the rest of the
      * system is not yet up.
      */
-    typed<T extends object>(type: string, idPrefix?: string[]): ITypedPortal<T>;
+    typed<T extends object>(type: string): ITypedPortal<T>;
+
+    /**
+     * Returns a new portal that retrieves actors from the current portal that have a specified id prefix.
+     * Callers to the {@link IPortal.retrieve} method of the returned
+     * {@link IPortal} only have to include the remaining id parts.
+     * @param idPrefix The prefix of the id of actors to be retrieved by the sub portal.
+     */
+    prefix(idPrefix: string[]): IPortal;
+
 }
 
 /**

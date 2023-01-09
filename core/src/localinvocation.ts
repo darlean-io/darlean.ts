@@ -20,7 +20,7 @@ import {
     IRemote,
     ITypedPortal
 } from '@darlean/base';
-import { ImmediateBackOff, RemotePortal, TypedPortal } from './remoteinvocation';
+import { ImmediateBackOff, PrefixPortal, RemotePortal, TypedPortal } from './remoteinvocation';
 import { normalizeActorType } from './shared';
 
 export const NOT_REGISTERED = 'NOT_REGISTERED';
@@ -95,7 +95,11 @@ export class LocalPortal implements IPortal {
         return this.portal.retrieve(type, id);
     }
 
-    public typed<T extends object>(type: string, subId: string[]): ITypedPortal<T> {
-        return new TypedPortal<T>(this.portal, type, subId);
+    public typed<T extends object>(type: string): ITypedPortal<T> {
+        return new TypedPortal<T>(this.portal, type);
+    }
+
+    public prefix(idPrefix: string[]): IPortal {
+        return new PrefixPortal(this, idPrefix);
     }
 }
