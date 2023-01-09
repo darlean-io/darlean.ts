@@ -38,6 +38,7 @@ export class Html {
 
         if (tag === 'html') {
             this.start('head');
+            this.raw('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
             this.raw('<link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.7.0/styles/default.min.css">');
             this.start('style');
             // The margin-bottom ensures that #links to items on bottom of page are still kindof displayed on top.

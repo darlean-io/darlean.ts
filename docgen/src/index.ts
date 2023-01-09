@@ -1,4 +1,4 @@
-import { Generator, Html } from './generator';
+import { Generator, Html } from './htmlgenerator';
 import { ITsDocNode, TsdocParser } from './parser';
 import * as fs from 'fs';
 
