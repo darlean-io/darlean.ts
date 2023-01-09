@@ -566,7 +566,7 @@ export class Generator {
                 html.end(); // code
                 html.end(); // div
                 html.start('div', 'field-description');
-                this.generateComment(html, child, node.data);
+                this.generateComment(html, child, node.data, false);
                 html.end();
                 html.end(); // td
                 html.end(); // tr
