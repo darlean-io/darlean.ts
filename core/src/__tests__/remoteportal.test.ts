@@ -7,7 +7,7 @@ import { IEchoActor } from '../testing';
 export class NotImplementedRemote implements IRemote {
     public async invoke(_options: IInvokeOptions): Promise<IInvokeResult> {
         return {
-            errorCode: 'NOT_IMPLEMENTED'
+            errorCode: 'TEST_FRAMEWORK_ERROR'
         };
     }
 }
@@ -86,7 +86,7 @@ describe('Remote portal', () => {
         expect(error?.kind).toBe('framework');
         expect(error?.nested?.length).toBeGreaterThanOrEqual(5);
         expect(error?.nested?.[0]?.kind).toBe('framework');
-        expect(error?.nested?.[0]?.code).toBe('NOT_IMPLEMENTED');
+        expect(error?.nested?.[0]?.code).toBe('TEST_FRAMEWORK_ERROR');
         expect(duration).toBeGreaterThan(1500);
     }, 10000);
 
