@@ -1,16 +1,16 @@
 /**
  * Provides Darlean core functionality for defining, exposing and invoking local or remote actors.
- * 
+ *
  * Detailed information about what virtual actors are and an overview of all generic types is in the documentation for {@link @darlean/base}.
- * 
+ *
  *  ## Types for creating an application
- * 
+ *
  * The following implementations can be used to **create an application that hosts actors**:
  * * {@link ActorRunnerBuilder} - Class that can be used to construct an actor runner with various settings
  * * {@link ActorRunner} - Class that represents an actor runner that runs and manages actors.
- * 
+ *
  * ## Actors, instances and wrappers
- * 
+ *
  * Actors are just plain classes with public async action methods, decorated with {@link action|@action}. They can
  * optionally implement {@link IActivatable} by adding an async {@link IActivatable.activate} method
  * and/or {@link IDeactivatable} by adding an async {@link IDeactivatable.deactivate} method.
@@ -28,14 +28,14 @@
  * Both {@link InstanceWrapper} and {@link InstanceContainer} respect the configured locking and
  * activation/deactivation mechanisms (by means of the {@link action|@action}, {@link actor|@action}
  * and {@link service|@service} decorators).
- * 
+ *
  * ## Local actor invocation
  * For local use (that is, when all code and actors live in the same process), it is possible to use {@link LocalPortal}, which
  * is a convenience wrapper around a {@link RemotePortal} with an {@link InProcessRemote} remote. This eliminates the need for
  * a real transport implementation.
- * 
+ *
  * ## Remote actor invocation
- * 
+ *
  * User code can invoke remote actors by first obtaining an {@link IPortal} instance (like {@link RemotePortal} or
  * {@link localinvocation.LocalPortal}) and then obtaining a local actor proxy by means of {@link IPortal.retrieve}.
  *
@@ -58,7 +58,7 @@
  *
  * In order to know to which destination (app) an {@link IActorCallRequest} should be sent to, the {@link RemotePortal}
  * uses the {@link IActorPlacement} information it receives via the {@link RemotePortal.addMapping} and {@link RemotePortal.removeMapping} methods.
- * 
+ *
  * @packageDocumentation
  */
 export * from './shared';

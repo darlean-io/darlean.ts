@@ -25,7 +25,7 @@ export class ActorError extends Error implements IActorError {
  * @remarks Due to the nature of the normalization, casing or use of special characters
  * should not be used to discriminate between two otherwise identical action names. For
  * example, do not define two actions named `makeWarmer` and `makewarmer` on the same actor,
- * because both will normalize to `makewarmer`, which is not allowed.  
+ * because both will normalize to `makewarmer`, which is not allowed.
  */
 export function normalizeActionName(name: string): string {
     return replaceAll(name, '_', '').toLowerCase();
@@ -39,7 +39,7 @@ export function normalizeActionName(name: string): string {
  * @remarks Due to the nature of the normalization, casing or use of special characters
  * should not be used to discriminate between two otherwise identical actor typess. For
  * example, do not define two actors with type `temperatureActor` and `TemperatureActor`,
- * because both will normalize to `temperatureactor`, which is not allowed.  
+ * because both will normalize to `temperatureactor`, which is not allowed.
  */
 export function normalizeActorType(type: string): string {
     return replaceAll(type, '_', '').toLowerCase();

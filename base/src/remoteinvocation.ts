@@ -19,7 +19,7 @@ export interface IPortal {
      * proxy object. Any errors resulting from the type not being known to the system are thrown when
      * actions are actually being performed on the returned proxy. This behaviour makes it possible to already initialize
      * actors with their proper portals at application startup (dependency injection) when the rest of the
-     * system is not yet up. 
+     * system is not yet up.
      */
     retrieve<T extends object>(type: string, id: string[]): T;
 
@@ -33,7 +33,7 @@ export interface IPortal {
      * {@link ITypedPortal} instance. Any errors resulting from the type not being known to the system are thrown when
      * actions are actually being performed on the returned portal. This behaviour makes it possible to already initialize
      * actors with their proper portals at application startup (dependency injection) when the rest of the
-     * system is not yet up. 
+     * system is not yet up.
      */
     sub<T extends object>(type: string, idPrefix?: string[]): ITypedPortal<T>;
 }

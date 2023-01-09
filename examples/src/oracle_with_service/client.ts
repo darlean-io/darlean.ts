@@ -60,7 +60,8 @@ function check(expected: number, actual: number, descr: string) {
     if (expected === actual) {
         console.log(`-> PASSED ${descr} (expected = actual = ${actual})`);
     } else {
-        console.log(`-> FAILED ${descr} (expected: ${expected}, actual: ${actual}`);
+        console.log(`-> FAILED ${descr} (expected: ${expected}, actual: ${actual})`);
+        process.exitCode = 1;
     }
 }
 

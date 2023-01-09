@@ -29,7 +29,6 @@ export interface ITsDocComment {
     blockTags: ITsDocBlockTag[];
 }
 
-
 export interface ITsDocBlockTag {
     tag: string;
     content?: ISummaryItem[];
@@ -94,13 +93,16 @@ export class TsDocData {
         }
         let canonicalParts = parent ? getCanonicalParts(parent) : [];
         while (true) {
-            this.nodesByCanonical.set([...canonicalParts.map(x => x.name).filter(x => x !== ''), node.name].join('.'), node.id);
+            this.nodesByCanonical.set(
+                [...canonicalParts.map((x) => x.name).filter((x) => x !== ''), node.name].join('.'),
+                node.id
+            );
             if (canonicalParts.length === 0) {
                 break;
             }
             canonicalParts = canonicalParts.slice(0, -1);
         }
-            
+
         let k = this.nodesByKind.get(node.kindString);
         if (!k) {
             k = {
@@ -136,7 +138,7 @@ export class TsDocData {
         return item;
     }
 
-    public tryByCanonical(scope: ITsDocNode|undefined, name: string): ITsDocNode | undefined {
+    public tryByCanonical(scope: ITsDocNode | undefined, name: string): ITsDocNode | undefined {
         const nameparts = name.split('.');
         const main = nameparts[nameparts.length - 1];
         const prefix = nameparts[nameparts.length - 2];
@@ -154,7 +156,7 @@ export class TsDocData {
                 // main and prefix match
                 const c = getCanonicalParts(node);
                 let idx = 0;
-                for (idx=0; idx < Math.min(c.length, canonical.length); idx++) {
+                for (idx = 0; idx < Math.min(c.length, canonical.length); idx++) {
                     if (c[idx].name !== canonical[idx].name) {
                         break;
                     }
@@ -166,32 +168,6 @@ export class TsDocData {
             }
         }
         return bestnode;
-    }
-
-    public tryByCanonical2(parent: ITsDocNode|undefined, name: string): ITsDocNode | undefined {
-        let scope = parent;
-        while (true) {
-            const parts = scope ? getCanonicalParts(scope) : [];
-            const canonical = [...parts.map(x => x.name), name].join('.');
-            const id = this.nodesByCanonical.get(canonical);
-            if (id !== undefined) {
-                const item = this.nodes.get(id);
-                if (!item) {
-                    throw new Error('Item not found');
-                }
-                return item;            
-            }
-            if (!scope) {
-                break;
-            }
-            scope = scope.parent;
-        }
-        if (name === 'IDeactivatable.deactivate') {
-            console.log('Not found', parent ? getCanonicalParts(parent).map(x => x.name) : '-', name);
-            console.log('KEYS', Array.from(this.nodesByCanonical.keys()).filter(x => x.includes('IDeactivatable.deactivate')));
-            throw new Error('NOT FOUND');
-        }
-        // return this.tryByName(name);
     }
 
     public byName(name: string): ITsDocNode {
@@ -254,7 +230,7 @@ export class TsdocParser {
         const data = new TsDocData();
 
         this.parseImpl(data, tsdoc, undefined);
-        
+
         return data;
     }
 

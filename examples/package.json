@@ -5,9 +5,9 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "test": "npm run test:all",
-    "test:all": "jest --verbose --runInBand --config jestconfig.json",
+    "test": "npm run example:oracle",
     "build": "tsc",
+    "example:oracle": "npm run example:simple_oracle && npm run example:oracle_with_service && npm run example:oracle_with_service:clientserver && npm run example:oracle_with_service:clientserver2",
     "example:simple_oracle": "node lib/simple_oracle/index.js",
     "example:oracle_with_service": "node lib/oracle_with_service/index.js",
     "example:oracle_with_service:server": "node lib/oracle_with_service/server.js",

@@ -4,12 +4,12 @@
 export interface IActorError {
     /**
      * String code that should uniquely represent this particular error.
-     * 
+     *
      * @remarks Errors that occur outside of user code (like network errors, actor
      * not registered, et cetera) are reported by means of an {@link InvokeError}. This
      * allows an application to distinguish between errors in the user code and errors
      * by the framework.
-     * 
+     *
      * @see {@link toActorError} for how `code` is filled in for various typescript error types.
      */
     code: string;

@@ -56,7 +56,7 @@ export class Html {
             // this.raw('.comment {font-family: \'DejaVu Serif\', Georgia, "Times New Roman", Times, serif; font-size: 16px;}');
             this.raw('.comment {font-size: 86%;}');
             this.raw('a {font-weight: bold; text-decoration: none; }');
-            this.raw('a, a:hover, a:visited, a:active { color: #FA0; }')
+            this.raw('a, a:hover, a:visited, a:active { color: #FA0; }');
             this.raw(
                 ".comment a {font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; text-decoration: none; font-weight: normal; }"
             );
@@ -69,14 +69,16 @@ export class Html {
 
             this.raw('.documentation { max-width: 1024px; margin: 0 auto; }');
 
-            this.raw('.navigator { position: sticky; top: 0px; background: rgba(250, 250, 250, 0.8); padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; }');
+            this.raw(
+                '.navigator { position: sticky; top: 0px; background: rgba(250, 250, 250, 0.8); padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; }'
+            );
 
             this.raw('.breadcrumb { font-size: smaller }');
 
             this.raw('.chevron { font-size: smaller; color: #888; }');
 
             this.raw('.intro {font-weight: bold;}');
-            
+
             this.end(); // style
             this.end(); // head
         }
@@ -127,7 +129,7 @@ export class Html {
             item = this.stack.pop();
         }
 
-        const path = this.path.filter(x => !!x).join('/');
+        const path = this.path.filter((x) => !!x).join('/');
         fs.mkdirSync(path, { recursive: true });
         const file = [path, this.file].join('/');
         console.log('FILE', file, this.path, this.file);
@@ -354,12 +356,12 @@ export class Generator {
                     //    item.flags?.isPrivate ? 'private' : 'public';
                     for (const sig of item.signatures ?? []) {
                         const asnc = sig.type?.name === 'Promise' ? 'async' : '';
-                        html.start('h3', undefined, {id: item.name});
+                        html.start('h3', undefined, { id: item.name });
                         html.text(item.name);
                         html.end();
 
                         html.start('div', 'details');
-                        
+
                         html.start('code', undefined);
                         html.text(asnc);
                         html.text(item.name);
@@ -367,7 +369,7 @@ export class Generator {
                         html.text(': ');
                         this.generateType(html, sig.type, data, item);
                         html.end(); // code
-                        
+
                         html.start('div', 'function-description');
                         this.generateComment(html, sig, data, false);
                         html.end(); // descr
@@ -385,7 +387,7 @@ export class Generator {
                 for (const item of items) {
                     //const modifier = item.flags?.isProtected ? 'protected' :
                     //    item.flags?.isPrivate ? 'private' : 'public';
-                    html.start('h3', undefined, {id: item.name});
+                    html.start('h3', undefined, { id: item.name });
                     {
                         html.text(item.name);
                         if (item.typeParameters && item.typeParameters.length > 0) {
@@ -402,7 +404,7 @@ export class Generator {
                         }
                     }
                     html.end(); // h3
-                    
+
                     html.start('div', 'details');
 
                     html.start('div', 'type-alias-signature');
@@ -425,7 +427,7 @@ export class Generator {
         if (items && items.length > 0) {
             html.tag('h2', undefined, title);
             let first = true;
-            for (const item of items.sort((a,b) => (a.name || '').localeCompare(b.name || ''))) {
+            for (const item of items.sort((a, b) => (a.name || '').localeCompare(b.name || ''))) {
                 if (!first) {
                     html.text(', ');
                 }
@@ -439,7 +441,7 @@ export class Generator {
         if (items && items.length > 0) {
             html.tag('h2', undefined, title);
             let first = true;
-            for (const item of items.sort((a,b) => a.name.localeCompare(b.name))) {
+            for (const item of items.sort((a, b) => a.name.localeCompare(b.name))) {
                 if (!first) {
                     html.text(', ');
                 }
@@ -456,7 +458,7 @@ export class Generator {
         html.start('div', 'documentation');
 
         html.tag('h1', undefined, `${node.kindString} ${node.name}`);
-        
+
         //if (node.parent) {
         //    this.generateBreadCrumb(html, node);
         //}
@@ -572,7 +574,9 @@ export class Generator {
         }
 
         for (const kind of ['Constructor', 'Method']) {
-            const items = (node.children?.filter((x) => x.kindString === kind) ?? []).sort((a, b) => a.name.localeCompare(b.name));
+            const items = (node.children?.filter((x) => x.kindString === kind) ?? []).sort((a, b) =>
+                a.name.localeCompare(b.name)
+            );
             if (items.length > 0) {
                 html.tag('h2', undefined, `${kind} details`);
 
@@ -580,7 +584,7 @@ export class Generator {
                     const modifier = item.flags?.isProtected ? 'protected' : item.flags?.isPrivate ? 'private' : 'public';
                     for (const sig of item.signatures ?? []) {
                         const asnc = sig.type?.name === 'Promise' ? 'async' : '';
-                        html.start('h3', undefined, {id: item.name});
+                        html.start('h3', undefined, { id: item.name });
                         html.text(item.name);
                         html.end(); // h3
                         html.start('div', 'details');
@@ -593,7 +597,7 @@ export class Generator {
                         html.start('div', 'function-description');
                         this.generateComment(html, sig, node.data, false);
                         html.end(); // descr
-                                    
+
                         html.end(); // details
                     }
                 }
@@ -601,9 +605,16 @@ export class Generator {
         }
     }
 
-    protected generateLink(html: Html, data: TsDocData | undefined, scope: ITsDocNode | undefined, id: number, name: string | undefined, text?: string) {
+    protected generateLink(
+        html: Html,
+        data: TsDocData | undefined,
+        scope: ITsDocNode | undefined,
+        id: number,
+        name: string | undefined,
+        text?: string
+    ) {
         // @decorator -> decorator
-        const normalizedName = (name?.startsWith('@')) ? name.slice(1) : name || '';
+        const normalizedName = name?.startsWith('@') ? name.slice(1) : name || '';
         //const node = id >= 0 ? data?.tryById(id) : name ? data?.tryByName(normalizedName) : undefined;
         const node = name ? data?.tryByCanonical(scope, name) ?? data?.tryByCanonical(scope, normalizedName) : undefined;
         if (!node) {
@@ -615,12 +626,11 @@ export class Generator {
         }
         if (!node.kindString) {
             html.linkToNode('index', '', text || name || node.name);
-        } else
-        if (node.kindString === 'Method' || node.kindString === 'Property') {
+        } else if (node.kindString === 'Method' || node.kindString === 'Property') {
             html.linkToNode(node.parent?.name ?? '', node.name, text || name || node.name || '');
         } else if (node.kindString === 'Class' || node.kindString === 'Interface') {
             html.linkToNode(node.name, '', text || name || node.name);
-        } else if ( (node.kindString === 'Function') || ((node.kindString === 'Type alias')) ) {
+        } else if (node.kindString === 'Function' || node.kindString === 'Type alias') {
             html.linkToNode(node.parent?.name ?? '', node.name, text || name || node.name);
         } else if (node.kindString === 'Module') {
             html.linkToNode(node.name, '', text || name || node.name);
@@ -629,7 +639,13 @@ export class Generator {
         }
     }
 
-    protected generateType(html: Html, t: ITsDocType | undefined, data: TsDocData | undefined, scope: ITsDocNode|undefined, link: boolean | string = true) {
+    protected generateType(
+        html: Html,
+        t: ITsDocType | undefined,
+        data: TsDocData | undefined,
+        scope: ITsDocNode | undefined,
+        link: boolean | string = true
+    ) {
         if (!t) {
             html.text('void');
             return;
@@ -746,7 +762,7 @@ export class Generator {
         }
 
         if ((node as ITsDocNode)?.parameters) {
-            const params = (node as ITsDocNode).parameters?.filter(x => !!x.comment);
+            const params = (node as ITsDocNode).parameters?.filter((x) => !!x.comment);
             if ((params?.length ?? 0) > 0) {
                 html.tag('h4', undefined, 'Parameters');
                 html.start('div', 'details');
@@ -756,7 +772,7 @@ export class Generator {
 
                     const optional = p.flags?.isOptional ? '?' : '';
                     html.text(`${p.name}${optional}`);
-                    
+
                     //if (p.type) {
                     //    this.generateType(html, p.type, data);
                     //}
@@ -771,7 +787,7 @@ export class Generator {
         }
 
         for (const blockKey of BLOCK_KEYS) {
-            const tags = comment?.blockTags?.filter(x => x.tag === '@' + blockKey) || [];
+            const tags = comment?.blockTags?.filter((x) => x.tag === '@' + blockKey) || [];
             for (const tag of tags) {
                 html.tag('h4', undefined, blockKey);
                 html.start('div', 'details');
@@ -788,7 +804,7 @@ export class Generator {
         for (const item of items) {
             if (item.kind === 'inline-tag') {
                 parts.push(marker);
-                const textParts = (item.text?.split('|') ?? []).map(x => x.trim());
+                const textParts = (item.text?.split('|') ?? []).map((x) => x.trim());
                 actions.push(() => {
                     this.generateLink(html, data, scope, item.target ?? -1, textParts[0] || '', textParts[1]);
                 });
@@ -825,7 +841,7 @@ export class Generator {
             actions[idx]?.();
         }
         html.end();
-    }   
+    }
 
     protected generateNavigator(html: Html, scope: ITsDocNode) {
         html.start('div', 'navigator');

@@ -9,7 +9,7 @@ export interface IActionDecorable {
 }
 
 /**
- * Options that can be used to decorate an action method via {@link @action}, {@link @activator}, {@link @deactivator} and 
+ * Options that can be used to decorate an action method via {@link @action}, {@link @activator}, {@link @deactivator} and
  * {@link @timer}.
  */
 export interface IActionDecoration {
@@ -104,8 +104,8 @@ export interface IActorDecoration {
 
 /**
  * Decorator for a class that implements a virtual actor of which no more than one simultaneous instance
- * is allowed be active at any moment within the entire Darlean cluster. 
- * 
+ * is allowed be active at any moment within the entire Darlean cluster.
+ *
  * Standard use:
  * ```ts
  * @actor({name: 'mynamespace.MyActor'})
@@ -113,7 +113,7 @@ export interface IActorDecoration {
  *    ...
  * }
  * ```
- * @see {@link IActorDecoration} for the list of options that can be provided. 
+ * @see {@link IActorDecoration} for the list of options that can be provided.
  * @see {@link service|@service} for how to decorate a *service actor* that does not have the restriction of only
  * allowing one active simultaneous instance.
  */
@@ -127,7 +127,7 @@ export function actor(config: IActorDecoration = {}) {
 /**
  * Decorator for a service actor class of which more than one simultaneous instance can be active within the
  * Darlean cluster.
- * 
+ *
  * Service actors are typically used to hide the implementation details that regular virtual actors provide. This makes
  * it possible to change the virtual actor implementation (like renaming virtual actor types, splitting them up or combining
  * them, and/or changing how their id's are formed).
@@ -209,8 +209,8 @@ export function timer(config?: IActionDecoration) {
 /**
  * Decorator for a deactivate method that can be used to provide additional configuration to
  * the deactivate method.
- * 
- * @remarks This decorator should only be used when the actor class does not implement the standard 
+ *
+ * @remarks This decorator should only be used when the actor class does not implement the standard
  * {@link IDeactivatable.deactivate} method, or when it is necessary to change the default options
  * for the standard eactivate method.
  * @decorator
@@ -228,8 +228,8 @@ export function deactivator(config?: IActionDecoration) {
 /**
  * Decorator for an activate method that can be used to provide additional configuration to
  * the activate method.
- * 
- * @remarks This decorator should only be used when the actor class does not implement the standard 
+ *
+ * @remarks This decorator should only be used when the actor class does not implement the standard
  * {@link IActivatable.activate} method, or when it is necessary to change the default options
  * for the standard eactivate method.
  * @decorator
