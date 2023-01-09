@@ -1,3 +1,4 @@
+import { ITime } from '@darlean/utils';
 import { IInstanceContainer } from './instances';
 import { IActorPlacement, IPortal } from './remoteinvocation';
 import { IPersistence, IVolatileTimer } from './various';
@@ -21,6 +22,7 @@ export interface IActorCreateContext {
     id: string[];
     persistence: IPersistence<unknown>;
     portal: IPortal;
+    time: ITime;
     newVolatileTimer(): IVolatileTimer;
 }
 

@@ -310,6 +310,7 @@ export class ActorRunnerBuilder implements IActorRegistry {
             id,
             portal: this.portal,
             persistence: this.persistence.sub([type, ...id]),
+            time,
             newVolatileTimer: () => {
                 const timer = new VolatileTimer<object>(time);
                 timers.push(timer);
