@@ -26,10 +26,12 @@
 
 import { SharedExclusiveLock } from '@darlean/utils';
 import { idToText } from './various';
-import { ApplicationError, FrameworkError, normalizeActionName, normalizeActorType } from './shared';
+import { normalizeActionName, normalizeActorType } from './shared';
 import { EventEmitter } from 'events';
 import { ITime } from '@darlean/utils';
 import {
+    ApplicationError,
+    FrameworkError,
     IActionDecorable,
     IActionDecoration,
     IInstanceContainer,

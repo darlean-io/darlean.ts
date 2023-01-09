@@ -1,3 +1,5 @@
+import { formatAllAttributes, replaceArguments } from '@darlean/utils';
+
 export type ActionErrorKind = 'framework' | 'application';
 
 /**
@@ -67,4 +69,64 @@ export interface IInvokeResult {
     errorCode?: string;
     errorParameters?: { [key: string]: unknown };
     content?: unknown;
+}
+
+/**
+ * Implementation of an {@link IActionError} that occurred in application code while
+ * performing an action on an actor.
+ */
+export class ApplicationError extends Error implements IActionError {
+    public code: string;
+    public parameters?: { [key: string]: unknown };
+    public nested?: IActionError[];
+    public stack?: string;
+    public kind: ActionErrorKind;
+    public template: string;
+
+    constructor(
+        code: string,
+        template: string,
+        parameters?: { [key: string]: unknown },
+        stack?: string,
+        nested?: IActionError[]
+    ) {
+        super(code);
+        this.kind = 'application';
+        this.code = code;
+        this.parameters = parameters ? formatAllAttributes(parameters) : undefined;
+        this.template = template;
+        this.message = parameters ? replaceArguments(template, parameters) : template;
+        this.stack = stack;
+        this.nested = nested;
+    }
+}
+
+/**
+ * Implementation of an {@link IActionError} that occurred in Darlean framework code while
+ * performing or trying to perform an action on an actor.
+ */
+export class FrameworkError extends Error implements IActionError {
+    public code: string;
+    public parameters?: { [key: string]: unknown };
+    public nested?: IActionError[];
+    public stack?: string;
+    public kind: ActionErrorKind;
+    public template: string;
+
+    constructor(
+        code: string,
+        template: string,
+        parameters?: { [key: string]: unknown },
+        stack?: string,
+        nested?: IActionError[]
+    ) {
+        super(code);
+        this.kind = 'framework';
+        this.code = code;
+        this.parameters = parameters ? formatAllAttributes(parameters) : undefined;
+        this.template = template;
+        this.message = parameters ? replaceArguments(template, parameters) : template;
+        this.stack = stack;
+        this.nested = nested;
+    }
 }
