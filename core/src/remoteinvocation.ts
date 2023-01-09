@@ -72,7 +72,7 @@ export class TypedPortal<T extends object> implements ITypedPortal<T> {
         return this.portal.retrieve(this.type, this.idPrefix ? [...this.idPrefix, ...id] : id);
     }
 
-    public sub(idPrefix: string[]): ITypedPortal<T> {
+    public prefix(idPrefix: string[]): ITypedPortal<T> {
         return new TypedPortal<T>(this.portal, this.type, [...(this.idPrefix ?? []), ...idPrefix]);
     }
 }
@@ -256,7 +256,7 @@ export class RemotePortal implements IPortal {
         }
     }
 
-    public sub<T extends object>(type: string, idPrefix?: string[]): ITypedPortal<T> {
+    public typed<T extends object>(type: string, idPrefix?: string[]): ITypedPortal<T> {
         return new TypedPortal<T>(this, type, idPrefix);
     }
 

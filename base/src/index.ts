@@ -185,7 +185,7 @@
  * When the type of the actor is already known, an {@link ITypedPortal} can be used. This simplifies
  * the code that invokes the actor and removes dependencies there on the actor type:
  * ```ts
- * const thermostatPortal = portal.sub<IThermostatActor>(THERMOSTAT_ACTOR);
+ * const thermostatPortal = portal.typed<IThermostatActor>(THERMOSTAT_ACTOR);
  * ...
  * const actor = thermostatPortal.retrieve(['LivingRoom']);
  * const newTemperature = await actor.makeWarmer(-0.3);

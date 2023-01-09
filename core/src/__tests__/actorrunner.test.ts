@@ -35,7 +35,7 @@ describe('Actor runner & builder', () => {
         const app = builder.build();
 
         const portal = app.getPortal();
-        const sub = portal.sub<IEchoActor>('MyActoR', undefined);
+        const sub = portal.typed<IEchoActor>('MyActoR', undefined);
 
         const a0 = sub.retrieve(['123']);
 
@@ -90,7 +90,7 @@ describe('Actor runner & builder', () => {
         const builder = new ActorRunnerBuilder();
 
         builder.registerActor({
-            creator: (context) => new ViaEchoActor(context.portal.sub<IEchoActor>('EchoActor')),
+            creator: (context) => new ViaEchoActor(context.portal.typed<IEchoActor>('EchoActor')),
             type: 'ViaEchoActor',
             capacity: 10
         });
@@ -107,8 +107,8 @@ describe('Actor runner & builder', () => {
 
         const portal = app.getPortal();
         // En passent, test that case and underscore does not matter in actor name
-        const viaPortal = portal.sub<IViaEchoActor>('VIAEcho_ActoR', undefined);
-        const echoPortal = portal.sub<IEchoActor>('Echo_ActoR', undefined);
+        const viaPortal = portal.typed<IViaEchoActor>('VIAEcho_ActoR', undefined);
+        const echoPortal = portal.typed<IEchoActor>('Echo_ActoR', undefined);
 
         // Test that one actor can invoke another actor
         const via123 = viaPortal.retrieve(['123']);
@@ -129,7 +129,7 @@ describe('Actor runner & builder', () => {
         const builder = new ActorRunnerBuilder();
 
         builder.registerActor({
-            creator: (context) => new ViaEchoActor(context.portal.sub<IEchoActor>('EchoActor')),
+            creator: (context) => new ViaEchoActor(context.portal.typed<IEchoActor>('EchoActor')),
             type: 'ViaEchoActor',
             capacity: 10,
             hosts: ['my-app']
@@ -150,8 +150,8 @@ describe('Actor runner & builder', () => {
 
         const portal = app.getPortal();
         // En passent, test that case and underscore does not matter in actor name
-        const viaPortal = portal.sub<IViaEchoActor>('VIAEcho_ActoR', undefined);
-        const echoPortal = portal.sub<IEchoActor>('Echo_ActoR', undefined);
+        const viaPortal = portal.typed<IViaEchoActor>('VIAEcho_ActoR', undefined);
+        const echoPortal = portal.typed<IEchoActor>('Echo_ActoR', undefined);
 
         // Test that one actor can invoke another actor
         const via123 = viaPortal.retrieve(['123']);

@@ -95,7 +95,7 @@ export class LocalPortal implements IPortal {
         return this.portal.retrieve(type, id);
     }
 
-    public sub<T extends object>(type: string, subId: string[]): ITypedPortal<T> {
+    public typed<T extends object>(type: string, subId: string[]): ITypedPortal<T> {
         return new TypedPortal<T>(this.portal, type, subId);
     }
 }

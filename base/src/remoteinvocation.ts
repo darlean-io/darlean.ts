@@ -35,12 +35,14 @@ export interface IPortal {
      * actors with their proper portals at application startup (dependency injection) when the rest of the
      * system is not yet up.
      */
-    sub<T extends object>(type: string, idPrefix?: string[]): ITypedPortal<T>;
+    typed<T extends object>(type: string, idPrefix?: string[]): ITypedPortal<T>;
 }
 
 /**
  * Allows a caller to retrieve a persistent proxy to a remote actor of a certain type. That is, even when the remote
  * actor is reincarnating, the proxy should still point to that same actor.
+ * 
+ * A typed portal is usually obtained by calling {@link IPortal.typed} on a regular {@link IPortal}.
  */
 export interface ITypedPortal<T> {
     /**
@@ -57,7 +59,7 @@ export interface ITypedPortal<T> {
      * {@link ITypedPortal} only have to include the remaining id parts.
      * @param idPrefix The prefix of the id of actors to be retrieved by the sub portal.
      */
-    sub(idPrefix: string[]): ITypedPortal<T>;
+    prefix(idPrefix: string[]): ITypedPortal<T>;
 }
 
 /**

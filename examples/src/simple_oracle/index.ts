@@ -10,7 +10,7 @@ async function main() {
 
     await runner.start();
     try {
-        const oraclePortal = runner.getPortal().sub<IOracleActor>(ORACLE_ACTOR);
+        const oraclePortal = runner.getPortal().typed<IOracleActor>(ORACLE_ACTOR);
 
         const temperatureOracle = oraclePortal.retrieve(['temperature']);
         check(20, await temperatureOracle.ask('What is the temperature of today?'), "Today's temperature should be ok");

@@ -64,7 +64,7 @@ const runner = builder.build();
 ## Logic
 The running of the example starts with obtaining a typed portal that provides access to `OracleActor` instances:
 ```ts
-const oraclePortal = runner.getPortal().sub<IOracleActor>(ORACLE_ACTOR);
+const oraclePortal = runner.getPortal().typed<IOracleActor>(ORACLE_ACTOR);
 ```
 
 The `oraclePortal` can now be used to ask queries or to teach new facts:

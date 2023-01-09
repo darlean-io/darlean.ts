@@ -86,7 +86,7 @@ export function suite(knowledge?: IKnowledgeTopics, hosts?: string[]): IActorSui
         {
             type: ORACLE_SERVICE,
             creator: (context) => {
-                const actorPortal = context.portal.sub<IOracleActor>(ORACLE_ACTOR);
+                const actorPortal = context.portal.typed<IOracleActor>(ORACLE_ACTOR);
                 return new OracleService(actorPortal);
             },
             hosts
