@@ -191,13 +191,16 @@
  * const newTemperature = await actor.makeWarmer(-0.3);
  * ```
  * ### Exception propagation
- * Exceptions thrown within the action methods of remote actors are automatically caught, converted into an {@link IActorError}, and propagated to the
- * caller where they are raised as {@link ActorError}.
+ * Exceptions thrown within the action methods of remote actors are automatically caught, converted into an {@link IActorError} with `kind = 'application'`, and propagated to the
+ * caller where they are raised as {@link ApplicationError}.
+ *
+ * Exceptions within the Darlean framework while trying to invoke a remote actor (like a timeout, or when the remote app could not be reached)
+ * are converted into an {@link IActorError} with `kind = 'framework'`, and propagated to the caller where they are raised as {@link FrameworkError}.
  *
  * ### Retries and backoff
  * When the remote actor is (temporarily) unavailable, the portal will perform retries using a configurable {@link IBackOff} mechanism
  * (like an {@link ExponentialBackOff} for a backoff that increases exponentially with every retry).
- * When all retries fail after a certain timeout, an {@link InvokeError} is raised.
+ * When all retries fail after a certain timeout, an {@link FrameWorkError} is raised.
  *
  * ### Remotes and transports
  * The default portal implementation, {@link RemotePortal}, uses an {@link IRemote} to {@link IRemote.invoke} actions on remote actors. A

@@ -26,7 +26,7 @@
 
 import { SharedExclusiveLock } from '@darlean/utils';
 import { idToText } from './various';
-import { ActorError, normalizeActionName, normalizeActorType } from './shared';
+import { ApplicationError, FrameworkError, normalizeActionName, normalizeActorType } from './shared';
 import { EventEmitter } from 'events';
 import { ITime } from '@darlean/utils';
 import {
@@ -49,6 +49,9 @@ const DEACTIVATOR = 'DEACTIVATOR';
 
 const ACTIVATE_METHOD = 'activate';
 const DEACTIVATE_METHOD = 'deactivate';
+
+export const APPLICATION_ERROR_FRAMEWORK_ERROR = 'FRAMEWORK_ERROR';
+export const APPLICATION_ERROR_UNEXPECTED_ERROR = 'UNEXPECTED_ERROR';
 
 /**
  * Container for instances of a certain type T. The container acts as a cache
@@ -338,7 +341,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 }
             }
         } catch (e) {
-            throw toActorError(e);
+            throw toApplicationError(e);
         } finally {
             this.releaseLocalLock(locking, callId);
         }
@@ -502,21 +505,24 @@ export class VolatileTimer<T extends object> implements IVolatileTimer {
     }
 }
 
-export function toActorError(e: unknown) {
-    if (e instanceof ActorError) {
+export function toApplicationError(e: unknown) {
+    if (e instanceof ApplicationError) {
         return e;
+    }
+    if (e instanceof FrameworkError) {
+        return new ApplicationError(APPLICATION_ERROR_FRAMEWORK_ERROR, e.code, undefined, e.stack, [e]);
     }
     if (typeof e === 'object') {
         const err = e as Error;
-        return new ActorError(err.name, err.message, undefined, err.stack);
+        return new ApplicationError(err.name, err.message, undefined, err.stack);
     } else if (typeof e === 'string') {
         if (e.includes(' ')) {
-            return new ActorError('Error', e);
+            return new ApplicationError(APPLICATION_ERROR_UNEXPECTED_ERROR, e);
         } else {
-            return new ActorError(e, e);
+            return new ApplicationError(e, e);
         }
     } else {
-        return new ActorError('Error', 'Unknown error');
+        return new ApplicationError(APPLICATION_ERROR_UNEXPECTED_ERROR, 'Unexpected error');
     }
 }
 

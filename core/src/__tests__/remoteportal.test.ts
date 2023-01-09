@@ -1,5 +1,5 @@
 import { Time } from '@darlean/utils';
-import { IActorCallResponse, IActorError, IInvokeOptions, IInvokeResult, InvokeError, IRemote } from '@darlean/base';
+import { IActionError, IActorCallResponse, IInvokeOptions, IInvokeResult, IRemote } from '@darlean/base';
 import { ExponentialBackOff, RemotePortal } from '../remoteinvocation';
 import { IEchoActor } from '../testing';
 
@@ -23,14 +23,16 @@ export class EchoRemote implements IRemote {
     }
 }
 
-// Always returns an actor error
+// Always returns an application error
 export class ErrorRemote implements IRemote {
     public async invoke(_options: IInvokeOptions): Promise<IInvokeResult> {
         return {
             content: {
                 error: {
+                    kind: 'application',
                     code: 'MY_ERROR',
                     message: 'My error',
+                    template: 'My error',
                     parameters: {
                         a: 5
                     }
@@ -49,16 +51,17 @@ describe('Remote portal', () => {
 
         const a = p.retrieve<IEchoActor>('MyActor', ['a']);
         const start = time.machineTicks();
-        let error: InvokeError | undefined;
+        let error: IActionError | undefined;
         try {
             await a.echo('');
         } catch (e) {
-            error = e as InvokeError;
+            error = e as IActionError;
         }
         const stop = time.machineTicks();
         const duration = stop - start;
         expect(error).toBeDefined();
-        expect(error?.attempts.length).toBeGreaterThanOrEqual(5);
+        expect(error?.kind).toBe('framework');
+        expect(error?.nested?.length).toBeGreaterThanOrEqual(5);
         expect(duration).toBeGreaterThan(1000);
     }, 10000);
 
@@ -71,21 +74,23 @@ describe('Remote portal', () => {
 
         const a = p.retrieve<IEchoActor>('MyActor', ['a']);
         const start = time.machineTicks();
-        let error: InvokeError | undefined;
+        let error: IActionError | undefined;
         try {
             await a.echo('');
         } catch (e) {
-            error = e as InvokeError;
+            error = e as IActionError;
         }
         const stop = time.machineTicks();
         const duration = stop - start;
         expect(error).toBeDefined();
-        expect(error?.attempts.length).toBeGreaterThanOrEqual(5);
-        expect(error?.attempts[0].result.errorCode).toBe('NOT_IMPLEMENTED');
+        expect(error?.kind).toBe('framework');
+        expect(error?.nested?.length).toBeGreaterThanOrEqual(5);
+        expect(error?.nested?.[0]?.kind).toBe('framework');
+        expect(error?.nested?.[0]?.code).toBe('NOT_IMPLEMENTED');
         expect(duration).toBeGreaterThan(1500);
     }, 10000);
 
-    test('Remote Portal - Registered - Actor error', async () => {
+    test('Remote Portal - Registered - Application error', async () => {
         const time = new Time();
         const backoff = new ExponentialBackOff(time, 10, 4);
         const remote = new ErrorRemote();
@@ -94,15 +99,16 @@ describe('Remote portal', () => {
 
         const a = p.retrieve<IEchoActor>('MyActor', ['a']);
         const start = time.machineTicks();
-        let error: IActorError | undefined;
+        let error: IActionError | undefined;
         try {
             await a.echo('');
         } catch (e) {
-            error = e as IActorError;
+            error = e as IActionError;
         }
         const stop = time.machineTicks();
         const duration = stop - start;
         expect(error).toBeDefined();
+        expect(error?.kind).toBe('application');
         expect(error?.code).toBe('MY_ERROR');
         expect(duration).toBeLessThan(50);
     }, 10000);

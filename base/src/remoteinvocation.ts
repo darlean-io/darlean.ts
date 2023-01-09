@@ -1,8 +1,9 @@
 import { IInvokeOptions, IInvokeResult } from './shared';
 
-export const ERROR_PARAMETER_REDIRECT_DESTINATION = 'REDIRECT_DESTINATION';
+export const FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION = 'REDIRECT_DESTINATION';
 
-export const ERROR_CODE_NO_RECEIVERS_AVAILABLE = 'NO_RECEIVERS_AVAILABLE';
+export const FRAMEWORK_ERROR_NO_RECEIVERS_AVAILABLE = 'NO_RECEIVERS_AVAILABLE';
+export const FRAMEWORK_ERROR_INVOKE_ERROR = 'INVOKE_ERROR';
 
 /**
  * Allows a caller to retrieve a persistent proxy to a remote actor. That is, even when the remote
@@ -41,7 +42,7 @@ export interface IPortal {
 /**
  * Allows a caller to retrieve a persistent proxy to a remote actor of a certain type. That is, even when the remote
  * actor is reincarnating, the proxy should still point to that same actor.
- * 
+ *
  * A typed portal is usually obtained by calling {@link IPortal.typed} on a regular {@link IPortal}.
  */
 export interface ITypedPortal<T> {

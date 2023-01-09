@@ -73,7 +73,7 @@ export interface IMultiTypeInstanceContainer {
  * by means of {@link getProxy}, and then invoke the method on that proxy.
  *
  * @remarks
- * Any exceptions thrown by the underlying instance are converted into {@link ActorError}
+ * Any exceptions thrown by the underlying instance are converted into {@link ApplicationError}
  * objects and then thrown.
  */
 export interface IInstanceWrapper<T extends object> {

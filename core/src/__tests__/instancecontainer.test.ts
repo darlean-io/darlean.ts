@@ -1,5 +1,5 @@
 import { sleep } from '@darlean/utils';
-import { action, IActivatable, IActorError, IDeactivatable, IPersistence, ITypedPortal } from '@darlean/base';
+import { action, IActionError, IActivatable, IDeactivatable, IPersistence, ITypedPortal } from '@darlean/base';
 import { MemoryPersistence } from '../various';
 import { InstanceContainer } from '../instances';
 import { EchoActor, ErrorActor, IEchoActor, IErrorActor } from '../testing';
@@ -80,14 +80,15 @@ describe('Instance container', () => {
         const f = new InstanceContainer<IErrorActor>((_d) => ({ instance: new ErrorActor() }), 10);
         const i = f.obtain(['123']);
 
-        let error: IActorError | undefined;
+        let error: IActionError | undefined;
         try {
             await i.error('Bla');
         } catch (e) {
-            error = e as IActorError;
+            error = e as IActionError;
         }
 
         expect(error?.code).toBe('Error');
+        expect(error?.kind).toBe('application');
         expect(error?.message).toBe('Bla');
     });
 });

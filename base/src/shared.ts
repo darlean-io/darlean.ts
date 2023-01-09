@@ -1,24 +1,34 @@
+export type ActionErrorKind = 'framework' | 'application';
+
 /**
- * Represents an error that occured in the user code of a local or remote action method.
+ * Represents an error that occured during the performing of an action, either in framework code (for example, when a remote application
+ * could not be reached) or in the application code that forms the actual implementation of the action. The value of `kind` indicates whether the error
+ * is caused by the framework or the application, and can be used to decriminate between these situations.
  */
-export interface IActorError {
+export interface IActionError {
     /**
      * String code that should uniquely represent this particular error.
-     *
-     * @remarks Errors that occur outside of user code (like network errors, actor
-     * not registered, et cetera) are reported by means of an {@link InvokeError}. This
-     * allows an application to distinguish between errors in the user code and errors
-     * by the framework.
      *
      * @see {@link toActorError} for how `code` is filled in for various typescript error types.
      */
     code: string;
 
     /**
-     * Error message. Can contain `[Foo]` placeholders that are replaced with the corresponding
-     * value in the `parameters` map when displaying the error message.
+     * Error message that has all `[Foo]` placeholders in the template replaced by their corresponding
+     * value in the `parameters` map.
      */
     message: string;
+
+    /**
+     * Raw template used to form the error message. The `[Foo]` placeholders are still present (they are not
+     * yet replaced by their corresponding value in the `parameters` map).
+     */
+    template: string;
+
+    /**
+     * Indicates whether this error is a `framework` or `application` error.
+     */
+    kind: ActionErrorKind;
 
     /**
      * List of key-value pairs that provide additional context to the error.
@@ -28,7 +38,7 @@ export interface IActorError {
     /**
      * Optional list of nested errors. Nested errors are errors that cause this error to occur.
      */
-    nested?: IActorError[];
+    nested?: IActionError[];
 
     /**
      * Optional stack trace
@@ -45,7 +55,7 @@ export interface IActorCallRequest {
 
 export interface IActorCallResponse {
     result?: unknown;
-    error?: IActorError;
+    error?: IActionError;
 }
 
 export interface IInvokeOptions {
@@ -57,22 +67,4 @@ export interface IInvokeResult {
     errorCode?: string;
     errorParameters?: { [key: string]: unknown };
     content?: unknown;
-}
-
-export interface IInvokeAttempt {
-    options?: IInvokeOptions;
-    result: IInvokeResult;
-    requestTime: string;
-}
-
-/**
- * Represents a framework error during invocation of a remote actor.
- */
-export class InvokeError extends Error {
-    attempts: IInvokeAttempt[];
-
-    constructor(message: string, attempts: IInvokeAttempt[]) {
-        super(message);
-        this.attempts = attempts;
-    }
 }

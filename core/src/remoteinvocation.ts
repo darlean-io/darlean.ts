@@ -7,7 +7,7 @@
  * proxy objects to an {@link IInvokeOptions} object with an {@link IActorCallRequest} as content, then
  * performs the call via {@link IRemote.invoke}, awaits the answer (which is an {@link IInvokeResult} with an
  * {@link IActorCallResponse} as content), and returns the {@link IActorCallResponse.result} or throws an
- * {@link ActorError} (when the remote actor threw an exception) or an {@link InvokeError} when the request
+ * {@link ApplicationError} (when the remote actor threw an exception) or a {@link FrameworkError} when the request
  * could not be complete due to technical causes.
  *
  * ## Backoff mechanism
@@ -30,22 +30,21 @@
  */
 
 import {
-    ERROR_CODE_NO_RECEIVERS_AVAILABLE,
-    ERROR_PARAMETER_REDIRECT_DESTINATION,
+    FRAMEWORK_ERROR_NO_RECEIVERS_AVAILABLE,
+    FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION,
+    FRAMEWORK_ERROR_INVOKE_ERROR,
     IActorCallRequest,
     IActorCallResponse,
     IActorPlacement,
     IBackOff,
-    IInvokeAttempt,
     IInvokeOptions,
-    InvokeError,
     IPortal,
     IRemote,
     ITypedPortal
 } from '@darlean/base';
 import { ITime } from '@darlean/utils';
 import { sleep } from '@darlean/utils';
-import { ActorError, normalizeActionName, normalizeActorType } from './shared';
+import { ApplicationError, FrameworkError, normalizeActionName, normalizeActorType } from './shared';
 
 /**
  * Implementation of {@link ITypedPortal} that returns instances of a specific type
@@ -169,7 +168,7 @@ export class RemotePortal implements IPortal {
                     const info: { suggestion: string | undefined } = { suggestion: undefined };
 
                     const backoff = self.backoff.begin(5000);
-                    const errors: IInvokeAttempt[] = [];
+                    const nested: FrameworkError[] = [];
 
                     for await (const destination of self.iterateDestinations(actorType, id, info)) {
                         const moment = Date.now();
@@ -183,17 +182,26 @@ export class RemotePortal implements IPortal {
 
                             const result = await self.remote.invoke(options);
                             if (result.errorCode) {
-                                errors.push({ requestTime: new Date(moment).toISOString(), options, result });
-                                info.suggestion = result.errorParameters?.[ERROR_PARAMETER_REDIRECT_DESTINATION] as string;
+                                nested.push(
+                                    new FrameworkError(result.errorCode, result.errorCode, {
+                                        requestTime: new Date(moment).toISOString(),
+                                        requestOptions: options,
+                                        requestResult: result
+                                    })
+                                );
+                                info.suggestion = result.errorParameters?.[
+                                    FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION
+                                ] as string;
                             } else {
                                 if (result.content) {
                                     const response = result.content as IActorCallResponse;
                                     if (response.error) {
-                                        throw new ActorError(
+                                        throw new ApplicationError(
                                             response.error.code,
                                             response.error.message,
                                             response.error.parameters,
-                                            response.error.stack
+                                            response.error.stack,
+                                            response.error.nested
                                         );
                                     } else {
                                         return response.result;
@@ -203,19 +211,30 @@ export class RemotePortal implements IPortal {
                                 }
                             }
                         } else {
-                            errors.push({
-                                requestTime: new Date(moment).toISOString(),
-                                result: {
-                                    errorCode: ERROR_CODE_NO_RECEIVERS_AVAILABLE
-                                }
-                            });
+                            nested.push(
+                                new FrameworkError(
+                                    FRAMEWORK_ERROR_NO_RECEIVERS_AVAILABLE,
+                                    'No receivers available at [RequestTime] to process [ActionName] on an instance of [ActorType]',
+                                    {
+                                        RequestTime: new Date(moment).toISOString(),
+                                        ActorType: actorType,
+                                        ActionName: actionName
+                                    }
+                                )
+                            );
                         }
 
                         if (!(await backoff())) {
                             break;
                         }
                     }
-                    throw new InvokeError(`Failed to invoke remote method [${actorType}.${actionName}]`, errors);
+                    throw new FrameworkError(
+                        FRAMEWORK_ERROR_INVOKE_ERROR,
+                        'Failed to invoke remote method [ActionName] on an instance of [ActorType]',
+                        { ActorType: actorType, ActionName: actionName },
+                        undefined,
+                        nested
+                    );
                 };
             }
         });

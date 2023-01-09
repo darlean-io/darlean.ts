@@ -2,44 +2,6 @@
 import { IPersistence } from '@darlean/base';
 import { replaceAll } from '@darlean/utils';
 
-/*
-
-export class LocalPortal implements IPortal {
-    protected factories: Map<string, IInstanceFactory<unknown>>;
-
-    constructor() {
-        this.factories = new Map();
-    }
-
-    public register(type: string, factory: IInstanceFactory<unknown>) {
-        this.factories.set(type, factory);
-    }
-
-    public retrieve<T extends object>(type: string, id: string[]): T {
-        // Return a proxy that on every request, asks the underlying factory for the
-        // latest instance. By doing so, the returned object is robust against 
-        // intermediate deactivation (it will then point to a newly create instance).
-        const instance = {} as T;
-        const self = this;
-        const p = Proxy.revocable(instance, {
-            get: (target, prop, receiver) => {
-                return async function() {
-                    const f = self.factories.get(type) as IInstanceFactory<T>;
-                    if (f) {
-                        const i = f.obtain(id);
-                        const value = (i as any)[prop] as Function;
-                        return await value.apply(i, Array.from(arguments));
-                    } else {
-                        throw new InvokeError(NOT_REGISTERED);
-                    }
-                }
-            }
-        });
-        return p.proxy;            
-    }
-}
-*/
-
 export class MemoryPersistence<T> implements IPersistence<T> {
     protected values: Map<string, Map<string, unknown>>;
 

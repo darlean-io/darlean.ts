@@ -44,7 +44,7 @@
  * proxy objects to an {@link IInvokeOptions} object with an {@link IActorCallRequest} as content, then
  * performs the call via {@link IRemote.invoke}, awaits the answer (which is an {@link IInvokeResult} with an
  * {@link IActorCallResponse} as content), and returns the {@link IActorCallResponse.result} or throws an
- * {@link ActorError} (when the remote actor threw an exception) or an {@link InvokeError} when the request
+ * {@link ApplicationError} (when the remote actor threw an exception) or a {@link FrameworkError} when the request
  * could not be complete due to technical causes.
  *
  * ### Backoff mechanism

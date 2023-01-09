@@ -9,7 +9,7 @@ import {
 import * as uuid from 'uuid';
 import { IEnvelope } from './infra/envelope';
 import { ITransport, ITransportEnvelope, ITransportFailure, ITransportSession } from './infra/transport';
-import { toActorError } from './instances';
+import { toApplicationError } from './instances';
 
 export type ITransportActorCallRequest = IActorCallRequest;
 export type ITransportActorCallResponse = IActorCallResponse;
@@ -152,7 +152,7 @@ export class TransportRemote implements IRemote {
                         }
                     } catch (e) {
                         const response: IActorCallResponse = {
-                            error: toActorError(e)
+                            error: toApplicationError(e)
                         };
 
                         for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
