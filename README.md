@@ -2,7 +2,7 @@
 
 This is the monorepo for Darlean that contains basic npm packages, suite packages and example code.
 
-## Contents
+## Monorepo contents
 
 ### Basic Packages
 The following basic packages are part of this monorepo:
