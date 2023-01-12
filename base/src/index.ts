@@ -24,8 +24,7 @@
  * ## Part 1: Defining actors
  *
  * Actors are just plain typescript objects with some decoration applied. The decorators help Darlean understand
- * that the object is a virtual actor ({@link @actor}) or a service actor ({@link @service}), and that a method is an action that
- * is intended to be invoked from remote code ({@link @action}).
+ * which methods are actions that are intended to be invoked from remote code ({@link @action}).
  *
  * Actors can choose to implement the {@link IActivatable.activate} and/or {@link IDeactivatable.deactivate} lifecycle methods.
  * When present, Darlean automatically invokes these methods just before the first action is invoked on a newly created actor
@@ -36,16 +35,16 @@
  * when the number of actor instances in the container exceeds a predefined capacity threshold.
  *
  * Internally, every actor instance is wrapped in an {@link IInstanceWrapper}, which takes care of global actor
- * uniqueness (a given actor is guaranteed to only exists at most once within the entire cluster) and action locking. Both can
- * be enabled/disabled and configured via the {@link actor | @actor}/{@link service | @service} and {@link action | @action}
- * decorators, respectively.
+ * uniqueness (a given actor is guaranteed to only exists at most once within the entire cluster) and action locking. 
+ * Global actor uniqueness is configured via de `kind` field of the {@link IActorRegistrationOptions} that is used for
+ * actor registrartion; per-action locking is configured via the {@link action | @action} decorator of the corresponding method.
  *
  * ### Actor Example
  *
  * As an illustration, we provide a simple thermostat virtual actor that can be used to get the current temperature and to make
- * it warmer (or colder).
+ * it warmer (or colder, which is of course what we like for the future of our planet).
  *
- * It is good practice to define the interface to the actor and the formal name of the actor in a separate file. This
+ * It is good practice to define the interface to the actor (together with the formal name of the actor) in a separate file. This
  * allows a developer to invoke the actor from another process without having to include the implementation (and
  * associated dependencies) of the remote actor in his application.
  *
@@ -76,9 +75,7 @@
  *     temperature: number;
  * }
  *
- * // The actual actor implementation. Should be decorated with @actor (for virtual actors) or
- * // with @service (for service actors).
- * @actor()
+ * // The actual actor implementation.
  * class ThermostatActor implements IThermostatActor, IActivatable, IDeactivatable {
  *     protected state: IThermostatState;
  *     protected persistence: IPersistence<IThermostatState>;
@@ -134,6 +131,7 @@
  *     return new ActorSuite([
  *     {
  *          type: THERMOSTAT_ACTOR,
+ *          kind: 'singular',
  *          creator: (context) => {
  *              return new ThermostatActor(
  *                  context.persistence as IPersistence<IThermostatState>,
@@ -191,11 +189,11 @@
  * const newTemperature = await actor.makeWarmer(-0.3);
  * ```
  * ### Exception propagation
- * Exceptions thrown within the action methods of remote actors are automatically caught, converted into an {@link IActorError} with `kind = 'application'`, and propagated to the
+ * Exceptions thrown within the action methods of remote actors are automatically caught, converted into an {@link IActionError} with `kind = 'application'`, and propagated to the
  * caller where they are raised as {@link ApplicationError}.
  *
  * Exceptions within the Darlean framework while trying to invoke a remote actor (like a timeout, or when the remote app could not be reached)
- * are converted into an {@link IActorError} with `kind = 'framework'`, and propagated to the caller where they are raised as {@link FrameworkError}.
+ * are converted into an {@link IActionError} with `kind = 'framework'`, and propagated to the caller where they are raised as {@link FrameworkError}.
  *
  * ### Retries and backoff
  * When the remote actor is (temporarily) unavailable, the portal will perform retries using a configurable {@link IBackOff} mechanism
