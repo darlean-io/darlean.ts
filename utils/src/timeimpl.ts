@@ -2,6 +2,17 @@ import { ITime, ITimer } from './time';
 import { performance } from 'perf_hooks';
 import { currentScope } from './logging';
 
+let debug = false;
+const timers: Map<string, boolean> = new Map();
+
+export function debugOpenTimers(interval: number) {
+    debug = true;
+
+    setInterval(() => {
+        console.log('TIMERS:', Array.from(timers.keys()).join(', '));
+    }, interval);
+}
+
 export class Time implements ITime {
     stopped: boolean;
 
@@ -29,7 +40,31 @@ export class Time implements ITime {
         let paused = false;
         const outerScope = currentScope();
 
+        function start(f: () => void, d: number) {
+            handle = d === 0 ? setImmediate(f) : setTimeout(f, d);
+            haveImmediate = d === 0;
+            if (debug) {
+                timers.set(name, true);
+            }
+        }
+
+        function stopped() {
+            handle = undefined;
+        }
+
+        function clear() {
+            if (haveImmediate) {
+                clearImmediate(handle as NodeJS.Immediate);
+            } else {
+                clearTimeout(handle as NodeJS.Timeout);
+            }
+        }
+
         const f = async () => {
+            if (debug) {
+                timers.delete(name);
+            }
+
             const scope = currentScope();
             scope.deep('F HANDLE [Name] [Handle]', () => ({ Name: name, Handle: handle }));
             paused = false;
@@ -44,13 +79,12 @@ export class Time implements ITime {
                 } finally {
                     if (handle !== undefined) {
                         if (interval >= 0 && (repeatsLeft === undefined || repeatsLeft > 0)) {
-                            handle = interval === 0 ? setImmediate(f) : setTimeout(f, interval);
-                            haveImmediate = interval === 0;
+                            start(f, interval);
                             if (repeatsLeft !== undefined) {
                                 repeatsLeft--;
                             }
                         } else {
-                            handle = undefined;
+                            stopped();
                         }
                     }
                 }
@@ -67,7 +101,7 @@ export class Time implements ITime {
             })
         );
 
-        handle = setTimeout(f, delay ?? interval);
+        start(f, delay ?? interval);
 
         return {
             cancel: () => {
@@ -76,13 +110,9 @@ export class Time implements ITime {
                     HasHandle: !!handle
                 }));
                 if (handle) {
-                    if (haveImmediate) {
-                        clearImmediate(handle as NodeJS.Immediate);
-                    } else {
-                        clearTimeout(handle as NodeJS.Timeout);
-                    }
+                    clear();
                 }
-                handle = undefined;
+                stopped();
                 cancelled = true;
             },
             pause: (duration?: number) => {
@@ -95,16 +125,11 @@ export class Time implements ITime {
                     Duration: duration
                 }));
                 if (handle) {
-                    if (haveImmediate) {
-                        clearImmediate(handle as NodeJS.Immediate);
-                    } else {
-                        clearTimeout(handle as NodeJS.Timeout);
-                    }
+                    clear();
                 }
-                handle = undefined;
+                stopped();
                 if (duration !== undefined) {
-                    handle = duration === 0 ? setImmediate(f) : setTimeout(f, duration);
-                    haveImmediate = duration === 0;
+                    start(f, duration);
                 }
                 paused = true;
             },
@@ -115,14 +140,9 @@ export class Time implements ITime {
                 if (!paused) {
                     return;
                 }
-                if (haveImmediate) {
-                    clearImmediate(handle as NodeJS.Immediate);
-                } else {
-                    clearTimeout(handle as NodeJS.Timeout);
-                }
+                clear();
                 const d = resumeDelay ?? interval ?? delay ?? 0;
-                handle = d === 0 ? setImmediate(f) : setTimeout(f, d);
-                haveImmediate = d === 0;
+                start(f, d);
             }
         };
     }
