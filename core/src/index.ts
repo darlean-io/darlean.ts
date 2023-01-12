@@ -65,5 +65,6 @@ export * from './instances';
 export * from './remoteinvocation';
 export * from './transportremote';
 export * from './running';
+export * from './actorlock';
 export * from './infra';
 export * from './infra/natsserver';
