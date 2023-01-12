@@ -92,7 +92,7 @@ export interface IActorPlacement {
     bindIdx?: number;
 
     /**
-     * When set to `true`, indicates that clients should try the same application on 
+     * When set to `true`, indicates that clients should try the same application on
      * subsequent action requests. This is a performance optimization for virtual actors
      * because it saves a lookup in the actor lock for subsequent calls.
      */

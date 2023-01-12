@@ -375,7 +375,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         }
 
         await this.ensureActorLock();
-        
+
         const locking = config?.locking ?? defaultConfig?.locking ?? 'exclusive';
 
         const callId = this.callCounter.toString();
