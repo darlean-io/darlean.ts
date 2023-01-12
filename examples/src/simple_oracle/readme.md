@@ -2,7 +2,7 @@
 
 This example illustrates the implementation of a simple oracle that can answers questions like "What was the temperature of yesterday" and "What is the price of milk".
 
-We assume that knowledge is grouped into topics (like `temperature` and `price`), and that per topic, we have some facts. A fact contists of a keyword (like `yesterday` or `milk`) and
+We assume that knowledge consists of (static) facts, and that knowledge is grouped into topics (like `temperature` and `price`). A fact contists of a keyword (like `yesterday` or `milk`) and
 a numeric answer (`19` or `2`, for example).
 
 The oracle is of course implemented using virtual actor technology. To make things a bit interesting, we decided not to put all facts for all topics into 1 `OracleActor` instance, but to have
@@ -34,7 +34,39 @@ An oracle actor has two (asynchronous) methods: one for asking questions (about 
 
 # Implementation
 
-The implementation of the actor is in `oracle.impl.ts`. The actor's knowledge is passed via the constructor (which is a typical dependency injection pattern that is heavily used within Darlean). The `ask` method simply
+The implementation of the actor is in `oracle.impl.ts`.
+
+```ts
+class OracleActor implements IOracleActor {
+    protected knowledge: Map<string, number>;
+
+    constructor(knowledge?: { [fact: string]: number }) {
+        this.knowledge = new Map();
+        if (knowledge) {
+            for (const [fact, answer] of Object.entries(knowledge)) {
+                this.knowledge.set(fact, answer);
+            }
+        }
+    }
+
+    @action()
+    public async ask(question: string): Promise<number> {
+        for (const [fact, answer] of this.knowledge.entries()) {
+            if (question.includes(fact)) {
+                return answer;
+            }
+        }
+        return 42;
+    }
+
+    @action()
+    public async teach(fact: string, answer: number): Promise<void> {
+        this.knowledge.set(fact, answer);
+    }
+}
+```
+
+The actor's knowledge is passed via the constructor (which is a typical dependency injection pattern that is heavily used within Darlean). The `ask` method simply
 iterates over the known knowledge keys, finds the first one that is present in the question, and then returns the corresponding value (or `42` when there is no such fact). The `teach` method simply adds the provided
 fact keyword and answer to the knowledge base Map object.
 
@@ -87,8 +119,8 @@ So, we have implemented a very basic example of the use of actor technology. Wha
 In this simple example, our custom code *directly* invokes the actual `OracleActor` actors. So, our application has knowledge about our actor *implementation*, which means we cannot
 refactor our implementation without breaking existing software that uses our oracle. That is a bad practice.
 
-We can fix this by hiding away the implementation behind a service. A service is just an ordinary actor, but it hides the implementation details from the caller. We will show how to
-implement the same oracle using services in the `oracle_with_service` example.
+We can fix this by hiding away the implementation behind a service. A service is just an ordinary actor, but with a different class name suffix (`Service` instead of `Actor`). A service actor hides the implementation 
+details from the caller. We will show how to immplement the same oracle using services in the `oracle_with_service` example.
 
 ## Use of persistence
 
