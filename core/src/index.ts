@@ -68,3 +68,4 @@ export * from './running';
 export * from './actorlock';
 export * from './infra';
 export * from './infra/natsserver';
+export * from './infra/inprocesstransport';
