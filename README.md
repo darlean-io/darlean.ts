@@ -1,13 +1,17 @@
 # MonoRepo for Darlean
 
-This is the monorepo for Darlean that contains NPM packages and example code.
+This is the monorepo for Darlean that contains basic npm packages, suite packages and example code.
 
-## NPM Packages
- The following packages are part of this monorepo:
-* @darlean/base in [[base]]
-* @darlean/core in [[core]]
-* @darlean/utils in [[utils]]
+## Basic Packages
+The following basic packages are part of this monorepo:
+* [@darlean/base](base)
+* [@darlean/core](core)
+* [@darlean/utils](utils)
+
+## Suite packages
+The following actor suite packages are part of this monorepo:
+* [@darlean/actor-lock-suite](suites/actor-lock-suite)
 
 ## Examples
-* Tutorial of creating an Oracle using Darlean [[examples]]
+* [Tutorial of creating an distributed Oracle using Darlean](examples)
 
