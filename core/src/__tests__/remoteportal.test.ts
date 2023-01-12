@@ -1,6 +1,6 @@
 import { Time } from '@darlean/utils';
 import { IActionError, IActorCallResponse, IInvokeOptions, IInvokeResult, IRemote } from '@darlean/base';
-import { ExponentialBackOff, RemotePortal } from '../remoteinvocation';
+import { ActorRegistry, ExponentialBackOff, RemotePortal } from '../remoteinvocation';
 import { IEchoActor } from '../testing';
 
 // Always returns a framework error
@@ -47,7 +47,8 @@ describe('Remote portal', () => {
         const time = new Time();
         const backoff = new ExponentialBackOff(time, 10, 4);
         const remote = new NotImplementedRemote();
-        const p = new RemotePortal(remote, backoff);
+        const registry = new ActorRegistry();
+        const p = new RemotePortal(remote, backoff, registry);
 
         const a = p.retrieve<IEchoActor>('MyActor', ['a']);
         const start = time.machineTicks();
@@ -69,8 +70,9 @@ describe('Remote portal', () => {
         const time = new Time();
         const backoff = new ExponentialBackOff(time, 10, 4);
         const remote = new NotImplementedRemote();
-        const p = new RemotePortal(remote, backoff);
-        p.addMapping('MyActor', 'A');
+        const registry = new ActorRegistry();
+        const p = new RemotePortal(remote, backoff, registry);
+        registry.addMapping('MyActor', 'A');
 
         const a = p.retrieve<IEchoActor>('MyActor', ['a']);
         const start = time.machineTicks();
@@ -94,8 +96,9 @@ describe('Remote portal', () => {
         const time = new Time();
         const backoff = new ExponentialBackOff(time, 10, 4);
         const remote = new ErrorRemote();
-        const p = new RemotePortal(remote, backoff);
-        p.addMapping('MyActor', 'A');
+        const registry = new ActorRegistry();
+        const p = new RemotePortal(remote, backoff, registry);
+        registry.addMapping('MyActor', 'A');
 
         const a = p.retrieve<IEchoActor>('MyActor', ['a']);
         const start = time.machineTicks();
@@ -117,10 +120,11 @@ describe('Remote portal', () => {
         const time = new Time();
         const backoff = new ExponentialBackOff(time, 10, 4);
         const remote = new EchoRemote();
-        const p = new RemotePortal(remote, backoff);
+        const registry = new ActorRegistry();
+        const p = new RemotePortal(remote, backoff, registry);
 
         setTimeout(() => {
-            p.addMapping('MyActor', 'A');
+            registry.addMapping('MyActor', 'A');
         }, 300);
 
         const a = p.retrieve<IEchoActor>('MyActor', ['a']);
@@ -137,12 +141,13 @@ describe('Remote portal', () => {
         const time = new Time();
         const backoff = new ExponentialBackOff(time, 10, 4);
         const remote = new EchoRemote();
-        const p = new RemotePortal(remote, backoff);
+        const registry = new ActorRegistry();
+        const p = new RemotePortal(remote, backoff, registry);
 
         setTimeout(() => {
-            p.addMapping('MyActor', 'A', { version: '1', bindIdx: 1 });
-            p.addMapping('MyActor', 'B', { version: '1', bindIdx: 1 });
-            p.addMapping('MyActor', 'C', { version: '2', bindIdx: 0 });
+            registry.addMapping('MyActor', 'A', { version: '1', bindIdx: 1 });
+            registry.addMapping('MyActor', 'B', { version: '1', bindIdx: 1 });
+            registry.addMapping('MyActor', 'C', { version: '2', bindIdx: 0 });
         }, 300);
 
         const a = p.retrieve<IEchoActor>('MyActor', ['B', 'A']);

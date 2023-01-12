@@ -1,5 +1,4 @@
-import { action, actor, IActorSuite, ITypedPortal, service } from '@darlean/base';
-import { ActorSuite } from '@darlean/core';
+import { action, ActorSuite, IActorSuite, ITypedPortal } from '@darlean/base';
 import { currentScope } from '@darlean/utils';
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 
@@ -10,7 +9,6 @@ interface IOracleActor {
 
 const ORACLE_ACTOR = 'OracleActor';
 
-@actor()
 class OracleActor implements IOracleActor {
     protected knowledge: Map<string, number>;
 
@@ -39,7 +37,6 @@ class OracleActor implements IOracleActor {
     }
 }
 
-@service()
 class OracleService implements IOracleService {
     protected actorPortal: ITypedPortal<IOracleActor>;
 
@@ -76,6 +73,7 @@ export function suite(knowledge?: IKnowledgeTopics, hosts?: string[]): IActorSui
     const suite = new ActorSuite([
         {
             type: ORACLE_ACTOR,
+            kind: 'singular',
             creator: (context) => {
                 const topic = context.id[0];
                 const k = topic ? knowledge?.[topic] : undefined;
@@ -85,6 +83,7 @@ export function suite(knowledge?: IKnowledgeTopics, hosts?: string[]): IActorSui
         },
         {
             type: ORACLE_SERVICE,
+            kind: 'multiplar',
             creator: (context) => {
                 const actorPortal = context.portal.typed<IOracleActor>(ORACLE_ACTOR);
                 return new OracleService(actorPortal);

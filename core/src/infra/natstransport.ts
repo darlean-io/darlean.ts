@@ -1,10 +1,16 @@
 import { nextTick } from 'process';
 import { IDeSer } from './deser';
-import { ITransportFailure, ITransport, ITransportEnvelope, MessageHandler, ITransportSession } from './transport';
+import {
+    ITransportFailure,
+    ITransport,
+    ITransportEnvelope,
+    MessageHandler,
+    ITransportSession,
+    TRANSPORT_ERROR_UNKNOWN_RECEIVER
+} from './transport';
 import { connect, ErrorCode, NatsConnection, NatsError, Subscription } from 'nats';
 
 export const NATS_ERROR_NOT_CONNECTED = 'NOT_CONNECTED';
-export const NATS_ERROR_UNKNOWN_RECEIVER = 'UNKNOWN_RECEIVER';
 export const NATS_ERROR_SEND_FAILED = 'SEND_FAILED';
 
 export interface INatsMessage {
@@ -78,7 +84,7 @@ export class NatsTransportSession implements ITransportSession {
             if (ne.code === ErrorCode.NoResponders) {
                 this.sendFailureMessage(
                     envelope,
-                    NATS_ERROR_UNKNOWN_RECEIVER,
+                    TRANSPORT_ERROR_UNKNOWN_RECEIVER,
                     `Receiver [${envelope.receiverId}] is not registered to the nats transport`
                 );
             } else if (ne.code === ErrorCode.Timeout) {
@@ -86,7 +92,7 @@ export class NatsTransportSession implements ITransportSession {
                 // (that to avoid an unnecessary round trip). We have our own timeout mechanism that will fire when anything
                 // else goes wrong. So, we can just ignore the timeout.
             } else {
-                console.log('Error during nats send:', e);
+                console.log('Error during nats send:', e, envelope.receiverId);
                 this.sendFailureMessage(envelope, NATS_ERROR_SEND_FAILED, `Unable to send to  [${envelope.receiverId}]: [${e}]`);
             }
         }

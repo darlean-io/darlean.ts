@@ -1,11 +1,22 @@
 import { IDeSer } from './deser';
-import { ITransportFailure, ITransport, ITransportEnvelope, MessageHandler, ITransportSession } from './transport';
+import {
+    ITransportFailure,
+    ITransport,
+    ITransportEnvelope,
+    MessageHandler,
+    ITransportSession,
+    TRANSPORT_ERROR_UNKNOWN_RECEIVER
+} from './transport';
 
 interface IClient {
     appId: string;
     onMessage: MessageHandler;
 }
 
+/**
+ * Implements an {@link ITransport} for in-process use (does not support inter-process communication) with support for multiple
+ * apps within the current process.
+ */
 export class InProcessTransport implements ITransport {
     protected clients: Map<string, IClient>;
     protected deser: IDeSer;
@@ -51,8 +62,10 @@ export class InProcessTransportSession implements ITransportSession {
         } else {
             this.sendFailureMessage(
                 envelope,
-                'UNKNOWN_RECEIVER',
-                `Receiver [${envelope.receiverId}] is not registered to the in-process transport`
+                TRANSPORT_ERROR_UNKNOWN_RECEIVER,
+                `Receiver [${envelope.receiverId}] is not registered to the in-process transport (only ${JSON.stringify(
+                    Array.from(this.clients.keys())
+                )} is/are registered)`
             );
         }
     }

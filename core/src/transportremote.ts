@@ -1,4 +1,5 @@
 import {
+    IActionError,
     IActorCallRequest,
     IActorCallResponse,
     IInvokeOptions,
@@ -9,13 +10,15 @@ import {
 import * as uuid from 'uuid';
 import { IEnvelope } from './infra/envelope';
 import { ITransport, ITransportEnvelope, ITransportFailure, ITransportSession } from './infra/transport';
-import { toApplicationError } from './instances';
+import { toActionError, toFrameworkError } from './instances';
 
 export type ITransportActorCallRequest = IActorCallRequest;
 export type ITransportActorCallResponse = IActorCallResponse;
 
-export const INVOKE_ERROR_TRANSPORT_ERROR = 'TRANSPORT_ERROR';
-export const INVOKE_ERROR_CALL_TIMEOUT = 'CALL_TIMEOUT';
+export const TRANSPORT_ERROR_TRANSPORT_ERROR = 'TRANSPORT_ERROR';
+export const TRANSPORT_ERROR_TRANSPORT_CALL_TIMEOUT = 'TRANSPORT_CALL_TIMEOUT';
+
+export const TRANSPORT_ERROR_PARAMETER_MESSAGE = 'Message';
 
 interface IRemotePendingCall {
     resolve: (value: IInvokeResult) => void;
@@ -35,6 +38,12 @@ export class TransportRemote implements IRemote {
     protected pendingCalls: Map<string, IRemotePendingCall>;
     protected instanceContainer: IMultiTypeInstanceContainer;
 
+    /**
+     * Creates a new TransportRemote.
+     * @param appId The id of the current application with which the remote makes itself known to the transport
+     * @param transport The transport mechanism used to send/receive messages
+     * @param container The multi-type instance container that this remote can dispatch incoming action requests to
+     */
     constructor(appId: string, transport: ITransport, container: IMultiTypeInstanceContainer) {
         this.appId = appId;
         this.transport = transport;
@@ -49,8 +58,8 @@ export class TransportRemote implements IRemote {
     }
 
     public async finalize() {
-        await this.instanceContainer.finalize();
         await this.session?.finalize();
+        this.session = undefined;
     }
 
     public async invoke(options: IInvokeOptions): Promise<IInvokeResult> {
@@ -71,7 +80,7 @@ export class TransportRemote implements IRemote {
                 timeout: setTimeout(() => {
                     this.pendingCalls.delete(callId);
                     resolve({
-                        errorCode: INVOKE_ERROR_CALL_TIMEOUT
+                        errorCode: TRANSPORT_ERROR_TRANSPORT_CALL_TIMEOUT
                     });
                 }, 60 * 1000)
             };
@@ -80,9 +89,9 @@ export class TransportRemote implements IRemote {
                 this.session.send(env, this.toTransportRequest(options.content as IActorCallRequest));
             } else {
                 resolve({
-                    errorCode: INVOKE_ERROR_TRANSPORT_ERROR,
+                    errorCode: TRANSPORT_ERROR_TRANSPORT_ERROR,
                     errorParameters: {
-                        message: 'Transport not ready'
+                        [TRANSPORT_ERROR_PARAMETER_MESSAGE]: 'Transport not ready'
                     }
                 });
             }
@@ -108,7 +117,23 @@ export class TransportRemote implements IRemote {
     }
 
     protected toTransportResponse(content: IActorCallResponse): ITransportActorCallResponse {
-        return content;
+        return {
+            result: content.result,
+            error: content.error ? this.errorToTransportError(content.error) : undefined
+        };
+    }
+
+    protected errorToTransportError(error: IActionError): IActionError {
+        // Explicitly copy over all fields. The default BSON implementation skips some fields.
+        return {
+            code: error.code,
+            kind: error.kind,
+            message: error.message,
+            nested: error.nested?.map((x) => this.errorToTransportError(x)) ?? undefined,
+            parameters: error.parameters,
+            stack: error.stack,
+            template: error.template
+        };
     }
 
     protected fromTransportResponse(content: ITransportActorCallResponse): IActorCallResponse {
@@ -119,15 +144,16 @@ export class TransportRemote implements IRemote {
         const env = envelope.child as IRemoteCallEnvelope;
         if (env) {
             if (env.remoteCallKind === 'return') {
+                // Handling of a return message that contains the response (or error result) of a previous outgoing call
                 const call = this.pendingCalls.get(env.remoteCallId);
                 if (call) {
                     clearTimeout(call.timeout);
                     this.pendingCalls.delete(env.remoteCallId);
                     if (failure) {
                         call.resolve({
-                            errorCode: INVOKE_ERROR_TRANSPORT_ERROR,
+                            errorCode: TRANSPORT_ERROR_TRANSPORT_ERROR,
                             errorParameters: {
-                                message: failure.message
+                                [TRANSPORT_ERROR_PARAMETER_MESSAGE]: failure.message
                             }
                         });
                     } else {
@@ -138,21 +164,36 @@ export class TransportRemote implements IRemote {
                     }
                 }
             } else {
+                // Handle a new message that is to be sent to a remote actor
                 setImmediate(async () => {
-                    const request = this.fromTransportRequest(contents as ITransportActorCallRequest);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const proxy = this.instanceContainer.obtain(request.actorType, request.actorId) as any;
                     try {
-                        const result = await proxy[request.actionName](...request.arguments);
-                        const response: IActorCallResponse = {
-                            result
-                        };
-                        for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
-                            this.session?.send(returnEnvelope, this.toTransportResponse(response));
+                        const request = this.fromTransportRequest(contents as ITransportActorCallRequest);
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const proxy = this.instanceContainer.obtain(request.actorType, request.actorId) as any;
+                        try {
+                            const result = await proxy[request.actionName](...request.arguments);
+                            const response: IActorCallResponse = {
+                                result
+                            };
+                            for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
+                                this.session?.send(returnEnvelope, this.toTransportResponse(response));
+                            }
+                        } catch (e) {
+                            // The proxy already catches application errors and properly encapsulates those
+                            // within an ApplicationError. Also, when framework errors occur, they are
+                            // delivered as FrameworkError. So, we just have to make sure here that anything
+                            // unexpected that passed through is nicely converted.
+                            const response: IActorCallResponse = {
+                                error: toActionError(e)
+                            };
+
+                            for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
+                                this.session?.send(returnEnvelope, this.toTransportResponse(response));
+                            }
                         }
                     } catch (e) {
                         const response: IActorCallResponse = {
-                            error: toApplicationError(e)
+                            error: toFrameworkError(e)
                         };
 
                         for (const returnEnvelope of envelope.returnEnvelopes ?? []) {

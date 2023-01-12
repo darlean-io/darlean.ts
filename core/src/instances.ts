@@ -24,7 +24,7 @@
  * @packageDocumentation
  */
 
-import { SharedExclusiveLock } from '@darlean/utils';
+import { currentScope, SharedExclusiveLock } from '@darlean/utils';
 import { idToText } from './various';
 import { normalizeActionName, normalizeActorType } from './shared';
 import { EventEmitter } from 'events';
@@ -32,19 +32,20 @@ import { ITime } from '@darlean/utils';
 import {
     ApplicationError,
     FrameworkError,
+    FRAMEWORK_ERROR_FINALIZING,
+    FRAMEWORK_ERROR_UNKNOWN_ACTION,
+    FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE,
     IActionDecorable,
     IActionDecoration,
+    IActionError,
     IInstanceContainer,
     IInstancePrototype,
     IInstanceWrapper,
     IMultiTypeInstanceContainer,
-    InstanceCreator,
-    InstanceInvokeError,
-    INSTANCE_INVOKE_ERROR_FINALIZING,
-    INSTANCE_INVOKE_ERROR_UNKNOWN_ACTION,
-    INSTANCE_INVOKE_ERROR_UNKNOWN_ACTOR_TYPE
+    InstanceCreator
 } from '@darlean/base';
 import { IVolatileTimer, IVolatileTimerHandle } from '@darlean/base';
+import { IAcquiredActorLock, IActorLock } from './actorlock';
 
 const ACTIVATOR = 'ACTIVATOR';
 const DEACTIVATOR = 'DEACTIVATOR';
@@ -54,6 +55,8 @@ const DEACTIVATE_METHOD = 'deactivate';
 
 export const APPLICATION_ERROR_FRAMEWORK_ERROR = 'FRAMEWORK_ERROR';
 export const APPLICATION_ERROR_UNEXPECTED_ERROR = 'UNEXPECTED_ERROR';
+
+export const FRAMEWORK_ERROR_APPLICATION_ERROR = 'APPLICATION_ERROR';
 
 /**
  * Container for instances of a certain type T. The container acts as a cache
@@ -67,13 +70,17 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
     protected callCounter: number;
     protected cleaning: Map<string, boolean>;
     protected finalizing = false;
+    protected actorLock?: IActorLock;
+    protected actorType: string;
 
-    constructor(creator: InstanceCreator<T>, capacity: number) {
+    constructor(actorType: string, creator: InstanceCreator<T>, capacity: number, actorLock?: IActorLock) {
+        this.actorType = normalizeActorType(actorType);
         this.creator = creator;
         this.capacity = capacity;
         this.instances = new Map();
         this.cleaning = new Map();
         this.callCounter = 0;
+        this.actorLock = actorLock;
     }
 
     public async delete(id: string[]): Promise<void> {
@@ -89,7 +96,7 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
      *
      * @param id
      * @returns
-     * @throws {@link InstanceInvokeError} when something goes wrong.
+     * @throws {@link FrameworkError} when something goes wrong.
      */
     public wrapper(id: string[]): IInstanceWrapper<T> {
         const idt = idToText(id);
@@ -100,16 +107,31 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
             return current;
         }
         if (this.finalizing) {
-            throw new InstanceInvokeError(INSTANCE_INVOKE_ERROR_FINALIZING);
+            throw new FrameworkError(
+                FRAMEWORK_ERROR_FINALIZING,
+                'Not allowed to create new instance of [ActorType] because the container is finalizing',
+                { ActorType: this.actorType }
+            );
         }
 
         const instanceinfo = this.creator(id);
-        const wrapper = new InstanceWrapper(instanceinfo.instance);
+        const actorLock = this.actorLock;
+        const instanceWrapperActorLock: InstanceWrapperActorLock | undefined = actorLock
+            ? (onBroken: () => void) => actorLock.acquire([this.actorType, ...id], onBroken)
+            : undefined;
+        const wrapper = new InstanceWrapper(this.actorType, instanceinfo.instance, instanceWrapperActorLock);
+        wrapper?.on('deactivated', () => {
+            this.instances.delete(idt);
+            this.cleaning.delete(idt);
+        });
+
         if (instanceinfo.afterCreate) {
             instanceinfo.afterCreate(wrapper);
         }
+
         this.instances.set(idt, wrapper);
         this.cleanup();
+
         return wrapper;
     }
 
@@ -124,8 +146,6 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
         const instance = this.instances.get(id);
         if (instance) {
             await instance.deactivate();
-            this.instances.delete(id);
-            this.cleaning.delete(id);
         }
     }
 
@@ -156,12 +176,17 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
  */
 export class MultiTypeInstanceContainer implements IMultiTypeInstanceContainer {
     protected containers: Map<string, IInstanceContainer<object>>;
+    protected finalizing = false;
 
     constructor() {
         this.containers = new Map();
     }
 
     public register<T extends object>(type: string, container: IInstanceContainer<T>) {
+        if (this.finalizing) {
+            throw new Error('Registering a new container is not allowed while finalizing');
+        }
+
         this.containers.set(normalizeActorType(type), container);
     }
 
@@ -170,7 +195,7 @@ export class MultiTypeInstanceContainer implements IMultiTypeInstanceContainer {
      * @param type
      * @param id
      * @returns
-     * @throws {@link InstanceInvokeError} with code {@link INSTANCE_INVOKE_ERROR_UNKNOWN_ACTOR_TYPE}
+     * @throws {@link FrameworkError} with code {@link FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE}
      * when the actor type is unknown
      */
     public obtain<T extends object>(type: string, id: string[]): T {
@@ -178,16 +203,27 @@ export class MultiTypeInstanceContainer implements IMultiTypeInstanceContainer {
         if (container) {
             return container.obtain(id);
         } else {
-            throw new InstanceInvokeError(INSTANCE_INVOKE_ERROR_UNKNOWN_ACTOR_TYPE);
+            throw new FrameworkError(FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE, 'Actor type [ActorType] is unknown', {
+                ActorType: type
+            });
         }
     }
 
     public async finalize(): Promise<void> {
-        for (const container of this.containers.values()) {
+        if (this.finalizing) {
+            return;
+        }
+
+        this.finalizing = true;
+
+        const containers = Array.from(this.containers.values()).reverse();
+        for (const container of containers) {
             await container.finalize();
         }
     }
 }
+
+export type InstanceWrapperActorLock = (onBroken: () => void) => Promise<IAcquiredActorLock>;
 
 /**
  * Wrapper around an instance of type T. The wrapper understands class and method
@@ -203,31 +239,41 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
     protected callCounter: number;
     protected methods: Map<string, Function>;
     protected activeContinuation?: () => void;
+    protected actorLock?: InstanceWrapperActorLock;
+    protected acquiredActorLock?: IAcquiredActorLock;
+    protected actorType: string;
 
     /**
      * Creates a new wrapper around the provided instance of type T.
      * @param instance The instance around which the wrapper should be created.
-     * @throws {@link InstanceInvokeError} with code {@link INSTANCE_INVOKE_ERROR_UNKNOWN_ACTION}
+     * @throws {@link FrameworkError} with code {@link FRAMEWORK_ERROR_UNKNOWN_ACTION}
      * when methods on this object are invokes that do not exist in the underlying instance.
      */
-    public constructor(instance: T) {
+    public constructor(actorType: string, instance: T, actorLock: InstanceWrapperActorLock | undefined) {
         super();
+        this.actorType = actorType;
         this.instance = instance;
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
         this.state = 'created';
+        this.actorLock = actorLock;
 
         this.methods = this.obtainMethods();
 
         const p = Proxy.revocable(instance, {
             get: (target, prop) => {
-                const func = this.methods.get(normalizeActionName(prop.toString()));
+                const name = normalizeActionName(prop.toString());
+                const func = this.methods.get(name);
                 if (func) {
                     return function (...args: unknown[]) {
                         return self.handleCall(func, args);
                     };
                 } else {
-                    throw new InstanceInvokeError(INSTANCE_INVOKE_ERROR_UNKNOWN_ACTION);
+                    throw new FrameworkError(
+                        FRAMEWORK_ERROR_UNKNOWN_ACTION,
+                        'Action [ActionName] does not exist on [ActorType]',
+                        { ActorType: this.actorType, ActionName: name }
+                    );
                 }
             }
         });
@@ -279,6 +325,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
             } finally {
                 this.revoke();
                 this.state = 'inactive';
+                await this.releaseActorLock();
                 this.emit('deactivated');
             }
         }
@@ -300,9 +347,13 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
 
     public async invoke(method: Function | string | undefined, args: unknown): Promise<unknown> {
         if (typeof method === 'string') {
-            method = this.methods.get(normalizeActionName(method));
+            const name = normalizeActionName(method);
+            method = this.methods.get(name);
             if (!method) {
-                throw new InstanceInvokeError(INSTANCE_INVOKE_ERROR_UNKNOWN_ACTION);
+                throw new FrameworkError(FRAMEWORK_ERROR_UNKNOWN_ACTION, 'Action [ActionName] does not exist on [ActorType]', {
+                    ActorType: this.actorType,
+                    ActionName: name
+                });
             }
         }
         return await this.handleCall(method, args);
@@ -323,11 +374,9 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
             throw new Error(`Method [${method?.name}] is not an action (is it properly decorated with @action?)`);
         }
 
-        if (this.obtainMultiplicity() === 'single') {
-            await this.ensureGlobalLock();
-        }
-
-        const locking = config?.locking ?? defaultConfig?.locking ?? this.obtainDefaultLocking();
+        await this.ensureActorLock();
+        
+        const locking = config?.locking ?? defaultConfig?.locking ?? 'exclusive';
 
         const callId = this.callCounter.toString();
         this.callCounter++;
@@ -378,9 +427,45 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         }
     }
 
-    protected async ensureGlobalLock() {
-        // TODO
-        // throw new InstanceInvokeError(GLOBAL_LOCK_FAILED);
+    protected async ensureActorLock() {
+        const actorLock = this.actorLock;
+        if (!actorLock) {
+            return;
+        }
+
+        if (this.acquiredActorLock) {
+            return;
+        }
+
+        this.acquiredActorLock = await actorLock(() => {
+            try {
+                this.acquiredActorLock = undefined;
+                this.deactivate();
+            } catch (e) {
+                currentScope().info(
+                    'Error during deactivating actor of type [ActorType] because the actor lock was broken: [Error]',
+                    () => ({
+                        Error: e,
+                        ActorType: this.actorType
+                    })
+                );
+            }
+        });
+    }
+
+    protected async releaseActorLock() {
+        const acquiredActorLock = this.acquiredActorLock;
+        if (!acquiredActorLock) {
+            return;
+        }
+        try {
+            await acquiredActorLock.release();
+        } catch (e) {
+            currentScope().info('Error during release of actor lock for an instance of type [ActorType]: [Error]', () => ({
+                Error: e,
+                ActorType: this.actorType
+            }));
+        }
     }
 
     protected async acquireLocalLock(locking: 'none' | 'shared' | 'exclusive', callId: string): Promise<void> {
@@ -437,22 +522,6 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
             return m;
         }
         return prototype._darlean_methods;
-    }
-
-    protected obtainMultiplicity(): 'single' | 'multiple' {
-        const prototype = Object.getPrototypeOf(this.instance) as IInstancePrototype;
-        if (!prototype._darlean_multiplicity) {
-            return 'single';
-        }
-        return prototype._darlean_multiplicity;
-    }
-
-    protected obtainDefaultLocking(): 'shared' | 'exclusive' {
-        const prototype = Object.getPrototypeOf(this.instance) as IInstancePrototype;
-        if (!prototype._darlean_default_locking) {
-            return 'exclusive';
-        }
-        return prototype._darlean_default_locking;
     }
 }
 
@@ -512,11 +581,11 @@ export function toApplicationError(e: unknown) {
         return e;
     }
     if (e instanceof FrameworkError) {
-        return new ApplicationError(APPLICATION_ERROR_FRAMEWORK_ERROR, e.code, undefined, e.stack, [e]);
+        return new ApplicationError(APPLICATION_ERROR_FRAMEWORK_ERROR, e.code, undefined, e.stack, [e], e.message);
     }
     if (typeof e === 'object') {
         const err = e as Error;
-        return new ApplicationError(err.name, err.message, undefined, err.stack);
+        return new ApplicationError(err.name, undefined, undefined, err.stack, undefined, err.message);
     } else if (typeof e === 'string') {
         if (e.includes(' ')) {
             return new ApplicationError(APPLICATION_ERROR_UNEXPECTED_ERROR, e);
@@ -525,6 +594,48 @@ export function toApplicationError(e: unknown) {
         }
     } else {
         return new ApplicationError(APPLICATION_ERROR_UNEXPECTED_ERROR, 'Unexpected error');
+    }
+}
+
+export function toFrameworkError(e: unknown) {
+    if (e instanceof FrameworkError) {
+        return e;
+    }
+    if (e instanceof ApplicationError) {
+        return new FrameworkError(FRAMEWORK_ERROR_APPLICATION_ERROR, e.code, undefined, e.stack, [e], e.message);
+    }
+    if (typeof e === 'object') {
+        const err = e as Error;
+        return new FrameworkError(err.name, undefined, undefined, err.stack, undefined, err.message);
+    } else if (typeof e === 'string') {
+        if (e.includes(' ')) {
+            return new FrameworkError(APPLICATION_ERROR_UNEXPECTED_ERROR, e);
+        } else {
+            return new FrameworkError(e, e);
+        }
+    } else {
+        return new FrameworkError(APPLICATION_ERROR_UNEXPECTED_ERROR, 'Unexpected error');
+    }
+}
+
+export function toActionError(e: unknown): IActionError {
+    if (e instanceof FrameworkError) {
+        return e;
+    }
+    if (e instanceof ApplicationError) {
+        return e;
+    }
+    if (typeof e === 'object') {
+        const err = e as Error;
+        return new FrameworkError(err.name, undefined, undefined, err.stack, undefined, err.message);
+    } else if (typeof e === 'string') {
+        if (e.includes(' ')) {
+            return new FrameworkError(APPLICATION_ERROR_UNEXPECTED_ERROR, e);
+        } else {
+            return new FrameworkError(e, e);
+        }
+    } else {
+        return new FrameworkError(APPLICATION_ERROR_UNEXPECTED_ERROR, 'Unexpected error');
     }
 }
 

@@ -44,6 +44,7 @@
     "binaries/**/*"
   ],
   "dependencies": {
+    "@darlean/actor-lock-suite": "^2.0.0-alpha.0",
     "bson": "^4.7.0",
     "nats": "^2.9.2",
     "uuid": "^9.0.0"

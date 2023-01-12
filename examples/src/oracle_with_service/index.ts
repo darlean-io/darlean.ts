@@ -1,10 +1,12 @@
 import { suite as oracle_suite } from './oracle.impl';
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 import { knowledge } from './config';
-import { ActorRunnerBuilder } from '@darlean/core';
+import { ActorRunnerBuilder, DEFAULT_LOCAL_APP_ID } from '@darlean/core';
 
 async function main() {
     const builder = new ActorRunnerBuilder();
+    builder.setDefaultHosts([DEFAULT_LOCAL_APP_ID]);
+    builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
     builder.registerSuite(oracle_suite(knowledge));
     const runner = builder.build();
 

@@ -3,12 +3,12 @@ import { BsonDeSer } from '../infra/bsondeser';
 import { NatsTransport } from '../infra/natstransport';
 import { Time } from '@darlean/utils';
 import { InstanceContainer, MultiTypeInstanceContainer } from '../instances';
-import { ExponentialBackOff, RemotePortal } from '../remoteinvocation';
+import { ActorRegistry, ExponentialBackOff, RemotePortal } from '../remoteinvocation';
 import { NatsServer } from '../infra/natsserver';
 import { IEchoActor, EchoActor } from '../testing';
 
 describe('Nats', () => {
-    test.only('Remote via Nats', async () => {
+    test('Remote via Nats', async () => {
         const time = new Time();
         const backoff = new ExponentialBackOff(time, 10, 4);
         const deser = new BsonDeSer();
@@ -16,22 +16,24 @@ describe('Nats', () => {
         const natsserver = new NatsServer();
         natsserver.start();
 
+        const registry = new ActorRegistry();
+
         const nats0 = new NatsTransport(deser);
         const container0 = new MultiTypeInstanceContainer();
         //const persistence = new MemoryPersistence<number|undefined>();
-        const cont0 = new InstanceContainer<IEchoActor>((_id) => ({ instance: new EchoActor() }), 10);
+        const cont0 = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor() }), 10);
         container0.register('myactor', cont0);
         const remote0 = new TransportRemote('app0', nats0, container0);
-        const p0 = new RemotePortal(remote0, backoff);
-        p0.addMapping('myactor', 'app1');
+        const p0 = new RemotePortal(remote0, backoff, registry);
+        registry.addMapping('myactor', 'app1');
         await remote0.init();
 
         const nats1 = new NatsTransport(deser);
         const container1 = new MultiTypeInstanceContainer();
-        const cont1 = new InstanceContainer<IEchoActor>((_id) => ({ instance: new EchoActor() }), 10);
+        const cont1 = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor() }), 10);
         container1.register('myactor', cont1);
         const remote1 = new TransportRemote('app1', nats1, container1);
-        new RemotePortal(remote1, backoff);
+        new RemotePortal(remote1, backoff, registry);
         await remote1.init();
 
         const mya = p0.retrieve<IEchoActor>('myactor', ['123']);

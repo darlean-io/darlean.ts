@@ -30,7 +30,7 @@ describe('Volatile timer', () => {
         const time = new Time();
         const timer = new VolatileTimer<TimerActor>(time);
         const actor = new TimerActor(timer);
-        const wrapper = new InstanceWrapper(actor);
+        const wrapper = new InstanceWrapper('TimerActor', actor, undefined);
         timer.setWrapper(wrapper);
 
         await wrapper.invoke(undefined, []);

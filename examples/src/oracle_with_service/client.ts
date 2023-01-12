@@ -1,12 +1,14 @@
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 import { ActorRunnerBuilder, NatsServer } from '@darlean/core';
-import { sleep } from '@darlean/utils';
 
 async function main(appId: string, servers: string[]) {
     const builder = new ActorRunnerBuilder();
     builder.setRemoteAccess(appId);
+    builder.setDefaultHosts(servers);
+
     builder.registerActor({
         type: ORACLE_SERVICE,
+        kind: 'multiplar',
         hosts: servers
     });
     const runner = builder.build();
@@ -14,8 +16,9 @@ async function main(appId: string, servers: string[]) {
     const natsServer = new NatsServer();
 
     natsServer.start();
+
     await runner.start();
-    // await sleep(5000);
+
     try {
         const oracleService = runner.getPortal().retrieve<IOracleService>(ORACLE_SERVICE, []);
 
@@ -51,7 +54,6 @@ async function main(appId: string, servers: string[]) {
         console.log(JSON.stringify(e, undefined, 2));
     } finally {
         await runner.stop();
-        await sleep(2000);
         natsServer.stop();
     }
 }

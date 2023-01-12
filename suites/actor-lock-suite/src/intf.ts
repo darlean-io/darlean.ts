@@ -1,6 +1,6 @@
 export interface IActorLockService {
     acquire(options: IActorLockService_Acquire_Request): Promise<IActorLockService_Acquire_Response>;
-    release(options: IActorLockService_Release_Request): Promise<void>;   
+    release(options: IActorLockService_Release_Request): Promise<void>;
     getLockHolders(options: IActorLockService_GetLockHolders_Request): Promise<IActorLockService_GetLockHolders_Response>;
 }
 

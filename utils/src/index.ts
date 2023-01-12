@@ -1,9 +1,9 @@
 /**
  * Set of utility functions and classes have no specific relation with virtual actors.
- * 
+ *
  * This package can be used stand-alone without dependencies on {@link @darlean/base}, {@link @darlean/core} or
  * any other darlean package.
- * 
+ *
  * @packageDocumentation
  */
 export * from './formatting';

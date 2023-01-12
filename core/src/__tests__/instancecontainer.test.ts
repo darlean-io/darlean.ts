@@ -55,7 +55,7 @@ export class MyActor implements IMyActor, IActivatable, IDeactivatable {
 describe('Instance container', () => {
     test('InstanceContainer - Basic action test', async () => {
         const persistence = new MemoryPersistence<string | undefined>();
-        const f = new InstanceContainer<IEchoActor>((_id) => ({ instance: new EchoActor(persistence) }), 10);
+        const f = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10);
         const i = f.obtain(['123']);
 
         expect(await i.echo('a')).toBe('a');
@@ -77,7 +77,7 @@ describe('Instance container', () => {
 
     test('InstanceContainer - Basic action test - Error', async () => {
         // Tests that errors within an actor action are wrapped into ActorError objects.
-        const f = new InstanceContainer<IErrorActor>((_d) => ({ instance: new ErrorActor() }), 10);
+        const f = new InstanceContainer<IErrorActor>('ErrorActor', (_d) => ({ instance: new ErrorActor() }), 10);
         const i = f.obtain(['123']);
 
         let error: IActionError | undefined;

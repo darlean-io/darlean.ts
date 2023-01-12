@@ -12,20 +12,7 @@ export interface IDeactivatable {
 export interface IInstancePrototype {
     // eslint-disable-next-line @typescript-eslint/ban-types
     _darlean_methods?: Map<string, Function>;
-    _darlean_multiplicity?: 'single' | 'multiple';
-    _darlean_default_locking?: 'shared' | 'exclusive';
-    _darlean_app_bind_index?: number;
 }
-
-export const INSTANCE_INVOKE_ERROR_UNKNOWN_ACTION = 'UNKNOWN_ACTION';
-export const INSTANCE_INVOKE_ERROR_UNKNOWN_ACTOR_TYPE = 'UNKNOWN_ACTOR_TYPE';
-export const INSTANCE_INVOKE_ERROR_GLOBAL_LOCK_FAILED = 'GLOBAL_LOCK_FAILED';
-export const INSTANCE_INVOKE_ERROR_FINALIZING = 'FINALIZING';
-
-/**
- * Error when invoking a local actor instance goes wrong.
- */
-export class InstanceInvokeError extends Error {}
 
 /**
  * Function that creates a new instance of type T for a given id.

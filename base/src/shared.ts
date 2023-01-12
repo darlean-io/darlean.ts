@@ -1,4 +1,4 @@
-import { formatAllAttributes, replaceArguments } from '@darlean/utils';
+import { replaceArguments } from '@darlean/utils';
 
 export type ActionErrorKind = 'framework' | 'application';
 
@@ -25,7 +25,7 @@ export interface IActionError {
      * Raw template used to form the error message. The `[Foo]` placeholders are still present (they are not
      * yet replaced by their corresponding value in the `parameters` map).
      */
-    template: string;
+    template?: string;
 
     /**
      * Indicates whether this error is a `framework` or `application` error.
@@ -81,22 +81,29 @@ export class ApplicationError extends Error implements IActionError {
     public nested?: IActionError[];
     public stack?: string;
     public kind: ActionErrorKind;
-    public template: string;
+    public template?: string;
 
     constructor(
         code: string,
-        template: string,
+        template?: string,
         parameters?: { [key: string]: unknown },
         stack?: string,
-        nested?: IActionError[]
+        nested?: IActionError[],
+        message?: string
     ) {
         super(code);
         this.kind = 'application';
         this.code = code;
-        this.parameters = parameters ? formatAllAttributes(parameters) : undefined;
+        this.parameters = parameters; // ? formatAllAttributes(parameters) : undefined;
         this.template = template;
-        this.message = parameters ? replaceArguments(template, parameters) : template;
-        this.stack = stack;
+        if (template === undefined) {
+            this.message = message ?? code;
+        } else {
+            this.message = parameters ? replaceArguments(template, parameters) : template;
+        }
+        if (stack) {
+            this.stack = stack;
+        }
         this.nested = nested;
     }
 }
@@ -111,22 +118,29 @@ export class FrameworkError extends Error implements IActionError {
     public nested?: IActionError[];
     public stack?: string;
     public kind: ActionErrorKind;
-    public template: string;
+    public template?: string;
 
     constructor(
         code: string,
-        template: string,
+        template?: string,
         parameters?: { [key: string]: unknown },
         stack?: string,
-        nested?: IActionError[]
+        nested?: IActionError[],
+        message?: string
     ) {
         super(code);
         this.kind = 'framework';
         this.code = code;
-        this.parameters = parameters ? formatAllAttributes(parameters) : undefined;
+        this.parameters = parameters; // ? formatAllAttributes(parameters) : undefined;
         this.template = template;
-        this.message = parameters ? replaceArguments(template, parameters) : template;
-        this.stack = stack;
+        if (template === undefined) {
+            this.message = message ?? code;
+        } else {
+            this.message = parameters ? replaceArguments(template, parameters) : template;
+        }
+        if (stack) {
+            this.stack = stack;
+        }
         this.nested = nested;
     }
 }

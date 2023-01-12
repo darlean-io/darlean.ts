@@ -71,6 +71,7 @@ export class NatsServer {
         if (this.process) {
             this.stopping = true;
             this.process.kill();
+            this.process = undefined;
         }
     }
 

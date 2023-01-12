@@ -1,16 +1,14 @@
-import { EventEmitter } from 'events';
 import { ITransport, NatsTransport } from './infra';
 import { BsonDeSer } from './infra/bsondeser';
 import { ITime } from '@darlean/utils';
 import { Time } from '@darlean/utils';
-import { sleep } from '@darlean/utils';
 import { InstanceContainer, MultiTypeInstanceContainer, VolatileTimer } from './instances';
-import { LocalPortal } from './localinvocation';
 import { MemoryPersistence } from './various';
-import { ExponentialBackOff, RemotePortal } from './remoteinvocation';
+import { ActorRegistry, ExponentialBackOff, PlacementCache, RemotePortal } from './remoteinvocation';
 import { TransportRemote } from './transportremote';
 import {
     IActorCreateContext,
+    IActorPlacement,
     IActorRegistrationOptions,
     IActorSuite,
     IBackOff,
@@ -20,8 +18,14 @@ import {
     IRemote,
     IVolatileTimer
 } from '@darlean/base';
+import { ACTOR_LOCK_SERVICE, IActorLockService } from '@darlean/actor-lock-suite';
+import actorLockSuite from '@darlean/actor-lock-suite';
+import { DistributedActorLock, IActorLock } from './actorlock';
+import { InProcessTransport } from './infra/inprocesstransport';
 
 export const DEFAULT_CAPACITY = 1000;
+
+export const DEFAULT_LOCAL_APP_ID = 'local';
 
 export declare interface ActorRunner {
     on(event: 'start', listener: () => void): this;
@@ -32,12 +36,21 @@ export declare interface ActorRunner {
  * Class that hosts actors and (depending on the configuration) exposes them remotely. Typically
  * created by means of an {@link ActorRunnerBuilder}.
  */
-export class ActorRunner extends EventEmitter {
+export class ActorRunner {
     protected portal: IPortal;
+    protected waiters: Array<() => void>;
+    protected delayedStop = 0;
+    protected stopped = false;
+    protected stopping = false;
+
+    protected starters: Array<() => Promise<void>>;
+    protected stoppers: Array<() => Promise<void>>;
 
     constructor(portal: IPortal) {
-        super();
         this.portal = portal;
+        this.waiters = [];
+        this.starters = [];
+        this.stoppers = [];
     }
 
     public getPortal(): IPortal {
@@ -45,78 +58,73 @@ export class ActorRunner extends EventEmitter {
     }
 
     public async start(): Promise<void> {
-        this.emit('start');
-        await sleep(100);
+        for (const starter of this.starters) {
+            await starter();
+        }
     }
 
     public async stop(): Promise<void> {
-        this.emit('stop');
-        await sleep(100);
-    }
-}
+        if (this.stopped) {
+            return;
+        }
+        if (this.stopping) {
+            await this.run();
+            return;
+        }
+        this.stopping = true;
 
-/**
- * Abstraction of a registry to which actors can be registered.
- */
-export interface IActorRegistry {
-    registerActor<T extends object>(options: IActorRegistrationOptions<T>): void;
-}
+        for (const stopper of Array.from(this.stoppers).reverse()) {
+            await stopper();
+        }
 
-export class ActorSuite implements IActorSuite {
-    protected options: IActorRegistrationOptions<object>[];
+        this.stopped = true;
 
-    constructor(actors: IActorRegistrationOptions<object>[] = []) {
-        this.options = [];
-
-        for (const item of actors) {
-            this.addActor(item);
+        const waiters = this.waiters;
+        this.waiters = [];
+        for (const waiter of waiters) {
+            waiter();
         }
     }
 
-    public addActor(options: IActorRegistrationOptions<object>) {
-        this.options.push(options);
+    public addStarter(starter: () => Promise<void>) {
+        this.starters.push(starter);
     }
 
-    public addSuite(suite: IActorSuite) {
-        for (const options of suite.getRegistrationOptions()) {
-            this.addActor(options);
-        }
+    public addStopper(stopper: () => Promise<void>) {
+        this.stoppers.push(stopper);
     }
 
-    public getRegistrationOptions(): IActorRegistrationOptions<object>[] {
-        return this.options;
-    }
-
-    protected addItem(item: ActorOrSuite) {
-        if (item.actor) {
-            this.addActor(item.actor);
+    /**
+     * Waits until the actor runner is stopped
+     */
+    public async run(): Promise<void> {
+        if (this.stopped) {
+            return;
         }
 
-        if (item.suite) {
-            this.addSuite(item.suite);
-        }
+        return new Promise((resolve) => {
+            this.waiters.push(resolve);
+        });
     }
-}
-
-export interface ActorOrSuite {
-    actor?: IActorRegistrationOptions<object>;
-    suite?: IActorSuite;
 }
 
 /**
  * Class that can be used to build an {@link ActorRunner} based on provided configuration.
  */
-export class ActorRunnerBuilder implements IActorRegistry {
+export class ActorRunnerBuilder {
     protected actors: IActorRegistrationOptions<object>[];
     protected portal?: IPortal;
     protected persistence?: IPersistence<unknown>;
-    protected appId?: string;
+    protected appId: string;
     protected transport?: ITransport;
     protected remote?: IRemote;
     protected time?: ITime;
     protected defaultHosts?: string[];
+    protected multiContainer?: MultiTypeInstanceContainer;
+    protected transportMechanism: '' | 'nats' = '';
 
     constructor() {
+        this.appId = DEFAULT_LOCAL_APP_ID;
         this.actors = [];
     }
 
@@ -155,11 +163,23 @@ export class ActorRunnerBuilder implements IActorRegistry {
     /**
      * Configures the builder to allow remote access via Nats.
      * @param appId The app-id under which the actor runner will register to the cluster.
+     * @param transport Optional transport that is used for remote access. When omitted,
+     * the builder creates a {@link NatsTransport}.
      */
     public setRemoteAccess(appId: string, transport?: ITransport): ActorRunnerBuilder {
         this.appId = appId;
         this.transport = transport;
+        this.transportMechanism = 'nats';
         return this;
+    }
+
+    public hostActorLock(nodes: string[], redundancy: number) {
+        const suite = actorLockSuite({
+            locks: nodes,
+            id: [],
+            redundancy
+        });
+        this.registerSuite(suite);
     }
 
     /**
@@ -170,7 +190,9 @@ export class ActorRunnerBuilder implements IActorRegistry {
         const time = this.createTime();
         this.time = time;
         const backoff = this.createBackOff(time);
-        const portal = this.createPortal(backoff, this.transport);
+        const multiContainer = this.createMultiContainer();
+        this.multiContainer = multiContainer;
+        const portal = this.createPortal(backoff, this.transport, time, multiContainer);
         this.portal = portal;
         this.persistence = this.createPersistence();
         const ar = new ActorRunner(portal);
@@ -194,84 +216,116 @@ export class ActorRunnerBuilder implements IActorRegistry {
         return new ExponentialBackOff(time, 10, 4);
     }
 
-    private createPortal(backoff: IBackOff, transport?: ITransport): IPortal {
-        if (this.appId) {
-            return this.createRemotePortal(backoff, this.appId, transport);
-        } else {
-            return this.createLocalPortal(backoff);
-        }
+    private createActorLock(portal: IPortal, time: ITime, appId: string): IActorLock {
+        const servicePortal = portal.typed<IActorLockService>(ACTOR_LOCK_SERVICE);
+        const service = servicePortal.retrieve([]);
+        return new DistributedActorLock(time, service, appId);
+    }
+
+    private createPortal(
+        backoff: IBackOff,
+        transport: ITransport | undefined,
+        time: ITime,
+        multiContainer: MultiTypeInstanceContainer
+    ): IPortal {
+        return this.createRemotePortal(backoff, this.appId, transport, time, multiContainer, this.transportMechanism);
     }
 
     private configurePortal(ar: ActorRunner) {
-        if (this.transport) {
-            ar.on('start', () => {
-                if (this.remote) {
-                    (this.remote as TransportRemote).init();
+        const signalHandler = () => {
+            console.log('RECEIVED STOP SIGNAL');
+            process.nextTick(async () => {
+                try {
+                    await ar.stop();
+                } catch (e) {
+                    console.log(e);
                 }
+                console.log('STOPPED');
             });
-            ar.on('stop', () => {
-                if (this.remote) {
-                    (this.remote as TransportRemote).finalize();
-                }
-            });
-        }
-    }
+        };
 
-    private createLocalPortal(backoff: IBackOff): IPortal {
-        const portal = new LocalPortal(backoff);
-        for (const actor of this.actors) {
-            const creator = actor.creator;
-            if (creator) {
-                const container =
-                    actor.container ??
-                    new InstanceContainer((id) => {
-                        const timers: VolatileTimer<object>[] = [];
-                        const context = this.createActorCreateContext(actor.type, id, timers);
-                        return {
-                            instance: creator(context),
-                            afterCreate: (wrapper) => {
-                                for (const timer of timers) {
-                                    timer.setWrapper(wrapper);
-                                }
-                            }
-                        };
-                    }, actor.capacity ?? DEFAULT_CAPACITY);
+        ar.addStarter(async () => {
+            process.on('SIGINT', signalHandler);
+            process.on('SIGTERM', signalHandler);
 
-                portal.register(actor.type, container);
+            if (this.remote) {
+                await (this.remote as TransportRemote).init();
             }
-        }
-        return portal;
+        });
+
+        ar.addStopper(async () => {
+            process.off('SIGINT', signalHandler);
+            process.off('SIGTERM', signalHandler);
+
+            await this.multiContainer?.finalize();
+
+            if (this.remote) {
+                await (this.remote as TransportRemote).finalize();
+            }
+        });
     }
 
-    private createRemotePortal(backoff: IBackOff, appId: string, transport?: ITransport): IPortal {
-        const multiContainer = new MultiTypeInstanceContainer();
-        const remote = this.createRemote(appId, multiContainer, transport);
-        this.remote = remote;
-        const portal = new RemotePortal(remote, backoff);
+    private createMultiContainer(): MultiTypeInstanceContainer {
+        return new MultiTypeInstanceContainer();
+    }
 
+    private fillContainers(multiContainer: MultiTypeInstanceContainer, portal: IPortal, actorLock: IActorLock): void {
         for (const actor of this.actors) {
             const creator = actor.creator;
             if (creator) {
                 const container =
                     actor.container ??
-                    new InstanceContainer((id) => {
-                        const timers: VolatileTimer<object>[] = [];
-                        const context = this.createActorCreateContext(actor.type, id, timers);
-                        return {
-                            instance: creator(context),
-                            afterCreate: (wrapper) => {
-                                for (const timer of timers) {
-                                    timer.setWrapper(wrapper);
+                    new InstanceContainer(
+                        actor.type,
+                        (id) => {
+                            const timers: VolatileTimer<object>[] = [];
+                            const context = this.createActorCreateContext(actor.type, id, timers);
+                            return {
+                                instance: creator(context),
+                                afterCreate: (wrapper) => {
+                                    for (const timer of timers) {
+                                        timer.setWrapper(wrapper);
+                                    }
                                 }
-                            }
-                        };
-                    }, actor.capacity ?? DEFAULT_CAPACITY);
+                            };
+                        },
+                        actor.capacity ?? DEFAULT_CAPACITY,
+                        actor.kind === 'singular' ? actorLock : undefined
+                    );
                 multiContainer.register(actor.type, container);
             }
+        }
+    }
+
+    private createRemotePortal(
+        backoff: IBackOff,
+        appId: string,
+        transport: ITransport | undefined,
+        time: ITime,
+        multiContainer: MultiTypeInstanceContainer,
+        mechanism: typeof this.transportMechanism
+    ): IPortal {
+        const remote = this.createRemote(appId, multiContainer, mechanism, transport);
+        this.remote = remote;
+        const registry = new ActorRegistry();
+        const placementCache = new PlacementCache(10000);
+        const portal = new RemotePortal(remote, backoff, registry, placementCache);
+        const actorLock = this.createActorLock(portal, time, appId);
+        this.fillContainers(multiContainer, portal, actorLock);
+
+        for (const actor of this.actors) {
             const hosts = actor.hosts ?? this.defaultHosts;
             if (hosts) {
                 for (const host of hosts) {
-                    portal.addMapping(actor.type, host, actor.placement);
+                    const placement: IActorPlacement = actor.placement
+                        ? { ...actor.placement }
+                        : {
+                              version: new Date().toISOString()
+                          };
+                    if (actor.kind === 'singular' && placement.sticky === undefined) {
+                        placement.sticky = true;
+                    }
+                    registry.addMapping(actor.type, host, placement);
                 }
             }
         }
@@ -279,10 +333,19 @@ export class ActorRunnerBuilder implements IActorRegistry {
         return portal;
     }
 
-    private createRemote(appId: string, container: IMultiTypeInstanceContainer, transport?: ITransport): IRemote {
+    private createRemote(
+        appId: string,
+        container: IMultiTypeInstanceContainer,
+        mechanism: typeof this.transportMechanism,
+        transport?: ITransport
+    ): IRemote {
         if (!transport) {
             const deser = new BsonDeSer();
-            transport = new NatsTransport(deser);
+            if (mechanism === 'nats') {
+                transport = new NatsTransport(deser);
+            } else {
+                transport = new InProcessTransport(deser);
+            }
         }
         this.transport = transport;
         return new TransportRemote(appId, transport, container);

@@ -1,8 +1,6 @@
-import { action, actor, IActorSuite } from '@darlean/base';
-import { ActorSuite } from '@darlean/core';
+import { action, ActorSuite, IActorSuite } from '@darlean/base';
 import { IOracleActor, ORACLE_ACTOR } from './oracle.intf';
 
-@actor()
 class OracleActor implements IOracleActor {
     protected knowledge: Map<string, number>;
 
@@ -43,6 +41,7 @@ export function suite(knowledge?: IKnowledgeTopics): IActorSuite {
     const suite = new ActorSuite([
         {
             type: ORACLE_ACTOR,
+            kind: 'singular',
             creator: (context) => {
                 const topic = context.id[0];
                 const k = topic ? knowledge?.[topic] : undefined;

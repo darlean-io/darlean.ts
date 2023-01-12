@@ -4,6 +4,10 @@ export const FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION = 'REDIRECT_DESTINAT
 
 export const FRAMEWORK_ERROR_NO_RECEIVERS_AVAILABLE = 'NO_RECEIVERS_AVAILABLE';
 export const FRAMEWORK_ERROR_INVOKE_ERROR = 'INVOKE_ERROR';
+export const FRAMEWORK_ERROR_UNKNOWN_ACTION = 'UNKNOWN_ACTION';
+export const FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE = 'UNKNOWN_ACTOR_TYPE';
+export const FRAMEWORK_ERROR_ACTOR_LOCK_FAILED = 'ACTOR_LOCK_FAILED';
+export const FRAMEWORK_ERROR_FINALIZING = 'FINALIZING';
 
 /**
  * Allows a caller to retrieve a persistent proxy to a remote actor. That is, even when the remote
@@ -42,7 +46,6 @@ export interface IPortal {
      * @param idPrefix The prefix of the id of actors to be retrieved by the sub portal.
      */
     prefix(idPrefix: string[]): IPortal;
-
 }
 
 /**
@@ -87,6 +90,13 @@ export interface IActorPlacement {
      * id part.
      */
     bindIdx?: number;
+
+    /**
+     * When set to `true`, indicates that clients should try the same application on 
+     * subsequent action requests. This is a performance optimization for virtual actors
+     * because it saves a lookup in the actor lock for subsequent calls.
+     */
+    sticky?: boolean;
 }
 
 /**

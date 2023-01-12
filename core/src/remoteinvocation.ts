@@ -44,9 +44,10 @@ import {
     ApplicationError,
     FrameworkError
 } from '@darlean/base';
-import { ITime } from '@darlean/utils';
+import { encodeKey, ITime } from '@darlean/utils';
 import { sleep } from '@darlean/utils';
 import { normalizeActionName, normalizeActorType } from './shared';
+import { TRANSPORT_ERROR_PARAMETER_MESSAGE } from './transportremote';
 
 /**
  * Implementation of {@link ITypedPortal} that returns instances of a specific type
@@ -130,114 +131,16 @@ interface IActorTypeInfo {
     placement?: IActorPlacement;
 }
 
-/**
- * Portal that provides access to actors in other apps via an {@link IRemote} instance.
- */
-export class RemotePortal implements IPortal {
-    protected remote: IRemote;
-    protected backoff: IBackOff;
+export interface IActorRegistry {
+    findPlacement(type: string): IActorTypeInfo | undefined;
+}
+
+export class ActorRegistry implements IActorRegistry {
     // Map from actor type to list of online receivers that provide the actor type
     protected mapping: Map<string, IActorTypeInfo>;
 
-    constructor(remote: IRemote, backoff: IBackOff) {
-        this.remote = remote;
-        this.backoff = backoff;
+    constructor() {
         this.mapping = new Map();
-    }
-
-    public retrieve<T extends object>(type: string, id: string[]): T {
-        const instance = {} as T;
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const self = this;
-        const p = Proxy.revocable(instance, {
-            get: (_target, prop, _receiver) => {
-                // Assume the caller is only trying to get functions (not properties, fields etc)
-                // we simply return a getter function implementation.
-                return async function (...args: unknown[]) {
-                    const actorType = normalizeActorType(type);
-                    const actionName = normalizeActionName(prop.toString());
-
-                    const content: IActorCallRequest = {
-                        actorType,
-                        actorId: id,
-                        actionName,
-                        arguments: Array.from(args)
-                    };
-
-                    const info: { suggestion: string | undefined } = { suggestion: undefined };
-
-                    const backoff = self.backoff.begin(5000);
-                    const nested: FrameworkError[] = [];
-
-                    for await (const destination of self.iterateDestinations(actorType, id, info)) {
-                        const moment = Date.now();
-
-                        if (destination !== '') {
-                            info.suggestion = undefined;
-                            const options: IInvokeOptions = {
-                                destination,
-                                content
-                            };
-
-                            const result = await self.remote.invoke(options);
-                            if (result.errorCode) {
-                                nested.push(
-                                    new FrameworkError(result.errorCode, result.errorCode, {
-                                        requestTime: new Date(moment).toISOString(),
-                                        requestOptions: options,
-                                        requestResult: result
-                                    })
-                                );
-                                info.suggestion = result.errorParameters?.[
-                                    FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION
-                                ] as string;
-                            } else {
-                                if (result.content) {
-                                    const response = result.content as IActorCallResponse;
-                                    if (response.error) {
-                                        throw new ApplicationError(
-                                            response.error.code,
-                                            response.error.message,
-                                            response.error.parameters,
-                                            response.error.stack,
-                                            response.error.nested
-                                        );
-                                    } else {
-                                        return response.result;
-                                    }
-                                } else {
-                                    throw new Error('No content');
-                                }
-                            }
-                        } else {
-                            nested.push(
-                                new FrameworkError(
-                                    FRAMEWORK_ERROR_NO_RECEIVERS_AVAILABLE,
-                                    'No receivers available at [RequestTime] to process [ActionName] on an instance of [ActorType]',
-                                    {
-                                        RequestTime: new Date(moment).toISOString(),
-                                        ActorType: actorType,
-                                        ActionName: actionName
-                                    }
-                                )
-                            );
-                        }
-
-                        if (!(await backoff())) {
-                            break;
-                        }
-                    }
-                    throw new FrameworkError(
-                        FRAMEWORK_ERROR_INVOKE_ERROR,
-                        'Failed to invoke remote method [ActionName] on an instance of [ActorType]',
-                        { ActorType: actorType, ActionName: actionName },
-                        undefined,
-                        nested
-                    );
-                };
-            }
-        });
-        return p.proxy;
     }
 
     public addMapping(actorType: string, receiver: string, placement?: IActorPlacement) {
@@ -274,6 +177,201 @@ export class RemotePortal implements IPortal {
         }
     }
 
+    public findPlacement(type: string): IActorTypeInfo | undefined {
+        return this.mapping.get(normalizeActorType(type));
+    }
+}
+
+export interface IPlacementCache {
+    get(actorType: string, id: string[]): string | undefined;
+    put(actorType: string, id: string[], receiver: string | undefined): void;
+}
+
+export class PlacementCache implements IPlacementCache {
+    private items: Map<string, string>;
+    private capacity: number;
+
+    constructor(capacity: number) {
+        this.items = new Map();
+        this.capacity = capacity;
+    }
+
+    public get(actorType: string, id: string[]): string | undefined {
+        const key = encodeKey([normalizeActorType(actorType), ...id]);
+        const value = this.items.get(key);
+        if (value !== undefined) {
+            // Move to end of LRU
+            this.items.delete(key);
+            this.items.set(key, value);
+        }
+        return value;
+    }
+
+    public put(actorType: string, id: string[], receiver: string | undefined): void {
+        const key = encodeKey([normalizeActorType(actorType), ...id]);
+        this.items.delete(key);
+        if (receiver !== undefined) {
+            this.items.set(key, receiver);
+            this.cleanup();
+        }
+    }
+
+    protected cleanup() {
+        if (this.items.size > this.capacity) {
+            for (const key of this.items.keys()) {
+                this.items.delete(key);
+                if (this.items.size < this.capacity) {
+                    break;
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Portal that provides access to actors in other apps via an {@link IRemote} instance.
+ */
+export class RemotePortal implements IPortal {
+    protected remote: IRemote;
+    protected backoff: IBackOff;
+    protected registry: IActorRegistry;
+    protected placementCache?: IPlacementCache;
+
+    constructor(remote: IRemote, backoff: IBackOff, registry: IActorRegistry, placementCache?: IPlacementCache) {
+        this.remote = remote;
+        this.backoff = backoff;
+        this.registry = registry;
+        this.placementCache = placementCache;
+    }
+
+    public retrieve<T extends object>(type: string, id: string[]): T {
+        const instance = {} as T;
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const self = this;
+        const p = Proxy.revocable(instance, {
+            get: (_target, prop, _receiver) => {
+                // Assume the caller is only trying to get functions (not properties, fields etc)
+                // we simply return a getter function implementation.
+                return async function (...args: unknown[]) {
+                    const actorType = normalizeActorType(type);
+                    const actionName = normalizeActionName(prop.toString());
+
+                    const content: IActorCallRequest = {
+                        actorType,
+                        actorId: id,
+                        actionName,
+                        arguments: Array.from(args)
+                    };
+
+                    const info: { suggestion: string | undefined } = { suggestion: undefined };
+
+                    const placement = self.registry.findPlacement(type)?.placement;
+                    if (placement?.sticky && self.placementCache) {
+                        info.suggestion = self.placementCache.get(actorType, id);
+                    }
+
+                    const backoff = self.backoff.begin(5000);
+                    const nested: FrameworkError[] = [];
+
+                    for await (const destination of self.iterateDestinations(actorType, id, info)) {
+                        const moment = Date.now();
+
+                        if (destination !== '') {
+                            info.suggestion = undefined;
+                            const options: IInvokeOptions = {
+                                destination,
+                                content
+                            };
+
+                            const result = await self.remote.invoke(options);
+                            if (result.errorCode) {
+                                nested.push(
+                                    new FrameworkError(
+                                        result.errorCode,
+                                        (result.errorParameters?.[TRANSPORT_ERROR_PARAMETER_MESSAGE] as string) ??
+                                            result.errorCode,
+                                        {
+                                            requestTime: new Date(moment).toISOString(),
+                                            requestOptions: options,
+                                            requestResult: result
+                                        }
+                                    )
+                                );
+                            } else {
+                                if (result.content) {
+                                    let ok = false;
+                                    try {
+                                        const response = result.content as IActorCallResponse;
+                                        if (response.error) {
+                                            if (response.error.kind === 'framework') {
+                                                const redirect =
+                                                    response.error.parameters?.[FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION];
+                                                info.suggestion = redirect as string;
+                                            } else {
+                                                ok = true;
+                                                throw new ApplicationError(
+                                                    response.error.code,
+                                                    response.error.template,
+                                                    response.error.parameters,
+                                                    response.error.stack,
+                                                    response.error.nested,
+                                                    response.error.message
+                                                );
+                                            }
+                                        } else {
+                                            ok = true;
+                                            return response.result;
+                                        }
+                                    } finally {
+                                        if (ok && placement?.sticky && self.placementCache) {
+                                            self.placementCache.put(actorType, id, options.destination);
+                                        }
+                                    }
+                                } else {
+                                    throw new Error('No content');
+                                }
+                            }
+                        } else {
+                            nested.push(
+                                new FrameworkError(
+                                    FRAMEWORK_ERROR_NO_RECEIVERS_AVAILABLE,
+                                    'No receivers available at [RequestTime] to process an action on an instance of [ActorType]',
+                                    {
+                                        RequestTime: new Date(moment).toISOString(),
+                                        ActorType: actorType,
+                                        ActionName: actionName
+                                    }
+                                )
+                            );
+                        }
+
+                        if (!(await backoff())) {
+                            break;
+                        }
+                    }
+
+                    if (placement?.sticky && self.placementCache) {
+                        self.placementCache.put(actorType, id, undefined);
+                    }
+
+                    throw new FrameworkError(
+                        FRAMEWORK_ERROR_INVOKE_ERROR,
+                        'Failed to invoke remote method [ActionName] on an instance of [ActorType]: [FirstMessage] ... [LastMessage]',
+                        {
+                            ActorType: actorType,
+                            ActionName: actionName,
+                            FirstMessage: nested[0]?.message ?? '',
+                            LastMessage: nested[nested.length - 1]?.message ?? ''
+                        },
+                        undefined,
+                        nested
+                    );
+                };
+            }
+        });
+        return p.proxy;
+    }
+
     public typed<T extends object>(type: string): ITypedPortal<T> {
         return new TypedPortal<T>(this, type);
     }
@@ -285,7 +383,7 @@ export class RemotePortal implements IPortal {
     protected findReceivers(actorType: string) {
         actorType = normalizeActorType(actorType);
 
-        return this.mapping.get(actorType)?.destinations || [];
+        return this.registry.findPlacement(actorType)?.destinations || [];
     }
 
     protected *iterateDestinations(type: string, id: string[], info: { suggestion: string | undefined }) {
@@ -299,7 +397,7 @@ export class RemotePortal implements IPortal {
             } else {
                 // Derive the placement every loop iteration, as new apps may
                 // have registered in between.
-                const placement = this.mapping.get(type)?.placement;
+                const placement = this.registry.findPlacement(type)?.placement;
                 let boundTo = '';
                 if (placement?.bindIdx !== undefined) {
                     const idx = placement.bindIdx >= 0 ? placement.bindIdx : id.length + placement.bindIdx;

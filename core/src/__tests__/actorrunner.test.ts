@@ -1,4 +1,4 @@
-import { ActorRunnerBuilder } from '../running';
+import { ActorRunnerBuilder, DEFAULT_LOCAL_APP_ID } from '../running';
 import { sleep } from '@darlean/utils';
 import { action, IPersistence, ITypedPortal } from '@darlean/base';
 import { MemoryPersistence } from '../various';
@@ -27,12 +27,16 @@ export class ViaEchoActor implements IViaEchoActor {
 describe('Actor runner & builder', () => {
     test('Actor runner - persistence', async () => {
         const builder = new ActorRunnerBuilder();
+        builder.setDefaultHosts([DEFAULT_LOCAL_APP_ID]);
+        builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
         builder.registerActor({
-            creator: (context) => new EchoActor(context.persistence as IPersistence<string | undefined>, context.id[2] || ''),
             type: 'MyActor',
+            kind: 'singular',
+            creator: (context) => new EchoActor(context.persistence as IPersistence<string | undefined>, context.id[2] || ''),
             capacity: 10
         });
         const app = builder.build();
+        await app.start();
 
         const portal = app.getPortal();
         const sub = portal.typed<IEchoActor>('MyActoR');
@@ -83,21 +87,26 @@ describe('Actor runner & builder', () => {
 
         // Persistence is cleared, value was stored before clear, expect no value is present for actor
         expect(await a0.getLastValue()).toBe('');
+
+        await app.stop();
     });
 
     test('Actor runner - local portal', async () => {
         // Test the local portal functionality by having one actor invoke another actor
         const builder = new ActorRunnerBuilder();
-
+        builder.setDefaultHosts([DEFAULT_LOCAL_APP_ID]);
+        builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
         builder.registerActor({
-            creator: (context) => new ViaEchoActor(context.portal.typed<IEchoActor>('EchoActor')),
             type: 'ViaEchoActor',
+            kind: 'singular',
+            creator: (context) => new ViaEchoActor(context.portal.typed<IEchoActor>('EchoActor')),
             capacity: 10
         });
 
         builder.registerActor({
-            creator: (context) => new EchoActor(context.persistence as IPersistence<string | undefined>, context.id[0] || ''),
             type: 'EchoActor',
+            kind: 'singular',
+            creator: (context) => new EchoActor(context.persistence as IPersistence<string | undefined>, context.id[0] || ''),
             capacity: 10
         });
 
@@ -128,16 +137,20 @@ describe('Actor runner & builder', () => {
         // all actors live in the same app
         const builder = new ActorRunnerBuilder();
 
+        builder.hostActorLock(['my-app'], 1);
+
         builder.registerActor({
-            creator: (context) => new ViaEchoActor(context.portal.typed<IEchoActor>('EchoActor')),
             type: 'ViaEchoActor',
+            kind: 'singular',
+            creator: (context) => new ViaEchoActor(context.portal.typed<IEchoActor>('EchoActor')),
             capacity: 10,
             hosts: ['my-app']
         });
 
         builder.registerActor({
-            creator: (context) => new EchoActor(context.persistence as IPersistence<string | undefined>, context.id[0] || ''),
             type: 'EchoActor',
+            kind: 'singular',
+            creator: (context) => new EchoActor(context.persistence as IPersistence<string | undefined>, context.id[0] || ''),
             capacity: 10,
             hosts: ['my-app']
         });

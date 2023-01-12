@@ -1,5 +1,7 @@
 import { IEnvelope } from './envelope';
 
+export const TRANSPORT_ERROR_UNKNOWN_RECEIVER = 'UNKNOWN_RECEIVER';
+
 export interface ITransportEnvelope extends IEnvelope {
     receiverId: string;
     returnEnvelopes?: ITransportEnvelope[];

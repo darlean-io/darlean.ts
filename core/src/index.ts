@@ -30,9 +30,8 @@
  * and {@link service|@service} decorators).
  *
  * ## Local actor invocation
- * For local use (that is, when all code and actors live in the same process), it is possible to use {@link LocalPortal}, which
- * is a convenience wrapper around a {@link RemotePortal} with an {@link InProcessRemote} remote. This eliminates the need for
- * a real transport implementation.
+ * For local use (that is, when all code and actors live in the same process, divided over 1 or more internal apps), it is possible to use an instance of {@link InProcessTransport}
+ * and pass it to the {@link ActorRunnerBuilder.setRemoteAccess} calls of each of the internal apps..
  *
  * ## Remote actor invocation
  *
@@ -64,7 +63,6 @@
 export * from './shared';
 export * from './instances';
 export * from './remoteinvocation';
-export * from './localinvocation';
 export * from './transportremote';
 export * from './running';
 export * from './infra';

@@ -1,11 +1,11 @@
 {
   "workspaces": [
+	"./utils",
     "./docgen",
 	"./base",
+	"./suites/actor-lock-suite",
 	"./core",
-	"./utils",
-	"./examples",
-	"./suites/actor-lock-suite"
+	"./examples"
   ],
   "scripts": {
 	"doc1": "npx typedoc --skipErrorChecking --json typedoc-out.json",
