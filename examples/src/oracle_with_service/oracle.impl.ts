@@ -1,5 +1,4 @@
 import { action, ActorSuite, IActorSuite, ITypedPortal } from '@darlean/base';
-import { currentScope } from '@darlean/utils';
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 
 interface IOracleActor {
@@ -9,6 +8,7 @@ interface IOracleActor {
 
 const ORACLE_ACTOR = 'OracleActor';
 
+// Implementation of a virtual actor that has the knowledge about one topic
 class OracleActor implements IOracleActor {
     protected knowledge: Map<string, number>;
 
@@ -37,6 +37,7 @@ class OracleActor implements IOracleActor {
     }
 }
 
+// Implementation of the service that hides the implementation (OracleActor) from the user.
 class OracleService implements IOracleService {
     protected actorPortal: ITypedPortal<IOracleActor>;
 
@@ -46,17 +47,17 @@ class OracleService implements IOracleService {
 
     @action()
     public async ask(topic: string, question: string): Promise<number> {
-        currentScope().info('Oracle service was asked for [Question] on topic [Topic]', () => ({
-            Topic: topic,
-            Question: question
-        }));
+        // Retrieve a proxy to the OracleActor for the specific topic
         const actor = this.actorPortal.retrieve([topic]);
+        // Ask the actor the question, and return the answer
         return await actor.ask(question);
     }
 
     @action()
     public async teach(topic: string, fact: string, answer: number): Promise<void> {
+        // Retrieve a proxy to the OracleActor for the specific topic
         const actor = this.actorPortal.retrieve([topic]);
+        // Teach the new fact to the actor
         return await actor.teach(fact, answer);
     }
 }
@@ -69,27 +70,38 @@ export interface IKnowledgeTopics {
     [topic: string]: IKnowledgeFacts;
 }
 
+// Application code can invoke this suite function to register the oracle actors 
+// (OracleService and OracleActor) to their actor runner.
 export function suite(knowledge?: IKnowledgeTopics, hosts?: string[]): IActorSuite {
-    const suite = new ActorSuite([
+    return new ActorSuite([
+        // Registration of the OracleActor virtual actor
         {
             type: ORACLE_ACTOR,
+            // Singular: there is only one actor instance active at any moment for the same actor type and id
             kind: 'singular',
+            // Factory function that creates a new actor instance
             creator: (context) => {
+                // Derive the topic from the current actor id. We use the first (and only) id field as topic name.
                 const topic = context.id[0];
+                // Lookup relevant facts for the topic in the knowledge
                 const k = topic ? knowledge?.[topic] : undefined;
+                // Create and return a new OracleActor instance with the provided knowledge
                 return new OracleActor(k);
             },
             hosts
         },
+        // Registration of the OracleService service actor
         {
             type: ORACLE_SERVICE,
+            // Multiplar: there can be more than one actor instance active at any moment for the same actor type and id
             kind: 'multiplar',
             creator: (context) => {
+                // Obtain a typed portal that the service can use to retrieve proxies to specific OracleActor instances
                 const actorPortal = context.portal.typed<IOracleActor>(ORACLE_ACTOR);
+                // Create and return a new OracleService with the typed portal
                 return new OracleService(actorPortal);
             },
             hosts
         }
     ]);
-    return suite;
 }
