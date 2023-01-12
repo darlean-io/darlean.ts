@@ -5,6 +5,21 @@ This example illustrates the implementation of a simple oracle that can answers 
 We assume that knowledge consists of (static) facts, and that knowledge is grouped into topics (like `temperature` and `price`). A fact contists of a keyword (like `yesterday` or `milk`) and
 a numeric answer (`19` or `2`, for example).
 
+```ts
+{
+    temperature: {
+        yesterday: 19,
+        today: 20,
+        tomorrow: 25
+    },
+    price: {
+        milk: 2,
+        bike: 250,
+        wine: 15
+    }
+}
+```
+
 The oracle is of course implemented using virtual actor technology. To make things a bit interesting, we decided not to put all facts for all topics into 1 `OracleActor` instance, but to have
 multiple `OracleActor` instances, one for each topic.
 
