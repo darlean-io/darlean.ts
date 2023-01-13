@@ -123,10 +123,10 @@ export class ImmediateBackOff implements IBackOff {
 }
 
 /**
- * Used internally to keep administration of which actor type is present on which
+ * Used to keep administration of which actor type is present on which
  * destinations, and what the current placement settings are for the actor type.
  */
-interface IActorTypeInfo {
+export interface IActorTypeInfo {
     destinations: string[];
     placement?: IActorPlacement;
 }
@@ -179,6 +179,10 @@ export class ActorRegistry implements IActorRegistry {
 
     public findPlacement(type: string): IActorTypeInfo | undefined {
         return this.mapping.get(normalizeActorType(type));
+    }
+
+    public getAll(): Map<string, IActorTypeInfo> {
+        return this.mapping;
     }
 }
 
@@ -242,6 +246,10 @@ export class RemotePortal implements IPortal {
         this.backoff = backoff;
         this.registry = registry;
         this.placementCache = placementCache;
+    }
+
+    public setRegistry(value: IActorRegistry) {
+        this.registry = value;
     }
 
     public retrieve<T extends object>(type: string, id: string[]): T {

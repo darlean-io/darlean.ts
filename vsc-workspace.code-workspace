@@ -17,7 +17,10 @@
 		},
 		{
 		    "path": "suites/actor-lock-suite"
-		}, 
+		},
+		{
+		    "path": "suites/actor-registry-suite"
+		},		
 		{
 			"path": "."
 		}

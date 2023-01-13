@@ -5,8 +5,10 @@ import { ActorRunnerBuilder } from '@darlean/core';
 async function main(appId: string, servers: string[]) {
     const builder = new ActorRunnerBuilder();
     builder.setRemoteAccess(appId);
+    builder.setRuntimeHosts(servers);
     builder.setDefaultHosts(servers);
     builder.hostActorLock(servers, 1);
+    builder.hostActorRegistry();
     builder.registerSuite(oracle_suite(knowledge, servers));
     
     const runner = builder.build();

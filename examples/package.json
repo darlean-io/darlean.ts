@@ -14,6 +14,8 @@
     "example:oracle_with_service:client": "node lib/oracle_with_service/client.js",
     "example:oracle_with_service:clientserver": "concurrently -k \"npm run example:oracle_with_service:server server server\" \"npm run example:oracle_with_service:client client server\"",
     "example:oracle_with_service:clientserver2": "concurrently -k \"npm run example:oracle_with_service:server server01 server01,server02\" \"npm run example:oracle_with_service:server server02 server01,server02\" \"npm run example:oracle_with_service:client client server01,server02\"",
+    "example:performance:n3": "concurrently -k \"node lib/performance/server.js server00 server00,server01,server02\" \"node lib/performance/server.js server01 server00,server01,server02\" \"node lib/performance/server.js server02 server00,server01,server02\" \"node lib/performance/client.js client server00,server01,server02\"",
+    "example:performance:n1": "concurrently -k \"node lib/performance/server.js server00 server00\" \"node lib/performance/client.js client server00\"",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "npx eslint ./src --ext .js,.jsx,.ts,.tsx",
     "prepare": "npm run build",

@@ -22,6 +22,9 @@ import { ACTOR_LOCK_SERVICE, IActorLockService } from '@darlean/actor-lock-suite
 import actorLockSuite from '@darlean/actor-lock-suite';
 import { DistributedActorLock, IActorLock } from './actorlock';
 import { InProcessTransport } from './infra/inprocesstransport';
+import { DistributedActorRegistry } from './distributedactorregistry';
+import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-registry-suite';
+import actorRegistrySuite from '@darlean/actor-registry-suite';
 
 export const DEFAULT_CAPACITY = 1000;
 
@@ -120,8 +123,10 @@ export class ActorRunnerBuilder {
     protected remote?: IRemote;
     protected time?: ITime;
     protected defaultHosts?: string[];
+    protected runtimeHosts?: string[];
     protected multiContainer?: MultiTypeInstanceContainer;
     protected transportMechanism: '' | 'nats' = '';
+    protected distributedRegistry?: DistributedActorRegistry;
 
     constructor() {
         this.appId = DEFAULT_LOCAL_APP_ID;
@@ -160,6 +165,18 @@ export class ActorRunnerBuilder {
         return this;
     }
 
+    public setRuntimeHosts(hosts: string[]): ActorRunnerBuilder {
+        this.runtimeHosts = hosts;
+
+        this.registerActor({
+            type: ACTOR_REGISTRY_SERVICE,
+            kind: 'singular',
+            hosts: hosts
+        });
+
+        return this;
+    }
+
     /**
      * Configures the builder to allow remote access via Nats.
      * @param appId The app-id under which the actor runner will register to the cluster.
@@ -179,6 +196,11 @@ export class ActorRunnerBuilder {
             id: [],
             redundancy
         });
+        this.registerSuite(suite);
+    }
+
+    public hostActorRegistry() {
+        const suite = actorRegistrySuite();
         this.registerSuite(suite);
     }
 
@@ -251,11 +273,19 @@ export class ActorRunnerBuilder {
             if (this.remote) {
                 await (this.remote as TransportRemote).init();
             }
+
+            if (this.distributedRegistry) {
+                this.distributedRegistry.start();
+            }
         });
 
         ar.addStopper(async () => {
             process.off('SIGINT', signalHandler);
             process.off('SIGTERM', signalHandler);
+
+            if (this.distributedRegistry) {
+                this.distributedRegistry.stop();
+            }
 
             await this.multiContainer?.finalize();
 
@@ -310,6 +340,12 @@ export class ActorRunnerBuilder {
         const registry = new ActorRegistry();
         const placementCache = new PlacementCache(10000);
         const portal = new RemotePortal(remote, backoff, registry, placementCache);
+
+        const registryService = portal.retrieve<IActorRegistryService>(ACTOR_REGISTRY_SERVICE, []);
+        const distributedRegistry = new DistributedActorRegistry(registryService, time, appId, registry);
+        this.distributedRegistry = distributedRegistry;
+        portal.setRegistry(distributedRegistry);
+        
         const actorLock = this.createActorLock(portal, time, appId);
         this.fillContainers(multiContainer, portal, actorLock);
 

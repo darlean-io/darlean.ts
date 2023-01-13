@@ -1,19 +1,17 @@
 {
-  "name": "@darlean/core",
+  "name": "@darlean/actor-registry-suite",
   "version": "2.0.0-alpha.0",
-  "description": "Darlean core functionality for defining, exposing and invoking actors",
+  "description": "Actor Registry Suite",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "test": "npm run test:all",
-    "test:all": "jest --verbose --runInBand --config jestconfig.json",
     "build": "tsc",
     "run": "node lib/index.js",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "npx eslint ./src --ext .js,.jsx,.ts,.tsx",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint",
-    "preversion": "npm run format && npm install && npm run lint && npm test",
+    "preversion": "npm run format && npm install && npm run lint",
     "version": "git add -A src",
     "postversion": "git push && git push --tags",
     "precommit": "npm run format && npm run lint && npm run build",
@@ -21,14 +19,14 @@
   },
   "keywords": [
     "Darlean",
-    "Core"
+    "Actor registry",
+    "Suite"
   ],
   "author": "Theo van der Donk",
   "license": "Apache-2.0",
   "devDependencies": {
     "@types/jest": "^29.2.4",
     "@types/node": "^18.11.17",
-    "@types/uuid": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^5.46.1",
     "@typescript-eslint/parser": "^5.46.1",
     "eslint": "^8.30.0",
@@ -40,21 +38,15 @@
     "typescript": "^4.9.4"
   },
   "files": [
-    "lib/**/*",
-    "binaries/**/*"
+    "lib/**/*"
   ],
-  "dependencies": {
-    "@darlean/actor-lock-suite": "^2.0.0-alpha.0",
-    "@darlean/actor-registry-suite": "^2.0.0-alpha.0",
-    "bson": "^4.7.0",
-    "nats": "^2.9.2",
-    "uuid": "^9.0.0"
-  },
-  "directories": {
-    "lib": "lib"
-  },
   "typedoc": {
     "entryPoint": "./src/index.ts",
     "tsconfig": "./tsconfig.json"
+  },
+  "dependencies": {
+    "@darlean/base": "^2.0.0-alpha.0",
+    "@darlean/utils": "^2.0.0-alpha.0",
+    "uuid": "^9.0.0"
   }
 }

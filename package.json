@@ -4,6 +4,7 @@
     "./docgen",
 	"./base",
 	"./suites/actor-lock-suite",
+	"./suites/actor-registry-suite",
 	"./core",
 	"./examples"
   ],

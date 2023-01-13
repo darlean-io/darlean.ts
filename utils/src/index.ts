@@ -15,3 +15,4 @@ export * from './time';
 export * from './timeimpl';
 export * from './tracing';
 export * from './util';
+export * from './polling';

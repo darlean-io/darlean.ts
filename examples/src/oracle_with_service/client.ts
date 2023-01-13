@@ -4,13 +4,9 @@ import { ActorRunnerBuilder, NatsServer } from '@darlean/core';
 async function main(appId: string, servers: string[]) {
     const builder = new ActorRunnerBuilder();
     builder.setRemoteAccess(appId);
+    builder.setRuntimeHosts(servers);
     builder.setDefaultHosts(servers);
 
-    builder.registerActor({
-        type: ORACLE_SERVICE,
-        kind: 'multiplar',
-        hosts: servers
-    });
     const runner = builder.build();
 
     const natsServer = new NatsServer();
