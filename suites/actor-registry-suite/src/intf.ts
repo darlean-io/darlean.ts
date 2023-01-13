@@ -3,7 +3,6 @@ export interface IActorRegistryService {
     push(options: IActorRegistryService_Push_Request): Promise<void>;
 }
 
-
 export interface IActorRegistryService_Obtain_Request {
     actorTypes?: string[];
     nonce?: string;
@@ -25,7 +24,7 @@ export interface IActorRegistryActorInfo {
 
 export interface IActorRegistryService_Obtain_Response {
     nonce: string;
-    actorInfo?: {[actorType: string]: IActorRegistryActorInfo};
+    actorInfo?: { [actorType: string]: IActorRegistryActorInfo };
 }
 
 export interface IActorRegistryActorPushInfo {
@@ -34,5 +33,5 @@ export interface IActorRegistryActorPushInfo {
 
 export interface IActorRegistryService_Push_Request {
     application: string;
-    actorInfo: {[actorType: string]: IActorRegistryActorPushInfo};
+    actorInfo: { [actorType: string]: IActorRegistryActorPushInfo };
 }

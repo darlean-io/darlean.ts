@@ -7,7 +7,7 @@ async function main(appId: string, servers: string[]) {
     builder.setDefaultHosts(servers);
     builder.hostActorLock(servers, 1);
     builder.registerSuite(actor_suite());
-    
+
     const runner = builder.build();
     await runner.start();
     await runner.run();
@@ -16,7 +16,7 @@ async function main(appId: string, servers: string[]) {
 if (require.main === module) {
     const args = process.argv.slice(2);
     const appId = args[0];
-    const servers = (args[1]).split(',');
+    const servers = args[1].split(',');
 
     main(appId, servers)
         .then()

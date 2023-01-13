@@ -13,13 +13,13 @@ class PerformanceActor implements IPerformanceActor {
         }
         return this.sum;
     }
-    
+
     @action()
     public async get(): Promise<number> {
         throw new Error('Method not implemented.');
     }
 }
- 
+
 export function suite(): IActorSuite {
     return new ActorSuite([
         {

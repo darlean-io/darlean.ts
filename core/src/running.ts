@@ -345,7 +345,7 @@ export class ActorRunnerBuilder {
         const distributedRegistry = new DistributedActorRegistry(registryService, time, appId, registry);
         this.distributedRegistry = distributedRegistry;
         portal.setRegistry(distributedRegistry);
-        
+
         const actorLock = this.createActorLock(portal, time, appId);
         this.fillContainers(multiContainer, portal, actorLock);
 

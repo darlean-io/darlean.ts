@@ -1,6 +1,6 @@
-import { IActorRegistryService, IActorRegistryService_Push_Request } from "@darlean/actor-registry-suite";
-import { ITime, ITimer } from "@darlean/utils";
-import { ActorRegistry, IActorRegistry, IActorTypeInfo } from "./remoteinvocation";
+import { IActorRegistryService, IActorRegistryService_Push_Request } from '@darlean/actor-registry-suite';
+import { ITime, ITimer } from '@darlean/utils';
+import { ActorRegistry, IActorRegistry, IActorTypeInfo } from './remoteinvocation';
 
 export class DistributedActorRegistry implements IActorRegistry {
     private service: IActorRegistryService;
@@ -28,14 +28,24 @@ export class DistributedActorRegistry implements IActorRegistry {
         // Note: the obtain action is a long-polling operation that returns when
         // the data is changed, or after a certain timeout. That is why we
         // set the interval here to 0, to perform an immediate retry after the
-        // poll expired. 
-        this.refreshTimer = this.time.repeat(async () => {
-            await this.obtain();
-        }, 'Actor registry refresh', 0, 0);
-    
-        this.pushTimer = this.time.repeat(async () => {
-            await this.push();
-        }, 'Actor registry push', 30*1000, 0);
+        // poll expired.
+        this.refreshTimer = this.time.repeat(
+            async () => {
+                await this.obtain();
+            },
+            'Actor registry refresh',
+            0,
+            0
+        );
+
+        this.pushTimer = this.time.repeat(
+            async () => {
+                await this.push();
+            },
+            'Actor registry push',
+            30 * 1000,
+            0
+        );
     }
 
     public stop() {
@@ -63,7 +73,7 @@ export class DistributedActorRegistry implements IActorRegistry {
 
     protected async obtain() {
         //console.log('OBTAINING');
-        
+
         try {
             const info = await this.service.obtain({
                 nonce: this.nonce,
@@ -101,12 +111,12 @@ export class DistributedActorRegistry implements IActorRegistry {
                         appBindIdx: info.placement?.bindIdx,
                         sticky: info.placement?.sticky
                     }
-                }
+                };
             }
         }
 
         // console.log('PUSHING', JSON.stringify(request));
 
         await this.service.push(request);
-   }
+    }
 }

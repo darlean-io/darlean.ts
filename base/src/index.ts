@@ -35,7 +35,7 @@
  * when the number of actor instances in the container exceeds a predefined capacity threshold.
  *
  * Internally, every actor instance is wrapped in an {@link IInstanceWrapper}, which takes care of global actor
- * uniqueness (a given actor is guaranteed to only exists at most once within the entire cluster) and action locking. 
+ * uniqueness (a given actor is guaranteed to only exists at most once within the entire cluster) and action locking.
  * Global actor uniqueness is configured via de `kind` field of the {@link IActorRegistrationOptions} that is used for
  * actor registrartion; per-action locking is configured via the {@link action | @action} decorator of the corresponding method.
  *

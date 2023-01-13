@@ -1,8 +1,14 @@
-import { action, IDeactivatable } from "@darlean/base";
-import { PollController } from "@darlean/utils";
-import * as uuid from "uuid";
+import { action, IDeactivatable } from '@darlean/base';
+import { PollController } from '@darlean/utils';
+import * as uuid from 'uuid';
 
-import { IActorRegistryActorInfo, IActorRegistryService, IActorRegistryService_Obtain_Request, IActorRegistryService_Obtain_Response, IActorRegistryService_Push_Request } from "./intf";
+import {
+    IActorRegistryActorInfo,
+    IActorRegistryService,
+    IActorRegistryService_Obtain_Request,
+    IActorRegistryService_Obtain_Response,
+    IActorRegistryService_Push_Request
+} from './intf';
 
 export class ActorRegistryService implements IActorRegistryService, IDeactivatable {
     protected byActorType: Map<string, IActorRegistryActorInfo>;
@@ -19,11 +25,11 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
         this.pollController.finalize();
     }
 
-    @action({locking: 'shared'})
+    @action({ locking: 'shared' })
     public async obtain(options: IActorRegistryService_Obtain_Request): Promise<IActorRegistryService_Obtain_Response> {
         console.log('WITHIN OBTAIN');
         if (options.nonce === this.nonce) {
-            if (!await this.pollController.wait(20*1000)) {
+            if (!(await this.pollController.wait(20 * 1000))) {
                 return {
                     nonce: this.nonce
                 };
@@ -44,8 +50,8 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
         }
         return result;
     }
-    
-    @action({locking: 'shared'})
+
+    @action({ locking: 'shared' })
     public async push(options: IActorRegistryService_Push_Request): Promise<void> {
         console.log('WITHIN PUSH');
         let changed = false;
@@ -55,13 +61,13 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
                 ourInfo = {
                     applications: [],
                     placement: {}
-                }
+                };
                 this.byActorType.set(actorType, ourInfo);
                 changed = true;
             }
             // TODO: Remove application when not hosting the actor type anymore
-            if (!ourInfo.applications.find( (x) => x.name === options.application)) {
-                ourInfo.applications.push({name: options.application});
+            if (!ourInfo.applications.find((x) => x.name === options.application)) {
+                ourInfo.applications.push({ name: options.application });
                 changed = true;
             }
 
@@ -73,7 +79,7 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
 
             if (actorInfo.placement.sticky !== ourInfo.placement.sticky) {
                 ourInfo.placement.sticky = actorInfo.placement.sticky;
-                changed = true; 
+                changed = true;
             }
         }
 

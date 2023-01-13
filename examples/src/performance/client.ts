@@ -29,9 +29,9 @@ async function main(appId: string, servers: string[]) {
         const portal = runner.getPortal().typed<IPerformanceActor>(PERFORMANCE_ACTOR);
 
         const tasks: ParallelTask<number, void>[] = [];
-        for (let i=0; i<100000; i++) {
-            tasks.push( async () => {
-                const app = `server0${(i % servers.length)}`;
+        for (let i = 0; i < 100000; i++) {
+            tasks.push(async () => {
+                const app = `server0${i % servers.length}`;
                 const actor = portal.retrieve([app, i.toString()]);
                 const result = await actor.add(i, 5);
                 return result;
@@ -39,12 +39,11 @@ async function main(appId: string, servers: string[]) {
         }
 
         const start = time.machineTicks();
-        await parallel(tasks, 60*1000, 1000);
+        await parallel(tasks, 60 * 1000, 1000);
         const stop = time.machineTicks();
         const duration = stop - start;
         const perSecond = tasks.length / (duration * 0.001);
         console.log('Finished', duration, 'ms', ' / ', perSecond, '/sec');
-
     } catch (e) {
         console.log('ERROR', e);
         console.log(JSON.stringify(e, undefined, 2));
@@ -57,7 +56,7 @@ async function main(appId: string, servers: string[]) {
 if (require.main === module) {
     const args = process.argv.slice(2);
     const appId = args[0];
-    const servers = (args[1]).split(',');
+    const servers = args[1].split(',');
 
     main(appId, servers)
         .then()

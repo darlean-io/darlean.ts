@@ -1,6 +1,6 @@
 /**
  * Suite that provides the Darlean Actor Registry service.
- * 
+ *
  * The Actor Registry service maintains an administration of which actor types are hosted by which applications, and also
  * provides placement information for each actor type.
  *

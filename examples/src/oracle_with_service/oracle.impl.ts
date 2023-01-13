@@ -70,7 +70,7 @@ export interface IKnowledgeTopics {
     [topic: string]: IKnowledgeFacts;
 }
 
-// Application code can invoke this suite function to register the oracle actors 
+// Application code can invoke this suite function to register the oracle actors
 // (OracleService and OracleActor) to their actor runner.
 export function suite(knowledge?: IKnowledgeTopics, hosts?: string[]): IActorSuite {
     return new ActorSuite([

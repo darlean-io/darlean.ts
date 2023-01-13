@@ -23,10 +23,11 @@ export class PollController<T> {
             expired: () => {
                 clearTimeout(timeoutHandle);
                 expired();
-            }};
+            }
+        };
         this.interrupteds.push(item);
 
-        const timeoutHandle = setTimeout( () => {
+        const timeoutHandle = setTimeout(() => {
             const idx = this.interrupteds.indexOf(item);
             if (idx >= 0) {
                 this.interrupteds.splice(idx, 1);
@@ -43,16 +44,20 @@ export class PollController<T> {
                 }
                 expired();
             }
-        }
+        };
     }
 
     public async wait(timeout: number): Promise<T | undefined> {
         return new Promise((resolve) => {
-            this.register(timeout, (value) => {
-                resolve(value);
-            }, () => {
-                resolve(undefined);
-            });
+            this.register(
+                timeout,
+                (value) => {
+                    resolve(value);
+                },
+                () => {
+                    resolve(undefined);
+                }
+            );
         });
     }
 

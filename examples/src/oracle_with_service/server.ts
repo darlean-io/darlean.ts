@@ -10,7 +10,7 @@ async function main(appId: string, servers: string[]) {
     builder.hostActorLock(servers, 1);
     builder.hostActorRegistry();
     builder.registerSuite(oracle_suite(knowledge, servers));
-    
+
     const runner = builder.build();
     await runner.start();
     await runner.run();
