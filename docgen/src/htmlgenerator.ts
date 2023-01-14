@@ -664,7 +664,16 @@ export class Generator {
                 first = false;
                 this.generateType(html, item, data, scope);
             }
-        } else if (t.type === 'reflection') {
+        } else if (t.type === 'intersection') {
+            let first = true;
+            for (const item of t.types ?? []) {
+                if (!first) {
+                    html.text(' & ');
+                }
+                first = false;
+                this.generateType(html, item, data, scope);
+            }
+        }else if (t.type === 'reflection') {
             if (t.declaration?.indexSignature) {
                 const key = t.declaration?.indexSignature?.parameters;
                 const value = t.declaration?.indexSignature?.type;

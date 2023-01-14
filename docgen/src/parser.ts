@@ -43,7 +43,7 @@ export interface ISummaryItem {
 
 export interface ITsDocType {
     id: number;
-    type: 'reference' | 'array' | 'intrinsic' | 'union' | 'reflection' | 'literal';
+    type: 'reference' | 'array' | 'intrinsic' | 'union' | 'intersection' | 'reflection' | 'literal';
     types?: ITsDocType[]; // In case of union
     name?: string; // In case of intrinsic (built-in type) or reference
     value?: string; // In case of literal
