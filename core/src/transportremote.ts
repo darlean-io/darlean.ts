@@ -17,6 +17,7 @@ export type ITransportActorCallResponse = IActorCallResponse;
 
 export const TRANSPORT_ERROR_TRANSPORT_ERROR = 'TRANSPORT_ERROR';
 export const TRANSPORT_ERROR_TRANSPORT_CALL_TIMEOUT = 'TRANSPORT_CALL_TIMEOUT';
+export const TRANSPORT_ERROR_TRANSPORT_CALL_INTERRUPTED = 'TRANSPORT_CALL_INTERRUPTED';
 
 export const TRANSPORT_ERROR_PARAMETER_MESSAGE = 'Message';
 
@@ -37,7 +38,7 @@ export class TransportRemote implements IRemote {
     protected appId: string;
     protected pendingCalls: Map<string, IRemotePendingCall>;
     protected instanceContainer: IMultiTypeInstanceContainer;
-
+    
     /**
      * Creates a new TransportRemote.
      * @param appId The id of the current application with which the remote makes itself known to the transport
@@ -60,10 +61,22 @@ export class TransportRemote implements IRemote {
     public async finalize() {
         await this.session?.finalize();
         this.session = undefined;
+
+        // The following code cancels aLL pending calls which effectively helps to
+        // prevent the application from hanging at exit, but doing so is a sign that
+        // somewhere else things are not cleaned up properly.
+        // So let's keep this code commented out for now.
+        /*const pending = this.pendingCalls;
+        this.pendingCalls = new Map();
+        for (const p of pending.values()) {
+            clearTimeout(p.timeout);
+            p.reject(TRANSPORT_ERROR_TRANSPORT_CALL_INTERRUPTED);
+        }*/
     }
 
     public async invoke(options: IInvokeOptions): Promise<IInvokeResult> {
         const callId = uuid.v4();
+        
         const env: ITransportEnvelope = {
             receiverId: options.destination,
             child: {
@@ -85,6 +98,17 @@ export class TransportRemote implements IRemote {
                 }, 60 * 1000)
             };
             this.pendingCalls.set(callId, call);
+            
+            if (options.aborter) {
+                options.aborter.handle( () => {
+                    this.pendingCalls.delete(callId);
+                    clearTimeout(call.timeout);
+                    resolve({
+                        errorCode: TRANSPORT_ERROR_TRANSPORT_CALL_INTERRUPTED
+                    });
+                });
+            }
+
             if (this.session) {
                 this.session.send(env, this.toTransportRequest(options.content as IActorCallRequest));
             } else {

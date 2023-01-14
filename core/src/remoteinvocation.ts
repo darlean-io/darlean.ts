@@ -42,9 +42,10 @@ import {
     IRemote,
     ITypedPortal,
     ApplicationError,
-    FrameworkError
+    FrameworkError,
+    IAbortable,
 } from '@darlean/base';
-import { encodeKey, ITime } from '@darlean/utils';
+import { Aborter, encodeKey, ITime } from '@darlean/utils';
 import { sleep } from '@darlean/utils';
 import { normalizeActionName, normalizeActorType } from './shared';
 import { TRANSPORT_ERROR_PARAMETER_MESSAGE } from './transportremote';
@@ -67,7 +68,7 @@ export class TypedPortal<T extends object> implements ITypedPortal<T> {
         this.type = type;
     }
 
-    public retrieve(id: string[]): T {
+    public retrieve(id: string[]): T & IAbortable {
         return this.portal.retrieve(this.type, id);
     }
 
@@ -92,16 +93,16 @@ export class ExponentialBackOff implements IBackOff {
         this.initial = initial;
     }
 
-    public begin(maxDurationMS?: number): () => Promise<boolean> {
+    public begin(maxDurationMS?: number): (aborter?: Aborter) => Promise<boolean> {
         let value = this.initial;
         const maxTime = maxDurationMS === undefined ? undefined : this.time.machineTicks() + maxDurationMS;
 
-        return async () => {
+        return async ( aborter?: Aborter ) => {
             const delay = Math.max(0, (Math.random() + 0.5) * value);
             value *= this.factor;
             const newTime = this.time.machineTicks() + delay;
             if (maxTime === undefined || newTime < maxTime) {
-                await sleep(delay);
+                await sleep(delay, aborter);
                 return true;
             } else {
                 return false;
@@ -252,15 +253,36 @@ export class RemotePortal implements IPortal {
         this.registry = value;
     }
 
-    public retrieve<T extends object>(type: string, id: string[]): T {
+    public retrieve<T extends object>(type: string, id: string[]): T & IAbortable {
         const instance = {} as T;
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
+        let nextCallAborter: Aborter | undefined;
         const p = Proxy.revocable(instance, {
             get: (_target, prop, _receiver) => {
+                if (prop === 'aborter') {
+                    return (value: Aborter) => {
+                        nextCallAborter = value;
+                    }
+                }
+
                 // Assume the caller is only trying to get functions (not properties, fields etc)
                 // we simply return a getter function implementation.
                 return async function (...args: unknown[]) {
+                    let aborted = false;
+                    const aborter = nextCallAborter;
+                    nextCallAborter = undefined;
+                    let subAborter: Aborter | undefined;
+
+                    // console.log('ABORTER', prop.toString(), aborter);
+
+                    if (aborter) {
+                        aborter.handle( () => {
+                            aborted = true;
+                            subAborter?.abort();
+                        });
+                    }
+    
                     const actorType = normalizeActorType(type);
                     const actionName = normalizeActionName(prop.toString());
 
@@ -282,16 +304,33 @@ export class RemotePortal implements IPortal {
                     const nested: FrameworkError[] = [];
 
                     for await (const destination of self.iterateDestinations(actorType, id, info)) {
+                        if (aborted) {
+                            throw new FrameworkError(
+                                FRAMEWORK_ERROR_INVOKE_ERROR,
+                                'Interrupted while invoking remote method [ActionName] on an instance of [ActorType]',
+                                {
+                                    ActorType: actorType,
+                                    ActionName: actionName
+                                },
+                                undefined,
+                                nested
+                            );
+                        }
                         const moment = Date.now();
 
                         if (destination !== '') {
                             info.suggestion = undefined;
+                            subAborter = (aborter) ? new Aborter() : undefined;
+                            
                             const options: IInvokeOptions = {
                                 destination,
-                                content
+                                content,
+                                aborter: subAborter
                             };
 
                             const result = await self.remote.invoke(options);
+                            subAborter = undefined;
+
                             if (result.errorCode) {
                                 nested.push(
                                     new FrameworkError(
@@ -353,8 +392,15 @@ export class RemotePortal implements IPortal {
                             );
                         }
 
-                        if (!(await backoff())) {
-                            break;
+                        if (!aborted) {
+                            subAborter = aborter ? new Aborter() : undefined;
+                            try {
+                                if (!(await backoff(aborter))) {
+                                    break;
+                                }
+                            } finally {
+                                subAborter = undefined;
+                            }
                         }
                     }
 
@@ -377,7 +423,7 @@ export class RemotePortal implements IPortal {
                 };
             }
         });
-        return p.proxy;
+        return p.proxy as T & IAbortable;
     }
 
     public typed<T extends object>(type: string): ITypedPortal<T> {
@@ -458,7 +504,7 @@ export class PrefixPortal implements IPortal {
         this.idPrefix = idPrefix;
     }
 
-    public retrieve<T extends object>(type: string, id: string[]): T {
+    public retrieve<T extends object>(type: string, id: string[]): T & IAbortable {
         return this.parent.retrieve(type, [...this.idPrefix, ...id]);
     }
 
@@ -480,7 +526,7 @@ export class PrefixTypedPortal<T extends object> implements ITypedPortal<T> {
         this.idPrefix = idPrefix;
     }
 
-    retrieve(id: string[]): T {
+    retrieve(id: string[]): T & IAbortable {
         return this.parent.retrieve([...this.idPrefix, ...id]);
     }
 

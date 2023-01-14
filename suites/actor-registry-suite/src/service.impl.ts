@@ -27,13 +27,15 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
 
     @action({ locking: 'shared' })
     public async obtain(options: IActorRegistryService_Obtain_Request): Promise<IActorRegistryService_Obtain_Response> {
-        console.log('WITHIN OBTAIN');
+        // console.log('WITHIN OBTAIN', options.nonce, this.nonce, options.nonce === this.nonce);
         if (options.nonce === this.nonce) {
             if (!(await this.pollController.wait(20 * 1000))) {
+                // console.log('RETURN');
                 return {
                     nonce: this.nonce
                 };
             }
+            // console.log('RETURN TRUE');
         }
 
         const result: IActorRegistryService_Obtain_Response = {
@@ -53,7 +55,6 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
 
     @action({ locking: 'shared' })
     public async push(options: IActorRegistryService_Push_Request): Promise<void> {
-        console.log('WITHIN PUSH');
         let changed = false;
         for (const [actorType, actorInfo] of Object.entries(options.actorInfo)) {
             let ourInfo = this.byActorType.get(actorType);

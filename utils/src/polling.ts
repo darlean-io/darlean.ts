@@ -33,7 +33,7 @@ export class PollController<T> {
                 this.interrupteds.splice(idx, 1);
             }
             expired();
-        });
+        }, timeout);
 
         return {
             cancel: () => {

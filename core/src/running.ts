@@ -7,6 +7,7 @@ import { MemoryPersistence } from './various';
 import { ActorRegistry, ExponentialBackOff, PlacementCache, RemotePortal } from './remoteinvocation';
 import { TransportRemote } from './transportremote';
 import {
+    IAbortable,
     IActorCreateContext,
     IActorPlacement,
     IActorRegistrationOptions,

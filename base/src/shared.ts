@@ -1,4 +1,4 @@
-import { replaceArguments } from '@darlean/utils';
+import { Aborter, replaceArguments } from '@darlean/utils';
 
 export type ActionErrorKind = 'framework' | 'application';
 
@@ -48,26 +48,95 @@ export interface IActionError {
     stack?: string;
 }
 
+/**
+ * The request for invoking a remote action at the "remote" level.
+ * 
+ * @see {@link IInvokeOptions} for the counterpart of this interface on the "transport" level.
+ */
 export interface IActorCallRequest {
+    /**
+     * The *normalized* actor type on which a remote action should be invoked
+     * 
+     * @see {@link normalizeActorType}
+     */
     actorType: string;
+
+    /**
+     * The id of the actor on which the remote action should be invoked
+     */
     actorId: string[];
+
+    /**
+     * The *normalized* action name that should be invoked
+     * 
+     * @see {@link normalizeActionName}
+     */
     actionName: string;
+
+    /**
+     * Any arguments that should be passed to the remote action implementation 
+     */
     arguments: unknown[];
 }
 
+/**
+ * The response of invoking a remote action at the "remote" level.
+ * 
+ * @see {@link IInvokeResult} for the counterpart of this interface on the "transport" level.
+ */
 export interface IActorCallResponse {
+    /**
+     * The result value from the invoked action (when there is no {@link IActorCallResponse.error})
+     */
     result?: unknown;
+
+    /**
+     * When present, indicates that an error occurred in framework or application code
+     * (indocated by the value of {@link IActionError.kind}).
+     */
     error?: IActionError;
 }
 
+/**
+ * The options for invoking a remote action at the "transport" level.
+ */
 export interface IInvokeOptions {
+    /**
+     * The name of the application that should invoke the remote action
+     */
     destination: string;
+    /**
+     * The actual contents of the action invoke request.
+     * 
+     * @remarks This currently always is an instance of {@link IActorCallRequest}.
+     */
     content: unknown;
+    /**
+     * An optional {@link Aborter} instance that application code can use to abort the invoke operation.
+     */
+    aborter?: Aborter;
 }
 
+/**
+ * The results of invoking a remote action at the "transport" level.
+ */
 export interface IInvokeResult {
+    /**
+     * An optional error code for transport errors.
+     */
     errorCode?: string;
+    /**
+     * An optional map of error parameters.
+     * 
+     * @see {@link TRANSPORT_ERROR_PARAMETER_MESSAGE}
+     */
     errorParameters?: { [key: string]: unknown };
+
+    /**
+     * The content of the response (when there is no error).
+     * 
+     * @remarks THis currently always is an instance of {@link IActorCallResponse}.
+     */
     content?: unknown;
 }
 

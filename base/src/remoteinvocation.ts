@@ -1,3 +1,4 @@
+import { Aborter } from '@darlean/utils';
 import { IInvokeOptions, IInvokeResult } from './shared';
 
 export const FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION = 'REDIRECT_DESTINATION';
@@ -10,6 +11,29 @@ export const FRAMEWORK_ERROR_ACTOR_LOCK_FAILED = 'ACTOR_LOCK_FAILED';
 export const FRAMEWORK_ERROR_FINALIZING = 'FINALIZING';
 
 /**
+ * Indicates that long running actions on an object that implements IAbortable can be aborted
+ * before the long running operation is finished. For that to work, the calling code must create a new {@link Aborter} instance and
+ * pair it with the object via {@link IAbortable.aborter} just before invoking the long running action method.
+ * 
+ * @remarks
+ * * It depends on the implementation of the object that implements IAbortable whether the aborted method
+ *   throws an error or just returns with a regular or special value.
+ * * The aborter set via {@link IAbortable.aborter} only applies to the *first* subsequent action method call, so it can
+ *   only be used to abort the *first* action method invoked after invoking {@link IAbortable.aborter}.
+ * 
+ * Example:
+ * ```ts
+ * const aborter = new Aborter();
+ * setTimeout( () => aborter.abort(), 1000 );
+ * myObject.aborter(aborter);
+ * await myObject.doSomethingTimeConsuming();
+ * ```
+ */
+export interface IAbortable {
+    aborter(value: Aborter): void;
+}
+
+/**
  * Allows a caller to retrieve a persistent proxy to a remote actor. That is, even when the remote
  * actor is reincarnating, the proxy should still point to that same actor.
  */
@@ -20,13 +44,17 @@ export interface IPortal {
      * @param id The id of the remote actor for which a proxy is to be obtained
      * @returns A proxy object of type T that internally takes care of all the networking and
      * other complexity of invoking the remote actor.
-     * @remarks Even when the requested type is not known to the system, the call returns a valid
-     * proxy object. Any errors resulting from the type not being known to the system are thrown when
-     * actions are actually being performed on the returned proxy. This behaviour makes it possible to already initialize
-     * actors with their proper portals at application startup (dependency injection) when the rest of the
-     * system is not yet up.
+     * @remarks 
+     * * Even when the requested type is not known to the system, the call returns a valid
+     *   proxy object. Any errors resulting from the type not being known to the system are thrown when
+     *   actions are actually being performed on the returned proxy. This behaviour makes it possible to already initialize
+     *   actors with their proper portals at application startup (dependency injection) when the rest of the
+     *   system is not yet up.
+     * * The returned proxy implements {@link IAbortable} which means that long-running actions can be aborted
+     *   by first (just before invoking the long running action method) invoking {@link IAbortable.aborter} on
+     *   the proxy with a freshly created {@link Aborter} instance as argument.
      */
-    retrieve<T extends object>(type: string, id: string[]): T;
+    retrieve<T extends object>(type: string, id: string[]): T & IAbortable;
 
     /**
      * Returns a new portal that retrieves actors from the current portal that have a specified type.
@@ -60,8 +88,12 @@ export interface ITypedPortal<T> {
      * @param id The id of the remote actor for which a proxy is to be obtained
      * @returns A proxy object of type T that internally takes care of all the networking and
      * other complexity of invoking the remote actor.
+     * @remarks
+     *   The returned proxy implements {@link IAbortable} which means that long-running actions can be aborted
+     *   by first (just before invoking the long running action method) invoking {@link IAbortable.aborter} on
+     *   the proxy with a freshly created {@link Aborter} instance as argument.
      */
-    retrieve(id: string[]): T;
+    retrieve(id: string[]): T & IAbortable;
 
     /**
      * Returns a new portal that retrieves actors from the current portal that have a specified id prefix.
@@ -99,6 +131,11 @@ export interface IActorPlacement {
     sticky?: boolean;
 }
 
+export interface IInvokeInterruptor {
+    interrupt(): void;
+}
+
+
 /**
  * Represents a mechanism of remotely invoking actor actions.
  */
@@ -123,7 +160,7 @@ export interface IRemote {
  * Waits a certain amount. Returns false when backing off should be
  * stopped, true otherwise.
  */
-export type BackOffFunction = () => Promise<boolean>;
+export type BackOffFunction = (aborter?: Aborter) => Promise<boolean>;
 
 /**
  * Backoff mechanism that repeatedly waits a certain amount of time. A new

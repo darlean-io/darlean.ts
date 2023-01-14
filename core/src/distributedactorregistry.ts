@@ -1,9 +1,14 @@
 import { IActorRegistryService, IActorRegistryService_Push_Request } from '@darlean/actor-registry-suite';
-import { ITime, ITimer } from '@darlean/utils';
+import { IAbortable } from '@darlean/base';
+import { Aborter, ITime, ITimer } from '@darlean/utils';
 import { ActorRegistry, IActorRegistry, IActorTypeInfo } from './remoteinvocation';
 
+/**
+ * Implementation of {@link IActorRegistry} that uses the distributed actor registry functionality
+ * from {@link @darlean/actor-registry-suite}.
+ */
 export class DistributedActorRegistry implements IActorRegistry {
-    private service: IActorRegistryService;
+    private service: IActorRegistryService & IAbortable;
     private ownRegistry: ActorRegistry;
     private knownRegistry: ActorRegistry;
     private requestedTypes: string[];
@@ -12,8 +17,9 @@ export class DistributedActorRegistry implements IActorRegistry {
     private appId: string;
     private time: ITime;
     private nonce: string;
+    private aborter?: Aborter;
 
-    constructor(service: IActorRegistryService, time: ITime, appId: string, ownRegistry: ActorRegistry) {
+    constructor(service: IActorRegistryService & IAbortable, time: ITime, appId: string, ownRegistry: ActorRegistry) {
         this.service = service;
         this.ownRegistry = ownRegistry;
         this.knownRegistry = new ActorRegistry();
@@ -23,7 +29,6 @@ export class DistributedActorRegistry implements IActorRegistry {
         this.nonce = '';
     }
 
-    // TODO // Adjust refresh timer
     public start() {
         // Note: the obtain action is a long-polling operation that returns when
         // the data is changed, or after a certain timeout. That is why we
@@ -58,6 +63,11 @@ export class DistributedActorRegistry implements IActorRegistry {
             this.pushTimer.cancel();
             this.pushTimer = undefined;
         }
+
+        //console.log('INTERRUPTING');
+        if (this.aborter) {
+            this.aborter.abort();
+        }
     }
 
     public findPlacement(type: string): IActorTypeInfo | undefined {
@@ -72,9 +82,11 @@ export class DistributedActorRegistry implements IActorRegistry {
     }
 
     protected async obtain() {
-        //console.log('OBTAINING');
+        // console.log('OBTAINING', this.nonce);
 
         try {
+            this.aborter = new Aborter();
+            this.service.aborter(this.aborter);
             const info = await this.service.obtain({
                 nonce: this.nonce,
                 actorTypes: this.requestedTypes
@@ -82,7 +94,7 @@ export class DistributedActorRegistry implements IActorRegistry {
 
             this.nonce = info.nonce;
 
-            //console.log('OBTAINED', JSON.stringify(info));
+            // console.log('OBTAINED', JSON.stringify(info));
             for (const [type, typeinfo] of Object.entries(info.actorInfo ?? {})) {
                 for (const application of typeinfo.applications) {
                     this.knownRegistry.addMapping(type, application.name, {

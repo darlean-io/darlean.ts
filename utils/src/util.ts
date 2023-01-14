@@ -12,15 +12,24 @@ export function ticks(delta?: number) {
  * Sleeps for [[ms]] milliseconds. When ms is 0, `setImmediate` is used so that the function
  * returns immediately after giving the NodeJS event loop the chance to process pending events.
  * @param ms The amount of milliseconds to wait
+ * @param aborter An optional {@link Aborter} instance that allows application code to cancel
+ * the sleep before the specified sleep time is over. When aborted, sleep silently
+ * resolves (ends) without throwing an error.
  */
-export async function sleep(ms: number): Promise<void> {
+export async function sleep(ms: number, aborter?: Aborter): Promise<void> {
     if (ms <= 0) {
         return new Promise((resolve) => {
             setImmediate(resolve);
         });
     }
     return new Promise((resolve) => {
-        setTimeout(resolve, ms);
+        const timer = setTimeout(resolve, ms);
+        if (aborter) {
+            aborter.handle( () => {
+                clearTimeout(timer);
+                resolve();
+            });
+        }
     });
 }
 
@@ -169,5 +178,42 @@ export class Interruptor {
 
     public reset() {
         this.interrupted = false;
+    }
+}
+
+/**
+ * Instances of this class can be passed to objects that support early abortion of long-running
+ * operations.
+ * 
+ * Abortion works by the application code creating a new {@link Aborter} instance and somehow pairing
+ * that instance with the object that provides long-running operations. That object then invokes
+ * the {@link Aborter.handle} method with a callback function as parameter that is invoked when
+ * the application code invokes {@link Aborter.abort}. The callback then executes the necessary logic
+ * to abort the long-running operation.
+ * 
+ * @remarks
+ * An {@link Aborter} instance should only be used once. When multiple long-running actions need
+ * to be aborted, multiple instances should be created (one for each such long-running action).
+ */
+export class Aborter {
+    private handler?: () => void;
+
+    /**
+     * To be invoked by the objects that provide long-running operations in order to register their handler
+     * that is invoked (at most once) when application code invokes {@link Aborter.abort}.
+     * @param handler The callback function that performs the actual abort of the long-running operation.
+     */
+    public handle(handler: (() => void) | undefined) {
+        this.handler = handler;
+    }
+
+    /**
+     * Aborts the long-running operation. It is safe to invoke this method more than once, but only 
+     * the first invocation effectively aborts the long-running operation. 
+     */
+    public abort() {
+        const handler = this.handler;
+        this.handler = undefined;
+        handler?.();
     }
 }
