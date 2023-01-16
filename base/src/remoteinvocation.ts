@@ -21,7 +21,7 @@ export const FRAMEWORK_ERROR_FINALIZING = 'FINALIZING';
  * * The aborter set via {@link IAbortable.aborter} only applies to the *first* subsequent action method call, so it can
  *   only be used to abort the *first* action method invoked after invoking {@link IAbortable.aborter}.
  * 
- * Example:
+ * @example
  * ```ts
  * const aborter = new Aborter();
  * setTimeout( () => aborter.abort(), 1000 );
@@ -30,6 +30,11 @@ export const FRAMEWORK_ERROR_FINALIZING = 'FINALIZING';
  * ```
  */
 export interface IAbortable {
+    /**
+     * Assigns an {@link Aborter} instance that can be used to {@link Aborter.abort | abort} the very first action invocation on the
+     * instance that implements {@link IAbortable}. 
+     * @param value The {@link Aborter} that can be used to abort the very first action invocation.
+     */
     aborter(value: Aborter): void;
 }
 

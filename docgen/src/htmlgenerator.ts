@@ -5,7 +5,7 @@ import * as marked from 'marked';
 import * as highlight from 'highlight.js';
 
 const IGNORED_REFERENCES = ['string', 'number', 'Promise', 'void', 'Map', 'Function', 'Object', 'boolean', 'unknown'];
-const BLOCK_KEYS = ['returns', 'throws', 'remarks', 'see'];
+const BLOCK_KEYS = ['returns', 'throws', 'example', 'remarks', 'see'];
 
 export class Html {
     protected lines: string[];
@@ -879,7 +879,7 @@ export class Generator {
         for (const blockKey of BLOCK_KEYS) {
             const tags = comment?.blockTags?.filter((x) => x.tag === '@' + blockKey) || [];
             for (const tag of tags) {
-                html.tag('h4', undefined, blockKey);
+                html.tag('h4', undefined, capitalize(blockKey));
                 html.start('div', 'details');
                 this.generateSummary(html, node, data, tag.content ?? [], false);
                 html.end();
@@ -960,4 +960,8 @@ export class Generator {
             html.end(); // breadcrumb
         }
     }
+}
+
+function capitalize(value: string) {
+    return value.slice(0, 1).toUpperCase() + value.slice(1);
 }

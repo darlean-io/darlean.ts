@@ -7,7 +7,6 @@ import { MemoryPersistence } from './various';
 import { ActorRegistry, ExponentialBackOff, PlacementCache, RemotePortal } from './remoteinvocation';
 import { TransportRemote } from './transportremote';
 import {
-    IAbortable,
     IActorCreateContext,
     IActorPlacement,
     IActorRegistrationOptions,
@@ -31,11 +30,6 @@ export const DEFAULT_CAPACITY = 1000;
 
 export const DEFAULT_LOCAL_APP_ID = 'local';
 
-export declare interface ActorRunner {
-    on(event: 'start', listener: () => void): this;
-    on(event: 'stop', listener: () => void): this;
-}
-
 /**
  * Class that hosts actors and (depending on the configuration) exposes them remotely. Typically
  * created by means of an {@link ActorRunnerBuilder}.
@@ -46,6 +40,7 @@ export class ActorRunner {
     protected delayedStop = 0;
     protected stopped = false;
     protected stopping = false;
+    protected starting = false;
 
     protected starters: Array<() => Promise<void>>;
     protected stoppers: Array<() => Promise<void>>;
@@ -62,6 +57,10 @@ export class ActorRunner {
     }
 
     public async start(): Promise<void> {
+        if (this.starting) {
+            return;
+        }
+        this.starting = true;
         for (const starter of this.starters) {
             await starter();
         }
@@ -99,12 +98,16 @@ export class ActorRunner {
     }
 
     /**
-     * Waits until the actor runner is stopped
+     * Starts the actor runner when not already started before, and waits until the actor runner is stopped, either explicitly
+     * by calling the {@link stop} method, or because of application termination signals.
      */
     public async run(): Promise<void> {
         if (this.stopped) {
             return;
         }
+
+        // Will do nothing when already starting or started
+        await this.start();
 
         return new Promise((resolve) => {
             this.waiters.push(resolve);

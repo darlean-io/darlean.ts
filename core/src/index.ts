@@ -1,7 +1,7 @@
 /**
- * Provides Darlean core functionality for defining, exposing and invoking local or remote actors.
+ * Provides Darlean core functionality for hosting and invoking local or remote actors.
  *
- * Detailed information about what virtual actors are and an overview of all generic types is in the documentation for {@link @darlean/base}.
+ * Detailed information about what virtual actors are and how to write them is in the documentation for {@link @darlean/base}.
  *
  *  ## Types for creating an application
  *
@@ -26,8 +26,8 @@
  * on the fly (and also deactivates instances when the configured container capacity is exceeded).
  *
  * Both {@link InstanceWrapper} and {@link InstanceContainer} respect the configured locking and
- * activation/deactivation mechanisms (by means of the {@link action|@action}, {@link actor|@action}
- * and {@link service|@service} decorators).
+ * activation/deactivation mechanisms (by means of the {@link action|@action} decorator and the 
+ * settings in {@link IActorRegistrationOptions.kind}.
  *
  * ## Local actor invocation
  * For local use (that is, when all code and actors live in the same process, divided over 1 or more internal apps), it is possible to use an instance of {@link InProcessTransport}
@@ -56,7 +56,9 @@
  * ### Actor placement
  *
  * In order to know to which destination (app) an {@link IActorCallRequest} should be sent to, the {@link RemotePortal}
- * uses the {@link IActorPlacement} information it receives via the {@link RemotePortal.addMapping} and {@link RemotePortal.removeMapping} methods.
+ * uses an {@link IActorRegistry}, of which {@link ActorRegistry} is an implementation that is used to administer the actors
+ * hosted by the current application, and {@link DistributedActorRegistry} provides access to the distributed actor registry that
+ * contains actor information from all applications in the cluster.
  *
  * @packageDocumentation
  */
