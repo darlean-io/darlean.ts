@@ -13,6 +13,7 @@ export interface ITsDocNode {
         isProtected?: boolean;
         isPrivate?: boolean;
         isOptional?: boolean;
+        isConst?: boolean;
     };
     comment?: ITsDocComment;
     indexSignature?: ITsDocNode; // for a dictionary: has parameters (the key) and type (the value)
@@ -22,6 +23,7 @@ export interface ITsDocNode {
     extendedTypes: ITsDocType[];
     subClasses?: ITsDocNode[];
     subInterfaces?: ITsDocNode[];
+    defaultValue?: string;
 }
 
 export interface ITsDocComment {

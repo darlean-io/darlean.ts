@@ -340,6 +340,48 @@ export class Generator {
             }
         }
 
+        for (const kindName of ['Variable']) {
+            const items = byKind(kindName).sort((a, b) => a.name.localeCompare(b.name));
+            if (items.length > 0) {
+                html.tag('h2', undefined, `${kindName} summary`);
+
+                html.start('table');
+                html.start('thead');
+                html.start('tr');
+                html.tag('th', undefined, 'Name');
+                html.tag('th', undefined, 'Default value');
+                html.end();
+                html.end();
+
+                for (const item of items) {
+                    html.start('tr');
+
+                    html.start('td');
+                    html.start('code');
+                    if (item.flags?.isConst) {
+                        html.text('const ');
+                    }
+                    this.generateLink(html, data, item.parent, item.id, item.name);
+                    html.end();
+                    html.end();  // td
+
+                    html.start('td', undefined);
+                    html.start('div', 'default-value');
+                    html.start('code');
+                    html.text(item.defaultValue || '');
+                    html.end(); // code
+                    html.end(); // div
+                    html.start('div', 'type-alias-description');
+                    this.generateComment(html, item, data);
+                    html.end();
+                    html.end(); // td
+
+                    html.end(); // tr
+                }
+                html.end(); // table
+            }
+        }
+
         html.end();
 
         html.tag('h2', undefined, `${packmod} ${node.name} Description`, { id: 'description' });
@@ -411,6 +453,44 @@ export class Generator {
                     html.start('div', 'type-alias-signature');
                     html.start('code');
                     this.generateType(html, item.type, data, item);
+                    html.end(); // code
+                    html.end(); // div
+
+                    html.start('div', 'type-alias-description');
+                    this.generateComment(html, item, data, false);
+                    html.end();
+
+                    html.end(); // details
+                }
+            }
+        }
+
+        for (const kindName of ['Variable']) {
+            const items = byKind(kindName).sort((a, b) => a.name.localeCompare(b.name));
+            if (items.length > 0) {
+                html.tag('h2', undefined, `${kindName} details`);
+
+                for (const item of items) {
+                    //const modifier = item.flags?.isProtected ? 'protected' :
+                    //    item.flags?.isPrivate ? 'private' : 'public';
+                    html.start('h3', undefined, { id: item.name });
+                    {
+                        html.text(item.name);
+                    }
+                    html.end(); // h3
+
+                    html.start('div', 'details');
+
+                    html.start('div', 'variable-signature');
+                    html.start('code');
+                    if (item.flags?.isConst) {
+                        html.text('const ');
+                    }
+                    html.text(item.name);
+                    if (item.defaultValue) {
+                        html.text(' = ');
+                        html.text(item.defaultValue);
+                    }
                     html.end(); // code
                     html.end(); // div
 
@@ -631,7 +711,7 @@ export class Generator {
             html.linkToNode(node.parent?.name ?? '', node.name, text || name || node.name || '');
         } else if (node.kindString === 'Class' || node.kindString === 'Interface') {
             html.linkToNode(node.name, '', text || name || node.name);
-        } else if (node.kindString === 'Function' || node.kindString === 'Type alias') {
+        } else if (node.kindString === 'Function' || node.kindString === 'Type alias' || node.kindString === 'Variable') {
             html.linkToNode(node.parent?.name ?? '', node.name, text || name || node.name);
         } else if (node.kindString === 'Module') {
             html.linkToNode(node.name, '', text || name || node.name);
