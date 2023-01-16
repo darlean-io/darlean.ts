@@ -1,11 +1,19 @@
 import { Aborter, replaceArguments } from '@darlean/utils';
 
+/**
+ * The kind of error.
+ * 
+ * * `application`: The error is caused by application code
+ * * `framework`: The error is caused by the Darlean framework
+ */
 export type ActionErrorKind = 'framework' | 'application';
 
 /**
  * Represents an error that occured during the performing of an action, either in framework code (for example, when a remote application
- * could not be reached) or in the application code that forms the actual implementation of the action. The value of `kind` indicates whether the error
- * is caused by the framework or the application, and can be used to decriminate between these situations.
+ * could not be reached) or in the application code that forms the actual implementation of the action.
+ * 
+ * The value of `kind` indicates whether the error
+ * is caused by the framework or the application, and can be used to discriminate between these situations.
  */
 export interface IActionError {
     /**
