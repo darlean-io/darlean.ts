@@ -1,5 +1,5 @@
 import { sleep } from '@darlean/utils';
-import { action, IActionError, IActivatable, IDeactivatable, IPersistence, ITypedPortal } from '@darlean/base';
+import { action, IActionError, IActivatable, IDeactivatable, IPersistable, IPersistence, ITypedPortal } from '@darlean/base';
 import { MemoryPersistence } from '../various';
 import { InstanceContainer } from '../instances';
 import { EchoActor, ErrorActor, IEchoActor, IErrorActor } from '../testing';
@@ -11,22 +11,20 @@ export interface IMyActor {
 }
 
 export class MyActor implements IMyActor, IActivatable, IDeactivatable {
-    protected temperature?: number;
-    protected persistence: IPersistence<number | undefined>;
+    protected temperature: IPersistable<number>;
     protected peers?: ITypedPortal<IMyActor>;
 
-    public constructor(persistence: IPersistence<number | undefined>, peers?: ITypedPortal<IMyActor>, defaultTemp?: number) {
-        this.persistence = persistence;
-        this.temperature = defaultTemp;
+    public constructor(persistence: IPersistence<number>, peers?: ITypedPortal<IMyActor>, defaultTemp?: number) {
+        this.temperature = persistence.persistable(['temperature'], undefined, defaultTemp);
         this.peers = peers;
     }
 
     @action({ locking: 'exclusive' })
     public async makeWarmer(amount: number): Promise<number> {
-        const temp = this.temperature || 0;
+        const temp = this.temperature.value || 0;
         await sleep(50);
-        this.temperature = temp + amount;
-        return this.temperature;
+        this.temperature.change(temp + amount);
+        return this.temperature.value || 0;
     }
 
     @action()
@@ -44,17 +42,17 @@ export class MyActor implements IMyActor, IActivatable, IDeactivatable {
     }
 
     public async activate(): Promise<void> {
-        this.temperature = ((await this.persistence.load(['temperature'])) as number) || this.temperature;
+        await this.temperature.load();
     }
 
     public async deactivate() {
-        await this.persistence.store(['temperature'], [], this.temperature);
+        await this.temperature.store();
     }
 }
 
 describe('Instance container', () => {
     test('InstanceContainer - Basic action test', async () => {
-        const persistence = new MemoryPersistence<string | undefined>();
+        const persistence = new MemoryPersistence<string>();
         const f = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10);
         const i = f.obtain(['123']);
 

@@ -13,6 +13,7 @@ import {
     IBackOff,
     IMultiTypeInstanceContainer,
     IPersistence,
+    IPersistenceService,
     IPortal,
     IRemote,
     IVolatileTimer
@@ -26,8 +27,7 @@ import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-re
 import actorRegistrySuite from '@darlean/actor-registry-suite';
 import fsPersistenceSuite, {
     FS_PERSISTENCE_SERVICE,
-    IFsPersistenceOptions,
-    IFsPersistenceService
+    IFsPersistenceOptions
 } from '@darlean/fs-persistence-suite';
 import { DistributedPersistence } from './distributedpersistence';
 import { IDeSer } from './infra/deser';
@@ -413,7 +413,7 @@ export class ActorRunnerBuilder {
     }
 
     private createPersistence(portal: IPortal, deser: IDeSer): IPersistence<unknown> {
-        const servicePortal = portal.typed<IFsPersistenceService>(FS_PERSISTENCE_SERVICE);
+        const servicePortal = portal.typed<IPersistenceService>(FS_PERSISTENCE_SERVICE);
         const service = servicePortal.retrieve(['default']);
         return new DistributedPersistence(service, deser);
     }

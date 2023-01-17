@@ -5,6 +5,7 @@ import { InstanceContainer, MultiTypeInstanceContainer } from '../instances';
 import { ActorRegistry, ExponentialBackOff, RemotePortal } from '../remoteinvocation';
 import { EchoActor, IEchoActor } from '../testing';
 import { TransportRemote } from '../transportremote';
+import { MemoryPersistence } from '../various';
 
 // Tests for using the RemotePortal with a InProcessTransport for local actor invocation
 
@@ -17,8 +18,9 @@ describe('Local portal', () => {
         const transport = new InProcessTransport(deser);
         const registry = new ActorRegistry();
         const remote = new TransportRemote('local', transport, mc);
+        const persistence = new MemoryPersistence<string>();
         const p = new RemotePortal(remote, backoff, registry);
-        const cont = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor() }), 10);
+        const cont = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10);
         mc.register('MyActor', cont);
         mc.register('AnotherActor', cont);
         registry.addMapping('MyActor', 'local');
@@ -48,8 +50,9 @@ describe('Local portal', () => {
         const registry = new ActorRegistry();
         const remote = new TransportRemote('local', transport, mc);
         const p = new RemotePortal(remote, backoff, registry);
+        const persistence = new MemoryPersistence<string>();
 
-        const cont = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor() }), 10);
+        const cont = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence, undefined, false) }), 10);
         mc.register('MyActor', cont);
         registry.addMapping('MyActor', 'local');
 

@@ -12,8 +12,6 @@ import { wildcardMatch } from '@darlean/utils';
 import { FsPersistenceActor } from './actor.impl';
 import { FsPersistenceService } from './service.impl';
 
-export * from './intf';
-
 export const FS_PERSISTENCE_SERVICE = 'io.darlean.FsPersistenceService';
 const FS_PERSISTENCE_ACTOR = 'io.darlean.FsPersistenceActor';
 

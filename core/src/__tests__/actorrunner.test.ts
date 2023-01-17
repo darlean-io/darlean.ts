@@ -33,7 +33,7 @@ describe('Actor runner & builder', () => {
         builder.registerActor({
             type: 'MyActor',
             kind: 'singular',
-            creator: (context) => new EchoActor(context.persistence as IPersistence<string | undefined>, context.id[2] || ''),
+            creator: (context) => new EchoActor(context.persistence as IPersistence<string>, context.id[2] || ''),
             capacity: 10
         });
         const app = builder.build();
@@ -108,7 +108,7 @@ describe('Actor runner & builder', () => {
         builder.registerActor({
             type: 'EchoActor',
             kind: 'singular',
-            creator: (context) => new EchoActor(context.persistence as IPersistence<string | undefined>, context.id[0] || ''),
+            creator: (context) => new EchoActor(context.persistence as IPersistence<string>, context.id[0] || ''),
             capacity: 10
         });
 
@@ -153,7 +153,7 @@ describe('Actor runner & builder', () => {
         builder.registerActor({
             type: 'EchoActor',
             kind: 'singular',
-            creator: (context) => new EchoActor(context.persistence as IPersistence<string | undefined>, context.id[0] || ''),
+            creator: (context) => new EchoActor(context.persistence as IPersistence<string>, context.id[0] || ''),
             capacity: 10,
             hosts: ['my-app']
         });

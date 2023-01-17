@@ -1,12 +1,4 @@
-import { action, IActivatable, ITypedPortal } from '@darlean/base';
-import {
-    IFsPersistenceService,
-    IPersistenceLoadOptions,
-    IPersistenceLoadResult,
-    IPersistenceQueryOptions,
-    IPersistenceQueryResult,
-    IPersistenceStoreOptions
-} from './intf';
+import { action, IActivatable, IPersistenceLoadOptions, IPersistenceLoadResult, IPersistenceQueryOptions, IPersistenceQueryResult, IPersistenceService, IPersistenceStoreOptions, ITypedPortal } from '@darlean/base';
 import { FsPersistenceActor } from './actor.impl';
 import * as crypto from 'crypto';
 
@@ -15,7 +7,7 @@ export interface IFsPersistenceServiceOptions {
     nodes: string[];
 }
 
-export class FsPersistenceService implements IFsPersistenceService, IActivatable {
+export class FsPersistenceService implements IPersistenceService, IActivatable {
     private shards: { node: string; id: string[]; actor: FsPersistenceActor }[];
 
     constructor(options: IFsPersistenceServiceOptions, actorPortal: ITypedPortal<FsPersistenceActor>) {

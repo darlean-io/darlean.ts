@@ -1,4 +1,4 @@
-export interface IFsPersistenceService {
+export interface IPersistenceService {
     store(options: IPersistenceStoreOptions): Promise<void>;
     load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult>;
     query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult>;
@@ -8,6 +8,7 @@ export interface IPersistenceStoreOptions {
     partitionKey: string[];
     sortKey?: string[];
     value?: Buffer;
+    version?: string;
 }
 
 export interface IPersistenceLoadOptions {
@@ -17,6 +18,7 @@ export interface IPersistenceLoadOptions {
 
 export interface IPersistenceLoadResult {
     value?: Buffer;
+    version?: string;
 }
 
 export interface IPersistenceQueryOptions {

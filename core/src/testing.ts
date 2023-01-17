@@ -1,4 +1,4 @@
-import { action, IPersistence } from '@darlean/base';
+import { action, IPersistable, IPersistence } from '@darlean/base';
 import { sleep } from '@darlean/utils';
 
 export async function expectError(handler: () => Promise<unknown>): Promise<Error | undefined> {
@@ -58,33 +58,37 @@ export interface IEchoActor {
 }
 
 export class EchoActor implements IEchoActor {
-    protected last: string | undefined;
-    protected persistence?: IPersistence<string | undefined>;
-
-    constructor(persistence?: IPersistence<string | undefined>, defaultLast?: string) {
-        this.persistence = persistence;
-        this.last = defaultLast;
+    protected last: IPersistable<string>;
+    protected store: boolean;
+    
+    constructor(persistence: IPersistence<string>, defaultLast?: string, store = true) {
+        this.last = persistence.persistable(['last'], undefined, defaultLast);
+        this.store = store;
     }
 
     @action({ locking: 'exclusive' })
     public async echo(value: string): Promise<string> {
         await sleep(50);
-        this.last = value;
+        this.last.change(value);
         return value;
     }
 
     @action({ locking: 'exclusive' })
     public async getLastValue(): Promise<string | undefined> {
         await sleep(50);
-        return this.last;
+        return this.last.value;
     }
 
     public async activate(): Promise<void> {
-        this.last = ((await this.persistence?.load(['last'])) as string) || this.last;
+        if (this.store) {
+            await this.last.load();
+        }
     }
 
     public async deactivate() {
-        await this.persistence?.store(['last'], [], this.last);
+        if (this.store) {
+            await this.last.store();
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-import { action, ActorSuite, IActivatable, IActorSuite, IDeactivatable, IPersistence, ITypedPortal } from '@darlean/base';
+import { action, ActorSuite, IActivatable, IActorSuite, IDeactivatable, IPersistable, IPersistence, ITypedPortal } from '@darlean/base';
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 
 interface IOracleActor {
@@ -12,26 +12,24 @@ type Knowledge = { [fact: string]: number };
 
 // Implementation of a virtual actor that has the knowledge about one topic
 class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
-    protected knowledge: Knowledge;
-    protected persistence: IPersistence<Knowledge>;
-
+    protected knowledge: IPersistable<Knowledge>;
+    
     constructor(persistence: IPersistence<Knowledge>, knowledge?: Knowledge) {
-        this.persistence = persistence;
-        this.knowledge = knowledge ?? {};
+        this.knowledge = persistence.persistable(['knowledge'], undefined, knowledge ?? {});
     }
 
     public async activate(): Promise<void> {
-        this.knowledge = (await this.persistence.load(undefined, ['knowledge'])) ?? this.knowledge;
-        console.log('LOADED', this.knowledge);
+        await this.knowledge.load();
+        console.log('LOADED', this.knowledge.value);
     }
 
     public async deactivate(): Promise<void> {
-        await this.persistence.store(undefined, ['knowledge'], this.knowledge);
+        await this.knowledge.store();
     }
 
     @action()
     public async ask(question: string): Promise<number> {
-        for (const [fact, answer] of Object.entries(this.knowledge)) {
+        for (const [fact, answer] of Object.entries(this.knowledge.value || {})) {
             if (question.includes(fact)) {
                 return answer;
             }
@@ -41,8 +39,11 @@ class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
 
     @action()
     public async teach(fact: string, answer: number): Promise<void> {
-        this.knowledge[fact] = answer;
-        await this.deactivate();
+        if (this.knowledge.value) {
+            this.knowledge.value[fact] = answer;
+            this.knowledge.change(this.knowledge.value);
+            await this.knowledge.store();
+        }
     }
 }
 

@@ -1,16 +1,8 @@
-import { action, IActivatable, IDeactivatable } from '@darlean/base';
-import {
-    IFsPersistenceService,
-    IPersistenceLoadOptions,
-    IPersistenceLoadResult,
-    IPersistenceQueryOptions,
-    IPersistenceQueryResult,
-    IPersistenceStoreOptions
-} from './intf';
+import { action, IActivatable, IDeactivatable, IPersistenceLoadOptions, IPersistenceLoadResult, IPersistenceQueryOptions, IPersistenceQueryResult, IPersistenceStoreOptions } from '@darlean/base';
 import { Database, OPEN_CREATE, OPEN_READWRITE, StatementPool } from './sqlite-async';
 import fs from 'fs';
 
-export class FsPersistenceActor implements IFsPersistenceService, IActivatable, IDeactivatable {
+export class FsPersistenceActor implements IActivatable, IDeactivatable {
     private db?: Database;
     private basePath: string;
     private partitionKeyLen: number;
