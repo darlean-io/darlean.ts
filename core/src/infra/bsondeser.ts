@@ -26,8 +26,10 @@ export class BsonDeSer implements IDeSer {
         }
         if (isObject(value) && !Buffer.isBuffer(value)) {
             const buffer = bson.serialize(value as bson.Document);
-            (value as IBsonStruct)._DARLEAN_BSON_BUFFER = () => buffer;
-            (buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => value;
+            Object.defineProperty(value, '_DARLEAN_BSON_BUFFER', { value: () => buffer, enumerable: false, writable: true });
+            // (value as IBsonStruct)._DARLEAN_BSON_BUFFER = () => buffer;
+            Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => value, enumerable: false, writable: true });
+            //(buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => value;
             return buffer;
         } else {
             const v: IBsonPrimitive = {
@@ -35,7 +37,8 @@ export class BsonDeSer implements IDeSer {
                 value
             };
             const buffer = bson.serialize(v as bson.Document);
-            (buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => value;
+            Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => value, enumerable: false, writable: true });
+            //(buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => value;  HERE
             return buffer;
         }
     }
@@ -50,11 +53,14 @@ export class BsonDeSer implements IDeSer {
         const value = bson.deserialize(buffer, OPTIONS);
         if ((value as IBsonPrimitive)._DARLEAN_BSON_PRIMITIVE) {
             const prim = (value as IBsonPrimitive).value;
-            (buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => prim;
+            Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => prim, enumerable: false, writable: true });
+            //(buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => prim; HERE
             return prim;
         }
-        (buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => value;
-        (value as IBsonStruct)._DARLEAN_BSON_BUFFER = () => buffer;
+        Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => value, enumerable: false, writable: true });
+        //(buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => value;
+        Object.defineProperty(value, '_DARLEAN_BSON_BUFFER', { value: () => buffer, enumerable: false, writable: true });
+        //(value as IBsonStruct)._DARLEAN_BSON_BUFFER = () => buffer;
         return value;
     }
 }
