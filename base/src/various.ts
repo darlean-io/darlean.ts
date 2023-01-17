@@ -15,9 +15,13 @@ export interface IPersistable<T> {
     version?: string;
     /**
      * Change value and mark the value as being changed.
-     * @param value The new value
+     * @param value The new value (optional). When not present, the old value is not adjusted.
      */
-    change(value: T | undefined): void;
+    change(value?: T): void;
+    /**
+     * Make value undefined and mark it as being changed.
+     */
+    clear(): void;
     /**
      * Returns whether the value was changed locally
      */
@@ -64,7 +68,7 @@ export interface IPersistence<T> {
     /**
      * Returns a new sub-persistence interface with the provided partition key and sort key added
      * to the partition and sort key of the current instance.
-     * @param partitionKey The partition key fields that will be added to the existing partition key fields. 
+     * @param partitionKey The partition key fields that will be added to the existing partition key fields.
      * Must be `undefined` or `[]` when the current instance already has a sort key assigned.
      * @param sortKey The sort key fields that will be added to the existing sort key fields.
      */

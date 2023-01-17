@@ -60,7 +60,7 @@ export interface IEchoActor {
 export class EchoActor implements IEchoActor {
     protected last: IPersistable<string>;
     protected store: boolean;
-    
+
     constructor(persistence: IPersistence<string>, defaultLast?: string, store = true) {
         this.last = persistence.persistable(['last'], undefined, defaultLast);
         this.store = store;

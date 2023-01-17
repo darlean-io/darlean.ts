@@ -13,8 +13,13 @@ class DistributedPersistable<T> implements IPersistable<T> {
 
     public value?: T | undefined;
     public version?: string | undefined;
-    
-    constructor(persistence: DistributedPersistence<T>, partitionKey: string[] | undefined, sortKey: string[] | undefined, value: T | undefined) {
+
+    constructor(
+        persistence: DistributedPersistence<T>,
+        partitionKey: string[] | undefined,
+        sortKey: string[] | undefined,
+        value: T | undefined
+    ) {
         this.persistence = persistence;
         this.partitionKey = partitionKey;
         this.sortKey = sortKey;
@@ -44,7 +49,7 @@ class DistributedPersistable<T> implements IPersistable<T> {
                 this.version = next.toString().padStart(20, '0');
             } else {
                 const next = Date.now();
-                this.version = next.toString().padStart(20, '0');    
+                this.version = next.toString().padStart(20, '0');
             }
         }
         await this.persistence.storeImpl(this.partitionKey, this.sortKey, this.value, this.version);
@@ -52,7 +57,14 @@ class DistributedPersistable<T> implements IPersistable<T> {
     }
 
     public change(value: T | undefined): void {
-        this.value = value;
+        if (value !== undefined) {
+            this.value = value;
+        }
+        this._changed = true;
+    }
+
+    public clear(): void {
+        this.value = undefined;
         this._changed = true;
     }
 
@@ -84,7 +96,10 @@ export class DistributedPersistence<T> implements IPersistence<T> {
         return result;
     }
 
-    public async loadImpl(partitionKey?: string[], sortKey?: string[] | undefined): Promise<[value: T | undefined, version: string | undefined]> {
+    public async loadImpl(
+        partitionKey?: string[],
+        sortKey?: string[] | undefined
+    ): Promise<[value: T | undefined, version: string | undefined]> {
         const result = await this.service.load({
             partitionKey: partitionKey ?? [],
             sortKey: sortKey ?? []
@@ -97,7 +112,12 @@ export class DistributedPersistence<T> implements IPersistence<T> {
         return [undefined, result.version];
     }
 
-    public async storeImpl(partitionKey: string[] | undefined, sortKey: string[] | undefined, value: T | undefined, version: string | undefined): Promise<void> {
+    public async storeImpl(
+        partitionKey: string[] | undefined,
+        sortKey: string[] | undefined,
+        value: T | undefined,
+        version: string | undefined
+    ): Promise<void> {
         const v = this.deser.serialize(value);
         await this.service.store({
             partitionKey: partitionKey ?? [],

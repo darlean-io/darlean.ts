@@ -25,10 +25,7 @@ import { InProcessTransport } from './infra/inprocesstransport';
 import { DistributedActorRegistry } from './distributedactorregistry';
 import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-registry-suite';
 import actorRegistrySuite from '@darlean/actor-registry-suite';
-import fsPersistenceSuite, {
-    FS_PERSISTENCE_SERVICE,
-    IFsPersistenceOptions
-} from '@darlean/fs-persistence-suite';
+import fsPersistenceSuite, { FS_PERSISTENCE_SERVICE, IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { DistributedPersistence } from './distributedpersistence';
 import { IDeSer } from './infra/deser';
 
@@ -434,7 +431,7 @@ export class ActorRunnerBuilder {
 
         // The id-length is there to prevent malicious code from accessing persistent data
         // from other actors.
-        // When actor 1 has id ['a', 'b'] and stores state in ['c]; 
+        // When actor 1 has id ['a', 'b'] and stores state in ['c];
         // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
         // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
         const persistence = this.persistence.sub([type, id.length.toString(), ...id]);

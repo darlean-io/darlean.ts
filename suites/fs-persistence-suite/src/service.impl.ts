@@ -1,4 +1,14 @@
-import { action, IActivatable, IPersistenceLoadOptions, IPersistenceLoadResult, IPersistenceQueryOptions, IPersistenceQueryResult, IPersistenceService, IPersistenceStoreOptions, ITypedPortal } from '@darlean/base';
+import {
+    action,
+    IActivatable,
+    IPersistenceLoadOptions,
+    IPersistenceLoadResult,
+    IPersistenceQueryOptions,
+    IPersistenceQueryResult,
+    IPersistenceService,
+    IPersistenceStoreOptions,
+    ITypedPortal
+} from '@darlean/base';
 import { FsPersistenceActor } from './actor.impl';
 import * as crypto from 'crypto';
 

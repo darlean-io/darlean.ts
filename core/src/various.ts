@@ -10,8 +10,13 @@ class MemoryPersistable<T> implements IPersistable<T> {
 
     public value?: T | undefined;
     public version?: string | undefined;
-    
-    constructor(persistence: MemoryPersistence<T>, partitionKey: string[] | undefined, sortKey: string[] | undefined, value: T | undefined) {
+
+    constructor(
+        persistence: MemoryPersistence<T>,
+        partitionKey: string[] | undefined,
+        sortKey: string[] | undefined,
+        value: T | undefined
+    ) {
         this.persistence = persistence;
         this.partitionKey = partitionKey;
         this.sortKey = sortKey;
@@ -34,14 +39,14 @@ class MemoryPersistable<T> implements IPersistable<T> {
                 return;
             }
         }
-        
+
         if (this._changed) {
             if (this.version) {
                 const next = parseInt(this.version || '0') + 1;
                 this.version = next.toString().padStart(20, '0');
             } else {
                 const next = Date.now();
-                this.version = next.toString().padStart(20, '0');    
+                this.version = next.toString().padStart(20, '0');
             }
         }
         await this.persistence.storeImpl(this.partitionKey, this.sortKey, this.value, this.version);
@@ -49,7 +54,14 @@ class MemoryPersistable<T> implements IPersistable<T> {
     }
 
     public change(value: T | undefined): void {
-        this.value = value;
+        if (value !== undefined) {
+            this.value = value;
+        }
+        this._changed = true;
+    }
+
+    public clear(): void {
+        this.value = undefined;
         this._changed = true;
     }
 
@@ -57,7 +69,6 @@ class MemoryPersistable<T> implements IPersistable<T> {
         return this._changed;
     }
 }
-
 
 export class MemoryPersistence<T> implements IPersistence<T> {
     protected values: Map<string, Map<string, unknown>>;
@@ -76,7 +87,10 @@ export class MemoryPersistence<T> implements IPersistence<T> {
         return p;
     }
 
-    public async loadImpl(partitionKey?: string[], sortKey?: string[]): Promise<[value: T | undefined, version: string | undefined]> {
+    public async loadImpl(
+        partitionKey?: string[],
+        sortKey?: string[]
+    ): Promise<[value: T | undefined, version: string | undefined]> {
         const pkey = idToText(partitionKey || []);
         const p = this.values.get(pkey);
         if (p) {
@@ -86,7 +100,12 @@ export class MemoryPersistence<T> implements IPersistence<T> {
         return [undefined, undefined];
     }
 
-    public async storeImpl(partitionKey: string[] | undefined, sortKey: string[] | undefined, value: T | undefined, _version: string | undefined): Promise<void> {
+    public async storeImpl(
+        partitionKey: string[] | undefined,
+        sortKey: string[] | undefined,
+        value: T | undefined,
+        _version: string | undefined
+    ): Promise<void> {
         const pkey = idToText(partitionKey || []);
         let p = this.values.get(pkey);
         if (!p) {

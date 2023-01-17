@@ -1,4 +1,13 @@
-import { action, ActorSuite, IActivatable, IActorSuite, IDeactivatable, IPersistable, IPersistence, ITypedPortal } from '@darlean/base';
+import {
+    action,
+    ActorSuite,
+    IActivatable,
+    IActorSuite,
+    IDeactivatable,
+    IPersistable,
+    IPersistence,
+    ITypedPortal
+} from '@darlean/base';
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 
 interface IOracleActor {
@@ -13,7 +22,7 @@ type Knowledge = { [fact: string]: number };
 // Implementation of a virtual actor that has the knowledge about one topic
 class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
     protected knowledge: IPersistable<Knowledge>;
-    
+
     constructor(persistence: IPersistence<Knowledge>, knowledge?: Knowledge) {
         this.knowledge = persistence.persistable(['knowledge'], undefined, knowledge ?? {});
     }
@@ -41,7 +50,7 @@ class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
     public async teach(fact: string, answer: number): Promise<void> {
         if (this.knowledge.value) {
             this.knowledge.value[fact] = answer;
-            this.knowledge.change(this.knowledge.value);
+            this.knowledge.change();
             await this.knowledge.store();
         }
     }
