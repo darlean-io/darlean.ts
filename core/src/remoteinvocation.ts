@@ -43,10 +43,11 @@ import {
     ITypedPortal,
     ApplicationError,
     FrameworkError,
-    IAbortable,
+    IAbortable
 } from '@darlean/base';
 import { Aborter, encodeKey, ITime } from '@darlean/utils';
 import { sleep } from '@darlean/utils';
+import { toFrameworkError } from './instances';
 import { normalizeActionName, normalizeActorType } from './shared';
 import { TRANSPORT_ERROR_PARAMETER_MESSAGE } from './transportremote';
 
@@ -97,7 +98,7 @@ export class ExponentialBackOff implements IBackOff {
         let value = this.initial;
         const maxTime = maxDurationMS === undefined ? undefined : this.time.machineTicks() + maxDurationMS;
 
-        return async ( aborter?: Aborter ) => {
+        return async (aborter?: Aborter) => {
             const delay = Math.max(0, (Math.random() + 0.5) * value);
             value *= this.factor;
             const newTime = this.time.machineTicks() + delay;
@@ -263,7 +264,7 @@ export class RemotePortal implements IPortal {
                 if (prop === 'aborter') {
                     return (value: Aborter) => {
                         nextCallAborter = value;
-                    }
+                    };
                 }
 
                 // Assume the caller is only trying to get functions (not properties, fields etc)
@@ -277,12 +278,12 @@ export class RemotePortal implements IPortal {
                     // console.log('ABORTER', prop.toString(), aborter);
 
                     if (aborter) {
-                        aborter.handle( () => {
+                        aborter.handle(() => {
                             aborted = true;
                             subAborter?.abort();
                         });
                     }
-    
+
                     const actorType = normalizeActorType(type);
                     const actionName = normalizeActionName(prop.toString());
 
@@ -320,8 +321,8 @@ export class RemotePortal implements IPortal {
 
                         if (destination !== '') {
                             info.suggestion = undefined;
-                            subAborter = (aborter) ? new Aborter() : undefined;
-                            
+                            subAborter = aborter ? new Aborter() : undefined;
+
                             const options: IInvokeOptions = {
                                 destination,
                                 content,
@@ -354,6 +355,7 @@ export class RemotePortal implements IPortal {
                                                 const redirect =
                                                     response.error.parameters?.[FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION];
                                                 info.suggestion = redirect as string;
+                                                nested.push(toFrameworkError(response.error));
                                             } else {
                                                 ok = true;
                                                 throw new ApplicationError(

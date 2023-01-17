@@ -13,7 +13,7 @@ export interface IAcquiredActorLock {
 }
 
 /**
- * Abstraction of an achtor lock that ensures only one application has 
+ * Abstraction of an achtor lock that ensures only one application has
  * ownership of a certain id within a certain time window.
  */
 export interface IActorLock {
@@ -24,7 +24,7 @@ export interface IActorLock {
      * is not valid anymore.
      * @throws A {@link FrameworkError} with code {@link FRAMEWORK_ERROR_ACTOR_LOCK_FAILED} to indicate
      * that the lock could not be obtained. The {@link FrameworkError} parameter {@link FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION}
-     * should be filled with an array of application names that currently hold the lock (typically only one, but in case of 
+     * should be filled with an array of application names that currently hold the lock (typically only one, but in case of
      * lock conflicts multiple holders could be reported. Don't worry -- only one application will know that it actually holds the lock,
      * so although multiple applications are reported by the lock, only one application will acutally hold te lock. It is just that
      * the (distributed) lock does not know exactly which one). This information can be used by callers to

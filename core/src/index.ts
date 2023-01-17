@@ -26,7 +26,7 @@
  * on the fly (and also deactivates instances when the configured container capacity is exceeded).
  *
  * Both {@link InstanceWrapper} and {@link InstanceContainer} respect the configured locking and
- * activation/deactivation mechanisms (by means of the {@link action|@action} decorator and the 
+ * activation/deactivation mechanisms (by means of the {@link action|@action} decorator and the
  * settings in {@link IActorRegistrationOptions.kind}.
  *
  * ## Local actor invocation

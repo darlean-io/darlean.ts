@@ -25,7 +25,7 @@ export async function sleep(ms: number, aborter?: Aborter): Promise<void> {
     return new Promise((resolve) => {
         const timer = setTimeout(resolve, ms);
         if (aborter) {
-            aborter.handle( () => {
+            aborter.handle(() => {
                 clearTimeout(timer);
                 resolve();
             });
@@ -184,13 +184,13 @@ export class Interruptor {
 /**
  * Instances of this class can be passed to objects that support early abortion of long-running
  * operations.
- * 
+ *
  * Abortion works by the application code creating a new {@link Aborter} instance and somehow pairing
  * that instance with the object that provides long-running operations. That object then invokes
  * the {@link Aborter.handle} method with a callback function as parameter that is invoked when
  * the application code invokes {@link Aborter.abort}. The callback then executes the necessary logic
  * to abort the long-running operation.
- * 
+ *
  * @remarks
  * An {@link Aborter} instance should only be used once. When multiple long-running actions need
  * to be aborted, multiple instances should be created (one for each such long-running action).
@@ -208,8 +208,8 @@ export class Aborter {
     }
 
     /**
-     * Aborts the long-running operation. It is safe to invoke this method more than once, but only 
-     * the first invocation effectively aborts the long-running operation. 
+     * Aborts the long-running operation. It is safe to invoke this method more than once, but only
+     * the first invocation effectively aborts the long-running operation.
      */
     public abort() {
         const handler = this.handler;

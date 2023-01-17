@@ -3,7 +3,6 @@ import { BsonDeSer } from './infra/bsondeser';
 import { ITime } from '@darlean/utils';
 import { Time } from '@darlean/utils';
 import { InstanceContainer, MultiTypeInstanceContainer, VolatileTimer } from './instances';
-import { MemoryPersistence } from './various';
 import { ActorRegistry, ExponentialBackOff, PlacementCache, RemotePortal } from './remoteinvocation';
 import { TransportRemote } from './transportremote';
 import {
@@ -25,6 +24,13 @@ import { InProcessTransport } from './infra/inprocesstransport';
 import { DistributedActorRegistry } from './distributedactorregistry';
 import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-registry-suite';
 import actorRegistrySuite from '@darlean/actor-registry-suite';
+import fsPersistenceSuite, {
+    FS_PERSISTENCE_SERVICE,
+    IFsPersistenceOptions,
+    IFsPersistenceService
+} from '@darlean/fs-persistence-suite';
+import { DistributedPersistence } from './distributedpersistence';
+import { IDeSer } from './infra/deser';
 
 export const DEFAULT_CAPACITY = 1000;
 
@@ -208,6 +214,19 @@ export class ActorRunnerBuilder {
         this.registerSuite(suite);
     }
 
+    public hostFsPersistence(options: IFsPersistenceOptions) {
+        const suite = fsPersistenceSuite(options);
+        this.registerSuite(suite);
+    }
+
+    /**
+     * Overrides the default distributed persistence which is automatically enabled when {@link setPersistence} is not invoked.
+     * @param persistence
+     */
+    public setPersistence(persistence: IPersistence<unknown>) {
+        this.persistence = persistence;
+    }
+
     /**
      * Builds a new {@link ActorRunner} based on the provided configuration.
      * @returns a new ActorRunner
@@ -220,7 +239,9 @@ export class ActorRunnerBuilder {
         this.multiContainer = multiContainer;
         const portal = this.createPortal(backoff, this.transport, time, multiContainer);
         this.portal = portal;
-        this.persistence = this.createPersistence();
+        if (!this.persistence) {
+            this.persistence = this.createPersistence(portal, new BsonDeSer());
+        }
         const ar = new ActorRunner(portal);
         this.configurePortal(ar);
         return ar;
@@ -391,8 +412,10 @@ export class ActorRunnerBuilder {
         return new TransportRemote(appId, transport, container);
     }
 
-    private createPersistence(): IPersistence<unknown> {
-        return new MemoryPersistence();
+    private createPersistence(portal: IPortal, deser: IDeSer): IPersistence<unknown> {
+        const servicePortal = portal.typed<IFsPersistenceService>(FS_PERSISTENCE_SERVICE);
+        const service = servicePortal.retrieve(['default']);
+        return new DistributedPersistence(service, deser);
     }
 
     private createActorCreateContext(type: string, id: string[], timers: IVolatileTimer[]): IActorCreateContext {
@@ -409,10 +432,17 @@ export class ActorRunnerBuilder {
             throw new Error('No time assigned');
         }
 
+        // The id-length is there to prevent malicious code from accessing persistent data
+        // from other actors.
+        // When actor 1 has id ['a', 'b'] and stores state in ['c]; 
+        // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
+        // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
+        const persistence = this.persistence.sub([type, id.length.toString(), ...id]);
+
         return {
             id,
             portal: this.portal,
-            persistence: this.persistence.sub([type, ...id]),
+            persistence: persistence,
             time,
             newVolatileTimer: () => {
                 const timer = new VolatileTimer<object>(time);

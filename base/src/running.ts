@@ -22,10 +22,10 @@ export interface IActorRegistrationOptions<T extends object> {
     /**
      * Factory function that creates a new actor instance. The provided `context` provides access to
      * useful information like the id of the to-be-created actor and persistency service.
-     * 
-     * Can be optional, because client applications may just register an actor to specify the hosts 
+     *
+     * Can be optional, because client applications may just register an actor to specify the hosts
      * property without being able to create new instances themselves.
-     * 
+     *
      * @see IActorCreateContext
      */
     creator?: (context: IActorCreateContext) => T;
@@ -48,7 +48,7 @@ export interface IActorRegistrationOptions<T extends object> {
 
     /**
      * When present, the list of hosts on which this actor can run.
-     * 
+     *
      * This is only required when no actor directory is being used.
      */
     hosts?: string[];
@@ -71,9 +71,9 @@ export interface IActorCreateContext {
 
     /**
      * The portal interface that gives the created actor access to other actors within the cluster.
-     * 
+     *
      * It is recommended practice that the creator function derives the strictest sub-portal that
-     * is useful to the created actor (using {@link IPortal.typed}, {@link ITypedPortal.prefix} and 
+     * is useful to the created actor (using {@link IPortal.typed}, {@link ITypedPortal.prefix} and
      * {@link IPortal.prefix}) and passes this strictest sub-portal via the constructor to the newly
      * created actor instance.
      */

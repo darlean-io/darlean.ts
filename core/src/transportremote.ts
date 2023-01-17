@@ -38,7 +38,7 @@ export class TransportRemote implements IRemote {
     protected appId: string;
     protected pendingCalls: Map<string, IRemotePendingCall>;
     protected instanceContainer: IMultiTypeInstanceContainer;
-    
+
     /**
      * Creates a new TransportRemote.
      * @param appId The id of the current application with which the remote makes itself known to the transport
@@ -76,7 +76,7 @@ export class TransportRemote implements IRemote {
 
     public async invoke(options: IInvokeOptions): Promise<IInvokeResult> {
         const callId = uuid.v4();
-        
+
         const env: ITransportEnvelope = {
             receiverId: options.destination,
             child: {
@@ -98,9 +98,9 @@ export class TransportRemote implements IRemote {
                 }, 60 * 1000)
             };
             this.pendingCalls.set(callId, call);
-            
+
             if (options.aborter) {
-                options.aborter.handle( () => {
+                options.aborter.handle(() => {
                     this.pendingCalls.delete(callId);
                     clearTimeout(call.timeout);
                     resolve({
@@ -188,7 +188,7 @@ export class TransportRemote implements IRemote {
                     }
                 }
             } else {
-                // Handle a new message that is to be sent to a remote actor
+                // Handle a new message that is to be sent to a local actor
                 setImmediate(async () => {
                     try {
                         const request = this.fromTransportRequest(contents as ITransportActorCallRequest);
@@ -203,12 +203,23 @@ export class TransportRemote implements IRemote {
                                 this.session?.send(returnEnvelope, this.toTransportResponse(response));
                             }
                         } catch (e) {
+                            const err = toActionError(e);
+
+                            const msg = `in ${request.actorType}::${request.actionName} (application: ${this.appId})`;
+                            if (err.stack) {
+                                const lines = err.stack.split('\n');
+                                const lines2 = [lines[0], '    ' + msg, ...lines.slice(1)];
+                                err.stack = lines2.join('\n');
+                            } else {
+                                err.stack = msg;
+                            }
+
                             // The proxy already catches application errors and properly encapsulates those
                             // within an ApplicationError. Also, when framework errors occur, they are
                             // delivered as FrameworkError. So, we just have to make sure here that anything
                             // unexpected that passed through is nicely converted.
                             const response: IActorCallResponse = {
-                                error: toActionError(e)
+                                error: err
                             };
 
                             for (const returnEnvelope of envelope.returnEnvelopes ?? []) {

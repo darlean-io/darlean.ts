@@ -363,7 +363,7 @@ export class Generator {
                     }
                     this.generateLink(html, data, item.parent, item.id, item.name);
                     html.end();
-                    html.end();  // td
+                    html.end(); // td
 
                     html.start('td', undefined);
                     html.start('div', 'default-value');
@@ -753,7 +753,7 @@ export class Generator {
                 first = false;
                 this.generateType(html, item, data, scope);
             }
-        }else if (t.type === 'reflection') {
+        } else if (t.type === 'reflection') {
             if (t.declaration?.indexSignature) {
                 const key = t.declaration?.indexSignature?.parameters;
                 const value = t.declaration?.indexSignature?.type;

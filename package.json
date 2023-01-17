@@ -5,6 +5,7 @@
 	"./base",
 	"./suites/actor-lock-suite",
 	"./suites/actor-registry-suite",
+	"./suites/fs-persistence-suite",
 	"./core",
 	"./examples"
   ],

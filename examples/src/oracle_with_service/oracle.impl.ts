@@ -1,4 +1,4 @@
-import { action, ActorSuite, IActorSuite, ITypedPortal } from '@darlean/base';
+import { action, ActorSuite, IActivatable, IActorSuite, IDeactivatable, IPersistence, ITypedPortal } from '@darlean/base';
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 
 interface IOracleActor {
@@ -8,22 +8,30 @@ interface IOracleActor {
 
 const ORACLE_ACTOR = 'OracleActor';
 
-// Implementation of a virtual actor that has the knowledge about one topic
-class OracleActor implements IOracleActor {
-    protected knowledge: Map<string, number>;
+type Knowledge = { [fact: string]: number };
 
-    constructor(knowledge?: { [fact: string]: number }) {
-        this.knowledge = new Map();
-        if (knowledge) {
-            for (const [fact, answer] of Object.entries(knowledge)) {
-                this.knowledge.set(fact, answer);
-            }
-        }
+// Implementation of a virtual actor that has the knowledge about one topic
+class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
+    protected knowledge: Knowledge;
+    protected persistence: IPersistence<Knowledge>;
+
+    constructor(persistence: IPersistence<Knowledge>, knowledge?: Knowledge) {
+        this.persistence = persistence;
+        this.knowledge = knowledge ?? {};
+    }
+
+    public async activate(): Promise<void> {
+        this.knowledge = (await this.persistence.load(undefined, ['knowledge'])) ?? this.knowledge;
+        console.log('LOADED', this.knowledge);
+    }
+
+    public async deactivate(): Promise<void> {
+        await this.persistence.store(undefined, ['knowledge'], this.knowledge);
     }
 
     @action()
     public async ask(question: string): Promise<number> {
-        for (const [fact, answer] of this.knowledge.entries()) {
+        for (const [fact, answer] of Object.entries(this.knowledge)) {
             if (question.includes(fact)) {
                 return answer;
             }
@@ -33,7 +41,8 @@ class OracleActor implements IOracleActor {
 
     @action()
     public async teach(fact: string, answer: number): Promise<void> {
-        this.knowledge.set(fact, answer);
+        this.knowledge[fact] = answer;
+        await this.deactivate();
     }
 }
 
@@ -85,8 +94,9 @@ export function suite(knowledge?: IKnowledgeTopics, hosts?: string[]): IActorSui
                 const topic = context.id[0];
                 // Lookup relevant facts for the topic in the knowledge
                 const k = topic ? knowledge?.[topic] : undefined;
+                const p = context.persistence as IPersistence<Knowledge>;
                 // Create and return a new OracleActor instance with the provided knowledge
-                return new OracleActor(k);
+                return new OracleActor(p, k);
             },
             hosts
         },

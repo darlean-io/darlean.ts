@@ -29,6 +29,7 @@ describe('Actor runner & builder', () => {
         const builder = new ActorRunnerBuilder();
         builder.setDefaultHosts([DEFAULT_LOCAL_APP_ID]);
         builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
+        builder.setPersistence(new MemoryPersistence());
         builder.registerActor({
             type: 'MyActor',
             kind: 'singular',
@@ -96,6 +97,7 @@ describe('Actor runner & builder', () => {
         const builder = new ActorRunnerBuilder();
         builder.setDefaultHosts([DEFAULT_LOCAL_APP_ID]);
         builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
+        builder.setPersistence(new MemoryPersistence());
         builder.registerActor({
             type: 'ViaEchoActor',
             kind: 'singular',
@@ -138,6 +140,7 @@ describe('Actor runner & builder', () => {
         const builder = new ActorRunnerBuilder();
 
         builder.hostActorLock(['my-app'], 1);
+        builder.setPersistence(new MemoryPersistence());
 
         builder.registerActor({
             type: 'ViaEchoActor',

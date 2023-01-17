@@ -14,13 +14,13 @@ export const FRAMEWORK_ERROR_FINALIZING = 'FINALIZING';
  * Indicates that long running actions on an object that implements IAbortable can be aborted
  * before the long running operation is finished. For that to work, the calling code must create a new {@link Aborter} instance and
  * pair it with the object via {@link IAbortable.aborter} just before invoking the long running action method.
- * 
+ *
  * @remarks
  * * It depends on the implementation of the object that implements IAbortable whether the aborted method
  *   throws an error or just returns with a regular or special value.
  * * The aborter set via {@link IAbortable.aborter} only applies to the *first* subsequent action method call, so it can
  *   only be used to abort the *first* action method invoked after invoking {@link IAbortable.aborter}.
- * 
+ *
  * @example
  * ```ts
  * const aborter = new Aborter();
@@ -32,7 +32,7 @@ export const FRAMEWORK_ERROR_FINALIZING = 'FINALIZING';
 export interface IAbortable {
     /**
      * Assigns an {@link Aborter} instance that can be used to {@link Aborter.abort | abort} the very first action invocation on the
-     * instance that implements {@link IAbortable}. 
+     * instance that implements {@link IAbortable}.
      * @param value The {@link Aborter} that can be used to abort the very first action invocation.
      */
     aborter(value: Aborter): void;
@@ -49,7 +49,7 @@ export interface IPortal {
      * @param id The id of the remote actor for which a proxy is to be obtained
      * @returns A proxy object of type T that internally takes care of all the networking and
      * other complexity of invoking the remote actor.
-     * @remarks 
+     * @remarks
      * * Even when the requested type is not known to the system, the call returns a valid
      *   proxy object. Any errors resulting from the type not being known to the system are thrown when
      *   actions are actually being performed on the returned proxy. This behaviour makes it possible to already initialize
@@ -139,7 +139,6 @@ export interface IActorPlacement {
 export interface IInvokeInterruptor {
     interrupt(): void;
 }
-
 
 /**
  * Represents a mechanism of remotely invoking actor actions.

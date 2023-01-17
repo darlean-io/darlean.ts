@@ -2,7 +2,7 @@ import { Aborter, replaceArguments } from '@darlean/utils';
 
 /**
  * The kind of error.
- * 
+ *
  * * `application`: The error is caused by application code
  * * `framework`: The error is caused by the Darlean framework
  */
@@ -11,7 +11,7 @@ export type ActionErrorKind = 'framework' | 'application';
 /**
  * Represents an error that occured during the performing of an action, either in framework code (for example, when a remote application
  * could not be reached) or in the application code that forms the actual implementation of the action.
- * 
+ *
  * The value of `kind` indicates whether the error
  * is caused by the framework or the application, and can be used to discriminate between these situations.
  */
@@ -58,13 +58,13 @@ export interface IActionError {
 
 /**
  * The request for invoking a remote action at the "remote" level.
- * 
+ *
  * @see {@link IInvokeOptions} for the counterpart of this interface on the "transport" level.
  */
 export interface IActorCallRequest {
     /**
      * The *normalized* actor type on which a remote action should be invoked
-     * 
+     *
      * @see {@link normalizeActorType}
      */
     actorType: string;
@@ -76,20 +76,20 @@ export interface IActorCallRequest {
 
     /**
      * The *normalized* action name that should be invoked
-     * 
+     *
      * @see {@link normalizeActionName}
      */
     actionName: string;
 
     /**
-     * Any arguments that should be passed to the remote action implementation 
+     * Any arguments that should be passed to the remote action implementation
      */
     arguments: unknown[];
 }
 
 /**
  * The response of invoking a remote action at the "remote" level.
- * 
+ *
  * @see {@link IInvokeResult} for the counterpart of this interface on the "transport" level.
  */
 export interface IActorCallResponse {
@@ -115,7 +115,7 @@ export interface IInvokeOptions {
     destination: string;
     /**
      * The actual contents of the action invoke request.
-     * 
+     *
      * @remarks This currently always is an instance of {@link IActorCallRequest}.
      */
     content: unknown;
@@ -135,14 +135,14 @@ export interface IInvokeResult {
     errorCode?: string;
     /**
      * An optional map of error parameters.
-     * 
+     *
      * @see {@link TRANSPORT_ERROR_PARAMETER_MESSAGE}
      */
     errorParameters?: { [key: string]: unknown };
 
     /**
      * The content of the response (when there is no error).
-     * 
+     *
      * @remarks THis currently always is an instance of {@link IActorCallResponse}.
      */
     content?: unknown;
@@ -178,11 +178,18 @@ export class ApplicationError extends Error implements IActionError {
         } else {
             this.message = parameters ? replaceArguments(template, parameters) : template;
         }
-        if (stack) {
+        if (haveStack(stack)) {
             this.stack = stack;
         }
         this.nested = nested;
     }
+}
+
+// Stack traces always contain the error message + additional stack lines.
+// When only error msg is present, we do not consider it a real stack trace. We want
+// to have node derive a new stack trace instead.
+function haveStack(stack?: string) {
+    return stack?.includes('\n');
 }
 
 /**
@@ -215,7 +222,7 @@ export class FrameworkError extends Error implements IActionError {
         } else {
             this.message = parameters ? replaceArguments(template, parameters) : template;
         }
-        if (stack) {
+        if (haveStack(stack)) {
             this.stack = stack;
         }
         this.nested = nested;
