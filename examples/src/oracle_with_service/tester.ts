@@ -1,17 +1,26 @@
 import { IOracleService } from './oracle.intf';
 
-export async function test(oracleService: IOracleService) {
+export async function test(oracleService: IOracleService, reuse = false) {
     check(20, await oracleService.ask('temperature', 'What is the temperature of today?'), "Today's temperature should be ok");
     check(25, await oracleService.ask('temperature', 'How warm is it tomorrow?'), "Tomorrow's temperature should be ok");
 
     check(2, await oracleService.ask('price', 'What is the price of milk?'), 'The price of milk should be ok');
-    check(
-        42,
-        await oracleService.ask('price', 'What is the price of an abracadabra?'),
-        'The price of an unknown product should be 42'
-    );
+    if (reuse) {
+        check(
+            99,
+            await oracleService.ask('price', 'What is the price of an abracadabra?'),
+            'The price of an previously learned product should be ok'
+        );
+    } else {
+        check(
+            42,
+            await oracleService.ask('price', 'What is the price of an abracadabra?'),
+            'The price of an unknown product should be 42'
+        );
+    }
 
     await oracleService.teach('price', 'abracadabra', 99);
+
     check(
         99,
         await oracleService.ask('price', 'What is the price of an abracadabra?'),

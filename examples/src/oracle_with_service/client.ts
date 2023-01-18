@@ -2,7 +2,7 @@ import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 import { ActorRunnerBuilder, NatsServer } from '@darlean/core';
 import { test } from './tester';
 
-async function main(appId: string, servers: string[]) {
+async function main(appId: string, servers: string[], reuse = false) {
     const builder = new ActorRunnerBuilder();
     builder.setRemoteAccess(appId);
     builder.setRuntimeHosts(servers);
@@ -18,7 +18,7 @@ async function main(appId: string, servers: string[]) {
 
     try {
         const oracleService = runner.getPortal().retrieve<IOracleService>(ORACLE_SERVICE, []);
-        await test(oracleService);
+        await test(oracleService, reuse);
     } catch (e) {
         console.log('ERROR123', e);
         console.log(JSON.stringify(e, undefined, 2));
@@ -32,8 +32,9 @@ if (require.main === module) {
     const args = process.argv.slice(2);
     const appId = args[0];
     const servers = (args[1] || args[0]).split(',');
+    const reuse = args.includes('reuse');
 
-    main(appId, servers)
+    main(appId, servers, reuse)
         .then()
         .catch((e) => console.log(e));
 }

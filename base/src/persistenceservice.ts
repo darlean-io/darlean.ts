@@ -5,6 +5,7 @@ export interface IPersistenceService {
 }
 
 export interface IPersistenceStoreOptions {
+    specifiers?: string[];
     partitionKey: string[];
     sortKey?: string[];
     value?: Buffer;
@@ -12,6 +13,7 @@ export interface IPersistenceStoreOptions {
 }
 
 export interface IPersistenceLoadOptions {
+    specifiers?: string[];
     partitionKey: string[];
     sortKey?: string[];
 }
@@ -22,6 +24,7 @@ export interface IPersistenceLoadResult {
 }
 
 export interface IPersistenceQueryOptions {
+    specifiers?: string[];
     partitionKey: string[];
     sortKey?: string[];
     sortKeyOperator?: 'equals' | 'starts-with' | 'less-than' | 'less-than-equal' | 'greater-than' | 'greater-than-equal';

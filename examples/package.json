@@ -7,13 +7,15 @@
   "scripts": {
     "test": "npm run example:oracle:all && npm run example:performance:all",
     "build": "tsc",
-    "example:oracle:all": "npm run example:oracle:1:allinone && npm run example:oracle:2:allinone && npm run example:oracle:2:clientserver && npm run example:oracle:2:clientserver2",
+    "example:oracle:all": "npm run example:oracle:1:allinone && npm run example:oracle:2:allinone && npm run example:oracle:2:clientserver && npm run example:oracle:2:clientserver:reuse && npm run example:oracle:2:clientserver2 && npm run example:oracle:2:clientserver2:reuse",
     "example:oracle:1:allinone": "node lib/simple_oracle/index.js",
     "example:oracle:2:allinone": "npx rimraf ./persistence && node lib/oracle_with_service/index.js",
     "example:oracle:2:server": "node lib/oracle_with_service/server.js",
     "example:oracle:2:client": "node lib/oracle_with_service/client.js",
     "example:oracle:2:clientserver": "npx rimraf ./persistence && concurrently --success first --kill-others \"npm run example:oracle:2:server server server\" \"npm run example:oracle:2:client client server\"",
+    "example:oracle:2:clientserver:reuse": "concurrently --success first --kill-others \"npm run example:oracle:2:server server server\" \"npm run example:oracle:2:client client server reuse\"",
     "example:oracle:2:clientserver2": "npx rimraf ./persistence && concurrently --success first --kill-others \"npm run example:oracle:2:server server01 server01,server02\" \"npm run example:oracle:2:server server02 server01,server02\" \"npm run example:oracle:2:client client server01,server02\"",
+    "example:oracle:2:clientserver2:reuse": "concurrently --success first --kill-others \"npm run example:oracle:2:server server01 server01,server02\" \"npm run example:oracle:2:server server02 server01,server02\" \"npm run example:oracle:2:client client server01,server02 reuse\"",
     "example:performance:all": "npm run example:performance:n1 && npm run example:performance:n3",
     "example:performance:n3": "concurrently --success first --kill-others \"node lib/performance/server.js server00 server00,server01,server02\" \"node lib/performance/server.js server01 server00,server01,server02\" \"node lib/performance/server.js server02 server00,server01,server02\" \"node lib/performance/client.js client server00,server01,server02\"",
     "example:performance:n1": "concurrently --success first --kill-others \"node lib/performance/server.js server00 server00\" \"node lib/performance/client.js client server00\"",
@@ -51,6 +53,7 @@
     "lib/**/*"
   ],
   "dependencies": {
+    "@darlean/persistence-suite": "^2.0.0-alpha.0",
     "rimraf": "^4.1.0"
   }
 }

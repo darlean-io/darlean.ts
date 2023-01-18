@@ -1,7 +1,7 @@
 import { suite as oracle_suite } from './oracle.impl';
 import { knowledge } from './knowledge.cfg';
 import { ActorRunnerBuilder } from '@darlean/core';
-import { persistenceConfig } from './persistence.cfg';
+import { fsPersistenceConfig, persistenceConfig } from './persistence.cfg';
 
 async function main(appId: string, servers: string[]) {
     const builder = new ActorRunnerBuilder();
@@ -10,7 +10,8 @@ async function main(appId: string, servers: string[]) {
     builder.setDefaultHosts(servers);
     builder.hostActorLock(servers, 1);
     builder.hostActorRegistry();
-    builder.hostFsPersistence(persistenceConfig);
+    builder.hostPersistence(persistenceConfig);
+    builder.hostFsPersistence(fsPersistenceConfig);
     builder.registerSuite(oracle_suite(knowledge, servers));
 
     const runner = builder.build();

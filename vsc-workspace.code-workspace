@@ -22,6 +22,9 @@
 		    "path": "suites/actor-registry-suite"
 		},		
 		{
+		    "path": "suites/persistence-suite"
+		},		
+		{
 		    "path": "suites/fs-persistence-suite"
 		},		
 		{

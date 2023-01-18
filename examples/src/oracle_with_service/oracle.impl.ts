@@ -104,7 +104,7 @@ export function suite(knowledge?: IKnowledgeTopics, hosts?: string[]): IActorSui
                 const topic = context.id[0];
                 // Lookup relevant facts for the topic in the knowledge
                 const k = topic ? knowledge?.[topic] : undefined;
-                const p = context.persistence as IPersistence<Knowledge>;
+                const p = context.persistence(['oracle.fact.state']) as IPersistence<Knowledge>;
                 // Create and return a new OracleActor instance with the provided knowledge
                 return new OracleActor(p, k);
             },

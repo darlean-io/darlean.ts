@@ -1,0 +1,6 @@
+{
+    "preset": "ts-jest",
+    "bail": 1,
+    "verbose": false,
+    "reporters": ["jest-standard-reporter"]
+  }

@@ -20,19 +20,19 @@ export interface IFsPersistenceOptions {
 }
 
 export interface IFsPersistenceCompartment {
+    compartment: string;
     partitionKeyLen?: number;
     sortKeyLen?: number;
     shardCount?: number;
     nodes?: string[];
     basePath: string;
-    filter: string;
 }
 
 function findOptions(options: IFsPersistenceOptions, compartment: string): IFsPersistenceCompartment {
     let result: IFsPersistenceCompartment | undefined;
 
     for (const comp of options.compartments) {
-        if (wildcardMatch(compartment, comp.filter)) {
+        if (wildcardMatch(compartment, comp.compartment)) {
             if (result) {
                 result = { ...result, ...comp };
             } else {

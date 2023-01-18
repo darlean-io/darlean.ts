@@ -25,9 +25,10 @@ import { InProcessTransport } from './infra/inprocesstransport';
 import { DistributedActorRegistry } from './distributedactorregistry';
 import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-registry-suite';
 import actorRegistrySuite from '@darlean/actor-registry-suite';
-import fsPersistenceSuite, { FS_PERSISTENCE_SERVICE, IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { DistributedPersistence } from './distributedpersistence';
 import { IDeSer } from './infra/deser';
+import persistenceSuite, { IPersistenceServiceOptions, PERSISTENCE_SERVICE } from '@darlean/persistence-suite';
+import fsPersistenceSuite, { IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 
 export const DEFAULT_CAPACITY = 1000;
 
@@ -124,7 +125,7 @@ export class ActorRunner {
 export class ActorRunnerBuilder {
     protected actors: IActorRegistrationOptions<object>[];
     protected portal?: IPortal;
-    protected persistence?: IPersistence<unknown>;
+    protected persistenceFactory?: IPersistence<unknown> | ((actorType: string, specifiers?: string[]) => IPersistence<unknown>);
     protected appId: string;
     protected transport?: ITransport;
     protected remote?: IRemote;
@@ -211,6 +212,11 @@ export class ActorRunnerBuilder {
         this.registerSuite(suite);
     }
 
+    public hostPersistence(options: IPersistenceServiceOptions) {
+        const suite = persistenceSuite(options);
+        this.registerSuite(suite);
+    }
+
     public hostFsPersistence(options: IFsPersistenceOptions) {
         const suite = fsPersistenceSuite(options);
         this.registerSuite(suite);
@@ -220,8 +226,10 @@ export class ActorRunnerBuilder {
      * Overrides the default distributed persistence which is automatically enabled when {@link setPersistence} is not invoked.
      * @param persistence
      */
-    public setPersistence(persistence: IPersistence<unknown>) {
-        this.persistence = persistence;
+    public setPersistence(
+        factory: IPersistence<unknown> | ((actorType: string, specifiers?: string[]) => IPersistence<unknown>)
+    ) {
+        this.persistenceFactory = factory;
     }
 
     /**
@@ -236,8 +244,8 @@ export class ActorRunnerBuilder {
         this.multiContainer = multiContainer;
         const portal = this.createPortal(backoff, this.transport, time, multiContainer);
         this.portal = portal;
-        if (!this.persistence) {
-            this.persistence = this.createPersistence(portal, new BsonDeSer());
+        if (!this.persistenceFactory) {
+            this.persistenceFactory = this.createPersistence(portal, new BsonDeSer());
         }
         const ar = new ActorRunner(portal);
         this.configurePortal(ar);
@@ -249,7 +257,7 @@ export class ActorRunnerBuilder {
      * @returns a reference to the persistence service of the actor runner.
      */
     public getPersistence(): IPersistence<unknown> | undefined {
-        return this.persistence;
+        return typeof this.persistenceFactory === 'function' ? this.persistenceFactory('') : this.persistenceFactory;
     }
 
     private createTime(): ITime {
@@ -409,10 +417,12 @@ export class ActorRunnerBuilder {
         return new TransportRemote(appId, transport, container);
     }
 
-    private createPersistence(portal: IPortal, deser: IDeSer): IPersistence<unknown> {
-        const servicePortal = portal.typed<IPersistenceService>(FS_PERSISTENCE_SERVICE);
-        const service = servicePortal.retrieve(['default']);
-        return new DistributedPersistence(service, deser);
+    private createPersistence(portal: IPortal, deser: IDeSer): (type: string, specifiers?: string[]) => IPersistence<unknown> {
+        return (_type, specifiers?) => {
+            const servicePortal = portal.typed<IPersistenceService>(PERSISTENCE_SERVICE);
+            const service = servicePortal.retrieve([]);
+            return new DistributedPersistence(service, deser, specifiers);
+        };
     }
 
     private createActorCreateContext(type: string, id: string[], timers: IVolatileTimer[]): IActorCreateContext {
@@ -420,7 +430,8 @@ export class ActorRunnerBuilder {
             throw new Error('No portal assigned');
         }
 
-        if (!this.persistence) {
+        const persistenceFactory = this.persistenceFactory;
+        if (!persistenceFactory) {
             throw new Error('No persistence assigned');
         }
 
@@ -429,17 +440,19 @@ export class ActorRunnerBuilder {
             throw new Error('No time assigned');
         }
 
-        // The id-length is there to prevent malicious code from accessing persistent data
-        // from other actors.
-        // When actor 1 has id ['a', 'b'] and stores state in ['c];
-        // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
-        // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
-        const persistence = this.persistence.sub([type, id.length.toString(), ...id]);
-
         return {
             id,
             portal: this.portal,
-            persistence: persistence,
+            persistence: (specifiers?: string[]) => {
+                // The id-length is there to prevent malicious code from accessing persistent data
+                // from other actors.
+                // When actor 1 has id ['a', 'b'] and stores state in ['c];
+                // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
+                // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
+                const typePersistence =
+                    typeof persistenceFactory === 'function' ? persistenceFactory(type, specifiers) : persistenceFactory;
+                return typePersistence.sub([type, id.length.toString(), ...id]);
+            },
             time,
             newVolatileTimer: () => {
                 const timer = new VolatileTimer<object>(time);

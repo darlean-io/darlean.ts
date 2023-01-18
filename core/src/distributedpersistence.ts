@@ -78,12 +78,14 @@ class DistributedPersistable<T> implements IPersistable<T> {
  * in {@link @darlean/fs-persistence-suite}) to provide persistency.
  */
 export class DistributedPersistence<T> implements IPersistence<T> {
-    protected service: IPersistenceService;
-    protected deser: IDeSer;
+    private service: IPersistenceService;
+    private deser: IDeSer;
+    private specifiers: string[] | undefined;
 
-    constructor(service: IPersistenceService, deser: IDeSer) {
+    constructor(service: IPersistenceService, deser: IDeSer, specifiers?: string[]) {
         this.service = service;
         this.deser = deser;
+        this.specifiers = specifiers;
     }
 
     public persistable(partitionKey: string[] | undefined, sortKey: string[] | undefined, value: T | undefined): IPersistable<T> {
@@ -101,6 +103,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
         sortKey?: string[] | undefined
     ): Promise<[value: T | undefined, version: string | undefined]> {
         const result = await this.service.load({
+            specifiers: this.specifiers,
             partitionKey: partitionKey ?? [],
             sortKey: sortKey ?? []
         });
@@ -120,6 +123,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
     ): Promise<void> {
         const v = this.deser.serialize(value);
         await this.service.store({
+            specifiers: this.specifiers,
             partitionKey: partitionKey ?? [],
             sortKey: sortKey ?? [],
             value: v,
