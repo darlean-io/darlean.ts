@@ -53,22 +53,30 @@ export function replaceAll(input: string, search: string, replace: string): stri
  * @param mask The mask that is evaluated against the input
  * @returns Whether text matches with the mask.
  */
-export function wildcardMatch(input: string, mask: string): boolean {
+export function wildcardMatch(input: string, mask: string, partsOut?: string[]): boolean {
     const parts = mask.split('*');
     let lastIdx = -1;
     if (!input.startsWith(parts[0] || '')) {
         return false;
     }
-    if (!input.endsWith(parts[0] || '')) {
+    if (!input.endsWith(parts[parts.length - 1] || '')) {
         return false;
     }
+    if ((parts[0] || '').length + (parts[parts.length - 1] || '').length > input.length) {
+        return false;
+    }
+
     lastIdx = parts[0].length;
     for (let partIdx = 1; partIdx < parts.length - 1; partIdx++) {
+        const startIdx = lastIdx;
         lastIdx = input.indexOf(parts[partIdx], lastIdx);
         if (lastIdx < 0) {
             return false;
         }
+        partsOut?.push(input.substring(startIdx, lastIdx));
+        lastIdx++;
     }
+    partsOut?.push(input.substring(lastIdx, input.length - parts[parts.length - 1].length));
     return true;
 }
 
