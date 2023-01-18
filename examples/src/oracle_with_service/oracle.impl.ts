@@ -108,7 +108,7 @@ export function suite(knowledge?: IKnowledgeTopics, hosts?: string[]): IActorSui
                 // Create and return a new OracleActor instance with the provided knowledge
                 return new OracleActor(p, k);
             },
-            hosts
+            apps: hosts
         },
         // Registration of the OracleService service actor
         {
@@ -121,7 +121,7 @@ export function suite(knowledge?: IKnowledgeTopics, hosts?: string[]): IActorSui
                 // Create and return a new OracleService with the typed portal
                 return new OracleService(actorPortal);
             },
-            hosts
+            apps: hosts
         }
     ]);
 }

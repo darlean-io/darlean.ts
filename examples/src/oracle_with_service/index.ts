@@ -7,7 +7,7 @@ import { fsPersistenceConfig, persistenceConfig } from './persistence.cfg';
 
 async function main() {
     const builder = new ActorRunnerBuilder();
-    builder.setDefaultHosts([DEFAULT_LOCAL_APP_ID]);
+    builder.setDefaultApps([DEFAULT_LOCAL_APP_ID]);
     builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
     builder.hostPersistence(persistenceConfig);
     builder.hostFsPersistence(fsPersistenceConfig);

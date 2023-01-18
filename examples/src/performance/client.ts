@@ -5,12 +5,12 @@ import { parallel, ParallelTask, Time } from '@darlean/utils';
 async function main(appId: string, servers: string[]) {
     const builder = new ActorRunnerBuilder();
     builder.setRemoteAccess(appId);
-    builder.setDefaultHosts(servers);
+    builder.setDefaultApps(servers);
 
     builder.registerActor({
         type: PERFORMANCE_ACTOR,
         kind: 'multiplar',
-        hosts: servers,
+        apps: servers,
         placement: {
             version: '20230112',
             bindIdx: 0

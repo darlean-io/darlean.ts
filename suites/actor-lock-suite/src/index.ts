@@ -53,7 +53,7 @@ export default function suite(options: IActorLockOptions) {
                 version: '20230109',
                 bindIdx: -1
             },
-            hosts: options.locks
+            apps: options.locks
         },
         {
             type: ACTOR_LOCK_SERVICE,
@@ -63,7 +63,7 @@ export default function suite(options: IActorLockOptions) {
                 const actorPortal = prefixPortal.typed<ActorLockActor>(ACTOR_LOCK_ACTOR);
                 return new ActorLockService(actorPortal, options.locks, options.redundancy, options.timeout ?? 1000);
             },
-            hosts: options.locks
+            apps: options.locks
         }
     ]);
 }

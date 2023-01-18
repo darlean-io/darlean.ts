@@ -27,7 +27,7 @@ export class ViaEchoActor implements IViaEchoActor {
 describe('Actor runner & builder', () => {
     test('Actor runner - persistence', async () => {
         const builder = new ActorRunnerBuilder();
-        builder.setDefaultHosts([DEFAULT_LOCAL_APP_ID]);
+        builder.setDefaultApps([DEFAULT_LOCAL_APP_ID]);
         builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
         builder.setPersistence(new MemoryPersistence());
         builder.registerActor({
@@ -95,7 +95,7 @@ describe('Actor runner & builder', () => {
     test('Actor runner - local portal', async () => {
         // Test the local portal functionality by having one actor invoke another actor
         const builder = new ActorRunnerBuilder();
-        builder.setDefaultHosts([DEFAULT_LOCAL_APP_ID]);
+        builder.setDefaultApps([DEFAULT_LOCAL_APP_ID]);
         builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
         builder.setPersistence(new MemoryPersistence());
         builder.registerActor({
@@ -147,7 +147,7 @@ describe('Actor runner & builder', () => {
             kind: 'singular',
             creator: (context) => new ViaEchoActor(context.portal.typed<IEchoActor>('EchoActor')),
             capacity: 10,
-            hosts: ['my-app']
+            apps: ['my-app']
         });
 
         builder.registerActor({
@@ -155,7 +155,7 @@ describe('Actor runner & builder', () => {
             kind: 'singular',
             creator: (context) => new EchoActor(context.persistence() as IPersistence<string>, context.id[0] || ''),
             capacity: 10,
-            hosts: ['my-app']
+            apps: ['my-app']
         });
 
         const transport = new InProcessTransport(new BsonDeSer());

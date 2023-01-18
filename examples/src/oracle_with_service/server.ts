@@ -1,18 +1,11 @@
 import { suite as oracle_suite } from './oracle.impl';
 import { knowledge } from './knowledge.cfg';
-import { ActorRunnerBuilder } from '@darlean/core';
-import { fsPersistenceConfig, persistenceConfig } from './persistence.cfg';
+import { ConfigRunnerBuilder } from '@darlean/core';
+import { config } from './persistence.cfg';
 
-async function main(appId: string, servers: string[]) {
-    const builder = new ActorRunnerBuilder();
-    builder.setRemoteAccess(appId);
-    builder.setRuntimeHosts(servers);
-    builder.setDefaultHosts(servers);
-    builder.hostActorLock(servers, 1);
-    builder.hostActorRegistry();
-    builder.hostPersistence(persistenceConfig);
-    builder.hostFsPersistence(fsPersistenceConfig);
-    builder.registerSuite(oracle_suite(knowledge, servers));
+async function main() {
+    const builder = new ConfigRunnerBuilder(config());
+    builder.registerSuite(oracle_suite(knowledge));
 
     const runner = builder.build();
     await runner.start();
@@ -20,11 +13,7 @@ async function main(appId: string, servers: string[]) {
 }
 
 if (require.main === module) {
-    const args = process.argv.slice(2);
-    const appId = args[0];
-    const servers = (args[1] || args[0]).split(',');
-
-    main(appId, servers)
+    main()
         .then()
         .catch((e) => console.log(e));
 }

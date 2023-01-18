@@ -4,7 +4,7 @@ import { ActorRunnerBuilder } from '@darlean/core';
 async function main(appId: string, servers: string[]) {
     const builder = new ActorRunnerBuilder();
     builder.setRemoteAccess(appId);
-    builder.setDefaultHosts(servers);
+    builder.setDefaultApps(servers);
     builder.hostActorLock(servers, 1);
     builder.registerSuite(actor_suite());
 

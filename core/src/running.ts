@@ -130,8 +130,8 @@ export class ActorRunnerBuilder {
     protected transport?: ITransport;
     protected remote?: IRemote;
     protected time?: ITime;
-    protected defaultHosts?: string[];
-    protected runtimeHosts?: string[];
+    protected defaultApps?: string[];
+    protected runtimeApps?: string[];
     protected multiContainer?: MultiTypeInstanceContainer;
     protected transportMechanism: '' | 'nats' = '';
     protected distributedRegistry?: DistributedActorRegistry;
@@ -164,22 +164,22 @@ export class ActorRunnerBuilder {
     }
 
     /**
-     * Sets a list of hosts on which the runner will search for actors that do not
-     * explicitly have their hosts setting configured.
+     * Sets a list of appId's on which the runner will search for actors that do not
+     * explicitly have their apps setting configured.
      * @param hosts
      */
-    public setDefaultHosts(hosts: string[]): ActorRunnerBuilder {
-        this.defaultHosts = hosts;
+    public setDefaultApps(apps: string[]): ActorRunnerBuilder {
+        this.defaultApps = apps;
         return this;
     }
 
-    public setRuntimeHosts(hosts: string[]): ActorRunnerBuilder {
-        this.runtimeHosts = hosts;
+    public setRuntimeApps(apps: string[]): ActorRunnerBuilder {
+        this.runtimeApps = apps;
 
         this.registerActor({
             type: ACTOR_REGISTRY_SERVICE,
             kind: 'singular',
-            hosts: hosts
+            apps: apps
         });
 
         return this;
@@ -207,8 +207,8 @@ export class ActorRunnerBuilder {
         this.registerSuite(suite);
     }
 
-    public hostActorRegistry() {
-        const suite = actorRegistrySuite();
+    public hostActorRegistry(nodes: string[]) {
+        const suite = actorRegistrySuite(nodes);
         this.registerSuite(suite);
     }
 
@@ -380,7 +380,7 @@ export class ActorRunnerBuilder {
         this.fillContainers(multiContainer, portal, actorLock);
 
         for (const actor of this.actors) {
-            const hosts = actor.hosts ?? this.defaultHosts;
+            const hosts = actor.apps ?? this.defaultApps ?? [this.appId];
             if (hosts) {
                 for (const host of hosts) {
                     const placement: IActorPlacement = actor.placement

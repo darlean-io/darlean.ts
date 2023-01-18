@@ -23,7 +23,7 @@ export interface IActorRegistrationOptions<T extends object> {
      * Factory function that creates a new actor instance. The provided `context` provides access to
      * useful information like the id of the to-be-created actor and persistency service.
      *
-     * Can be optional, because client applications may just register an actor to specify the hosts
+     * Can be optional, because client applications may just register an actor to specify the {@link apps}
      * property without being able to create new instances themselves.
      *
      * @see IActorCreateContext
@@ -47,11 +47,11 @@ export interface IActorRegistrationOptions<T extends object> {
     placement?: IActorPlacement;
 
     /**
-     * When present, the list of hosts on which this actor can run.
+     * When present, the list of app-id's on which this actor can run.
      *
      * This is only required when no actor directory is being used.
      */
-    hosts?: string[];
+    apps?: string[];
 }
 
 /**

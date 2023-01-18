@@ -5,7 +5,7 @@ import { knowledge } from './config';
 
 async function main() {
     const builder = new ActorRunnerBuilder();
-    builder.setDefaultHosts([DEFAULT_LOCAL_APP_ID]);
+    builder.setDefaultApps([DEFAULT_LOCAL_APP_ID]);
     builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
     builder.registerSuite(oracle_suite(knowledge));
     const runner = builder.build();

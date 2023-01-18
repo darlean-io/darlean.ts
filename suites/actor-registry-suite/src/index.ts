@@ -14,14 +14,15 @@ export * from './intf';
 
 export const ACTOR_REGISTRY_SERVICE = 'io.darlean.ActorRegistryService';
 
-export default function suite() {
+export default function suite(hosts: string[]) {
     return new ActorSuite([
         {
             type: ACTOR_REGISTRY_SERVICE,
             kind: 'singular',
             creator: (_context) => {
                 return new ActorRegistryService();
-            }
+            },
+            apps: hosts
         }
     ]);
 }
