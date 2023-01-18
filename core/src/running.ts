@@ -13,10 +13,10 @@ import {
     IBackOff,
     IMultiTypeInstanceContainer,
     IPersistence,
-    IPersistenceService,
     IPortal,
     IRemote,
-    IVolatileTimer
+    IVolatileTimer,
+    PERSISTENCE_SERVICE
 } from '@darlean/base';
 import { ACTOR_LOCK_SERVICE, IActorLockService } from '@darlean/actor-lock-suite';
 import actorLockSuite from '@darlean/actor-lock-suite';
@@ -27,7 +27,7 @@ import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-re
 import actorRegistrySuite from '@darlean/actor-registry-suite';
 import { DistributedPersistence } from './distributedpersistence';
 import { IDeSer } from './infra/deser';
-import persistenceSuite, { IPersistenceServiceOptions, PERSISTENCE_SERVICE } from '@darlean/persistence-suite';
+import persistenceSuite, { IPersistenceService, IPersistenceServiceOptions } from '@darlean/persistence-suite';
 import fsPersistenceSuite, { IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 
 export const DEFAULT_CAPACITY = 1000;

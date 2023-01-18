@@ -215,4 +215,4 @@ export * from './remoteinvocation';
 export * from './running';
 export * from './decorations';
 export * from './various';
-export * from './persistenceservice';
+export * from './suites';

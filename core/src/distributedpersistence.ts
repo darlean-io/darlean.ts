@@ -1,4 +1,5 @@
-import { IPersistable, IPersistence, IPersistenceService } from '@darlean/base';
+import { IPersistable, IPersistence } from '@darlean/base';
+import type { IPersistenceService } from '@darlean/persistence-suite';
 import { IDeSer } from './infra/deser';
 import { SubPersistence } from './various';
 

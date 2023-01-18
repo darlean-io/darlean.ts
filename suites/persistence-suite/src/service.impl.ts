@@ -1,15 +1,13 @@
+import { action, ApplicationError, IPortal } from '@darlean/base';
+import { replaceAll, wildcardMatch } from '@darlean/utils';
 import {
-    action,
-    ApplicationError,
+    IPersistenceService,
+    IPersistenceStoreOptions,
     IPersistenceLoadOptions,
     IPersistenceLoadResult,
     IPersistenceQueryOptions,
-    IPersistenceQueryResult,
-    IPersistenceService,
-    IPersistenceStoreOptions,
-    IPortal
-} from '@darlean/base';
-import { replaceAll, wildcardMatch } from '@darlean/utils';
+    IPersistenceQueryResult
+} from '.';
 
 export interface IPersistenceMapping {
     specifier: string;

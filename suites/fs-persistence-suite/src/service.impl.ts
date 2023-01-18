@@ -1,16 +1,14 @@
-import {
-    action,
-    IActivatable,
+import { action, IActivatable, ITypedPortal } from '@darlean/base';
+import { FsPersistenceActor } from './actor.impl';
+import * as crypto from 'crypto';
+import type {
     IPersistenceLoadOptions,
     IPersistenceLoadResult,
     IPersistenceQueryOptions,
     IPersistenceQueryResult,
     IPersistenceService,
-    IPersistenceStoreOptions,
-    ITypedPortal
-} from '@darlean/base';
-import { FsPersistenceActor } from './actor.impl';
-import * as crypto from 'crypto';
+    IPersistenceStoreOptions
+} from '@darlean/persistence-suite';
 
 export interface IFsPersistenceServiceOptions {
     shardCount: number;

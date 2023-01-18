@@ -7,12 +7,12 @@
  * @packageDocumentation
  */
 
-import { ActorSuite, ApplicationError } from '@darlean/base';
+import { ActorSuite, ApplicationError, FS_PERSISTENCE_SERVICE as baseService } from '@darlean/base';
 import { wildcardMatch } from '@darlean/utils';
 import { FsPersistenceActor } from './actor.impl';
 import { FsPersistenceService } from './service.impl';
 
-export const FS_PERSISTENCE_SERVICE = 'io.darlean.FsPersistenceService';
+export const FS_PERSISTENCE_SERVICE = baseService;
 const FS_PERSISTENCE_ACTOR = 'io.darlean.FsPersistenceActor';
 
 export interface IFsPersistenceOptions {

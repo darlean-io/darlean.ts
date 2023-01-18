@@ -1,13 +1,11 @@
-import {
-    action,
-    IActivatable,
-    IDeactivatable,
+import { action, IActivatable, IDeactivatable } from '@darlean/base';
+import type {
     IPersistenceLoadOptions,
     IPersistenceLoadResult,
     IPersistenceQueryOptions,
     IPersistenceQueryResult,
     IPersistenceStoreOptions
-} from '@darlean/base';
+} from '@darlean/persistence-suite';
 import { Database, OPEN_CREATE, OPEN_READWRITE, StatementPool } from './sqlite-async';
 import fs from 'fs';
 
