@@ -1,0 +1,10 @@
+{
+    runtimeApps: ['server01', 'server02', 'server03'],
+    messaging: {
+        providers: ['nats'],
+        nats: {
+            hosts: ['127.0.0.1', '127.0.0.1', '127.0.0.1']
+        }
+    }
+}
+

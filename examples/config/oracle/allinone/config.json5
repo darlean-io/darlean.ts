@@ -1,0 +1,27 @@
+{
+    appId: 'app',
+    runtimeApps: ['app'],
+    runtime: {
+        enabled: true,
+        persistence: {
+            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
+            specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
+            fs: {
+                compartments: [
+                    { compartment: '*', basePath: './persistence', shardCount: 1 },
+                    { compartment: 'fs.oracle-fact', basePath: './persistence/oracle/fact' }
+                ]
+            }
+        },
+        nats: {
+            enabled: true
+        }
+    },
+    messaging: {
+        providers: ['nats'],
+        nats: {
+            hosts: ['127.0.0.1']
+        }
+    }
+}
+

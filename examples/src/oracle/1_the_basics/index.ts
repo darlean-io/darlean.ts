@@ -1,12 +1,10 @@
-import { ActorRunnerBuilder, DEFAULT_LOCAL_APP_ID } from '@darlean/core';
-import { suite as oracle_suite } from './oracle.impl';
+import { ConfigRunnerBuilder } from '@darlean/core';
 import { IOracleActor, ORACLE_ACTOR } from './oracle.intf';
-import { knowledge } from './config';
-
+import { knowledge } from './knowledge';
+import oracle_suite from './oracle.suite';
+        
 async function main() {
-    const builder = new ActorRunnerBuilder();
-    builder.setDefaultApps([DEFAULT_LOCAL_APP_ID]);
-    builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
+    const builder = new ConfigRunnerBuilder();
     builder.registerSuite(oracle_suite(knowledge));
     const runner = builder.build();
 

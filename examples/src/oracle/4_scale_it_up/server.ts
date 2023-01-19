@@ -1,14 +1,12 @@
-import { suite as oracle_suite } from './oracle.impl';
-import { knowledge } from './knowledge.cfg';
 import { ConfigRunnerBuilder } from '@darlean/core';
-import { config } from './persistence.cfg';
-
+import { knowledge } from './knowledge';
+import oracle_suite from './oracle.suite';
+        
 async function main() {
-    const builder = new ConfigRunnerBuilder(config());
+    const builder = new ConfigRunnerBuilder();
     builder.registerSuite(oracle_suite(knowledge));
-
     const runner = builder.build();
-    await runner.start();
+
     await runner.run();
 }
 
