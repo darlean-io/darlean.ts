@@ -1,4 +1,0 @@
-config = config/oracle/config.json5
-app-id = server02
-runtime-enabled = true 
-runtime-apps = server01,server02
