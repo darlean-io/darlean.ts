@@ -29,6 +29,7 @@ import { DistributedPersistence } from './distributedpersistence';
 import { IDeSer } from './infra/deser';
 import persistenceSuite, { IPersistenceService, IPersistenceServiceOptions } from '@darlean/persistence-suite';
 import fsPersistenceSuite, { IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
+import { normalizeActorType } from './shared';
 
 export const DEFAULT_CAPACITY = 1000;
 
@@ -426,6 +427,8 @@ export class ActorRunnerBuilder {
     }
 
     private createActorCreateContext(type: string, id: string[], timers: IVolatileTimer[]): IActorCreateContext {
+        type = normalizeActorType(type);
+
         if (!this.portal) {
             throw new Error('No portal assigned');
         }
@@ -443,15 +446,18 @@ export class ActorRunnerBuilder {
         return {
             id,
             portal: this.portal,
-            persistence: (specifiers?: string[]) => {
+            persistence: <T>(specifiers?: string | string[]) => {
                 // The id-length is there to prevent malicious code from accessing persistent data
                 // from other actors.
                 // When actor 1 has id ['a', 'b'] and stores state in ['c];
                 // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
                 // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
+                if (typeof specifiers === 'string') {
+                    specifiers = [specifiers];
+                }
                 const typePersistence =
                     typeof persistenceFactory === 'function' ? persistenceFactory(type, specifiers) : persistenceFactory;
-                return typePersistence.sub([type, id.length.toString(), ...id]);
+                return typePersistence.sub([type, id.length.toString(), ...id]) as IPersistence<T>;
             },
             time,
             newVolatileTimer: () => {
