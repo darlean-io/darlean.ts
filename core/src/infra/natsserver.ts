@@ -67,6 +67,9 @@ export class NatsServer {
         const fullname = path + filename;
 
         const args = [];
+        args.push('--cluster_name');
+        args.push('darlean');
+
         if (this.serverListenPort !== undefined) {
             args.push('--port');
             args.push(this.serverListenPort.toString());
