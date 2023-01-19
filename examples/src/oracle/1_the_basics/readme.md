@@ -1,4 +1,4 @@
-# Introduction
+# Part 1 - The basics
 
 This example illustrates the implementation of a simple oracle that can answers questions like "What was the temperature of yesterday" and "What is the price of milk".
 
@@ -34,7 +34,7 @@ and the question is `what is the temperature of tomorrow`, it will return `25` b
 
 # Public interface
 
-The public interface of the actor is defined in `oracle.intf.ts`. It is good practice to separate implementation from definition, that is why we place the `IOracleActor` interface in this separate file. That
+The public interface of the actor is defined in [oracle.intf.ts]. It is good practice to separate implementation from definition, that is why we place the `IOracleActor` interface in this separate file. That
 also allows one to invoke the actor from other applications, just by including this interface file (the other application would not require the actual implementation of the actor).
 
 The interface is straight forward:
@@ -49,24 +49,19 @@ An oracle actor has two (asynchronous) methods: one for asking questions (about 
 
 # Implementation
 
-The implementation of the actor is in `oracle.impl.ts`.
+The implementation of the actor is in [oracle.actor.ts].
 
 ```ts
-class OracleActor implements IOracleActor {
-    protected knowledge: Map<string, number>;
+export class OracleActor implements IOracleActor {
+    protected knowledge: Knowledge;
 
-    constructor(knowledge?: { [fact: string]: number }) {
-        this.knowledge = new Map();
-        if (knowledge) {
-            for (const [fact, answer] of Object.entries(knowledge)) {
-                this.knowledge.set(fact, answer);
-            }
-        }
+    constructor(knowledge?: Knowledge) {
+        this.knowledge = knowledge ?? {};
     }
 
     @action()
     public async ask(question: string): Promise<number> {
-        for (const [fact, answer] of this.knowledge.entries()) {
+        for (const [fact, answer] of Object.entries(this.knowledge)) {
             if (question.includes(fact)) {
                 return answer;
             }
@@ -76,7 +71,7 @@ class OracleActor implements IOracleActor {
 
     @action()
     public async teach(fact: string, answer: number): Promise<void> {
-        this.knowledge.set(fact, answer);
+        this.knowledge[fact] = answer;
     }
 }
 ```
@@ -85,7 +80,24 @@ The actor's knowledge is passed via the constructor (which is a typical dependen
 iterates over the known knowledge keys, finds the first one that is present in the question, and then returns the corresponding value (or `42` when there is no such fact). The `teach` method simply adds the provided
 fact keyword and answer to the knowledge base Map object.
 
-To make it easy for a developer to use the actor, the implementation also provides a `suite` function that receives all knowledge facts as parameter, and returns an actor suite that consists of the `OracleActor`.
+# Suite
+
+To make it easy for a developer to use the actor, we also provide a `suite` function in [oracle.suite.ts] that receives all knowledge facts as parameter, and returns an actor suite that consists of the `OracleActor`:
+```ts
+export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
+    return new ActorSuite([
+        {
+            type: ORACLE_ACTOR,
+            kind: 'singular',
+            creator: (context) => {
+                const topic = context.id[0];
+                const k = topic ? knowledge?.[topic] : undefined;
+                return new OracleActor(k);
+            }
+        }
+    ]);
+}
+```
 
 # The example
 
@@ -93,19 +105,24 @@ The example basically is like a mini-application which is found in `index.ts`. I
 
 ## Running
 
-To start the example, first build, and then run:
+To start the example, first build, and then run from the root of this monorepo:
 ```
-$ npm run build
-$ npm run example:simple_oracle
+$ npm run build --workspaces
+$ npm run example:oracle:1 -w examples
 ```
 
 ## Initialization
 
-The following code configures a local actor runner to which the oracle suite is registered:
+The following code from [index.ts] configures a local actor runner to which the oracle suite is registered:
 ```ts
-const builder = new ActorRunnerBuilder();
+const builder = new ConfigRunnerBuilder();
 builder.registerSuite(oracle_suite(knowledge));
 const runner = builder.build();
+```
+
+The runner is now started via
+```ts
+await runner.start();
 ```
 
 ## Logic
