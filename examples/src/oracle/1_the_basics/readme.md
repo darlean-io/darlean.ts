@@ -34,7 +34,7 @@ and the question is `what is the temperature of tomorrow`, it will return `25` b
 
 # Public interface
 
-The public interface of the actor is defined in [oracle.intf.ts]. It is good practice to separate implementation from definition, that is why we place the `IOracleActor` interface in this separate file. That
+The public interface of the actor is defined in [oracle.intf.ts](oracle.intf.ts). It is good practice to separate implementation from definition, that is why we place the `IOracleActor` interface in this separate file. That
 also allows one to invoke the actor from other applications, just by including this interface file (the other application would not require the actual implementation of the actor).
 
 The interface is straight forward:
