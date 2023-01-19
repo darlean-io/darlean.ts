@@ -1,6 +1,6 @@
-import { ActorSuite, IActorSuite } from "@darlean/base";
-import { OracleActor } from "./oracle.actor";
-import { ORACLE_ACTOR } from "./oracle.intf";
+import { ActorSuite, IActorSuite } from '@darlean/base';
+import { OracleActor } from './oracle.actor';
+import { ORACLE_ACTOR } from './oracle.intf';
 
 export interface IKnowledgeFacts {
     [fact: string]: number;

@@ -22,7 +22,7 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
     }
 
     // No locking because otherwise the long-polled obtain method would always block the deactivator
-    @deactivator({locking: 'none'})
+    @deactivator({ locking: 'none' })
     public async deactivate() {
         this.pollController.finalize();
     }

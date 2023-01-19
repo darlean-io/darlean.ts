@@ -8,21 +8,33 @@ async function main(reuse: boolean) {
 
     await runner.start();
     try {
-        await sleep(10*1000);
+        await sleep(10 * 1000);
 
         const oraclePortal = runner.getPortal().typed<IOracleService>(ORACLE_SERVICE);
         const oracleService = oraclePortal.retrieve([]);
 
-        check(20, await oracleService.ask('temperature', 'What is the temperature of today?'), "Today's temperature should be ok");
+        check(
+            20,
+            await oracleService.ask('temperature', 'What is the temperature of today?'),
+            "Today's temperature should be ok"
+        );
         check(25, await oracleService.ask('temperature', 'How warm is it tomorrow?'), "Tomorrow's temperature should be ok");
 
         check(2, await oracleService.ask('price', 'What is the price of milk?'), 'The price of milk should be ok');
         if (reuse) {
-            check(99, await oracleService.ask('price', 'What is the price of an abracadabra?'), 'The price of a previously learned product should be correct');
+            check(
+                99,
+                await oracleService.ask('price', 'What is the price of an abracadabra?'),
+                'The price of a previously learned product should be correct'
+            );
         } else {
-            check(42, await oracleService.ask('price', 'What is the price of an abracadabra?'), 'The price of an unknown product should be 42');
+            check(
+                42,
+                await oracleService.ask('price', 'What is the price of an abracadabra?'),
+                'The price of an unknown product should be 42'
+            );
         }
-        
+
         await oracleService.teach('price', 'abracadabra', 99);
 
         check(

@@ -1,7 +1,7 @@
 import { ConfigRunnerBuilder } from '@darlean/core';
 import { knowledge } from './knowledge';
 import oracle_suite from './oracle.suite';
-        
+
 async function main() {
     const builder = new ConfigRunnerBuilder();
     builder.registerSuite(oracle_suite(knowledge));
