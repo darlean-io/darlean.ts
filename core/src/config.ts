@@ -6,6 +6,8 @@ import { NatsTransport } from './infra';
 import { BsonDeSer } from './infra/bsondeser';
 import { NatsServer } from './infra/natsserver';
 import { ActorRunner, ActorRunnerBuilder } from './running';
+import * as json5 from 'json5';
+import * as fs from 'fs';
 
 export interface IPersistenceSpecifierCfg {
     specifier: string;
@@ -190,16 +192,18 @@ export interface IApplicationCfg {
  * @see {@link IApplicationCfg} for an overview of all the available configuration items.
  */
 export class ConfigRunnerBuilder {
-    private config: IApplicationCfg;
+    private config?: IApplicationCfg;
     private actors: IActorRegistrationOptions<object>[];
     private envPrefix: string;
     private argPrefix: string;
+    private overrides: Map<string, string>;
 
-    constructor(config: IApplicationCfg, envPrefix?: string, argPrefix?: string) {
+    constructor(config?: IApplicationCfg, envPrefix?: string, argPrefix?: string) {
         this.config = config;
         this.actors = [];
         this.envPrefix = envPrefix ?? 'DARLEAN_';
         this.argPrefix = argPrefix ?? '--darlean-';
+        this.overrides = new Map();
     }
 
     /**
@@ -225,7 +229,9 @@ export class ConfigRunnerBuilder {
     }
 
     public build(): ActorRunner {
-        const config = this.config;
+        const config = this.deriveConfig();
+        this.loadOverrides();
+
         const builder = new ActorRunnerBuilder();
 
         const appId = this.fetchString('APP_ID', 'app-id') ?? config.appId ?? 'app';
@@ -240,7 +246,7 @@ export class ConfigRunnerBuilder {
         builder.setRuntimeApps(runtimeApps);
 
         if (runtimeEnabled) {
-            const runtime = this.config.runtime;
+            const runtime = config.runtime;
 
             if (!(runtime?.actorLock?.enabled === false)) {
                 builder.hostActorLock(runtime?.actorLock?.apps ?? runtimeApps, runtime?.actorLock?.redundancy ?? 3);
@@ -364,9 +370,15 @@ export class ConfigRunnerBuilder {
                 return value;
             }
         }
+
         const e = this.envPrefix + envName;
         const v = process.env[e];
-        return v;
+        if (v !== undefined) {
+            return v;
+        }
+
+        const override = this.overrides.get(argName);
+        return override;
     }
 
     protected fetchNumber(envName: string, argName: string): number | undefined {
@@ -390,6 +402,41 @@ export class ConfigRunnerBuilder {
     protected deriveHosts(nats: INatsClientCfg | undefined, appIds: string[]) {
         const hosts = this.fetchString('NATS_HOSTS', 'nats-hosts')?.split(',') ?? nats?.hosts ?? [];
         return hosts.slice(0, appIds.length);
+    }
+
+    protected deriveConfig(): IApplicationCfg {
+        if (this.config) {
+            return this.config;
+        }
+
+        const path = this.fetchString('config', 'CONFIG');
+        if (path) {
+            const contents = fs.readFileSync(path, { encoding: 'utf-8' });
+            return json5.parse(contents) as IApplicationCfg;
+        }
+
+        return {};
+    }
+
+    protected loadOverrides() {
+        const overrides = this.fetchString('overrides', 'OVERRIDES');
+        if (overrides) {
+            for (const override of overrides.split(',').map((x) => x.trim())) {
+                const contents = fs.readFileSync(override, { encoding: 'utf-8' });
+                const lines = contents.split('\n').map((x) => x.trim());
+                for (const line of lines) {
+                    if (line.startsWith('#') || line.startsWith('//')) {
+                        continue;
+                    }
+                    const p = line.indexOf('=');
+                    if (p >= 0) {
+                        const key = line.substring(0, p).trim();
+                        const value = line.substring(p + 1).trim();
+                        this.overrides.set(key, value);
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -49,6 +49,7 @@
     "@darlean/fs-persistence-suite": "^2.0.0-alpha.0",
     "@darlean/persistence-suite": "^2.0.0-alpha.0",
     "bson": "^4.7.0",
+    "json5": "^2.2.3",
     "nats": "^2.9.2",
     "uuid": "^9.0.0"
   },

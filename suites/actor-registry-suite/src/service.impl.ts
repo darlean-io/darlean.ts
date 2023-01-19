@@ -50,6 +50,7 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
                 result.actorInfo[actorType] = info;
             }
         }
+        // console.log('RETURN RESULT', result)
         return result;
     }
 

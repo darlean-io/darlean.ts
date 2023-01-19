@@ -84,7 +84,7 @@ export class DistributedActorRegistry implements IActorRegistry {
     }
 
     protected async obtain() {
-        //console.log('OBTAINING', this.nonce, this.requestedTypes);
+        // console.log('OBTAINING', this.nonce, this.requestedTypes);
 
         try {
             this.aborter = new Aborter();
@@ -102,7 +102,7 @@ export class DistributedActorRegistry implements IActorRegistry {
 
             this.nonce = info.nonce;
 
-            //console.log('OBTAINED', JSON.stringify(info));
+            // console.log('OBTAINED', JSON.stringify(info));
             for (const [type, typeinfo] of Object.entries(info.actorInfo ?? {})) {
                 for (const application of typeinfo.applications) {
                     this.knownRegistry.addMapping(type, application.name, {
@@ -113,6 +113,8 @@ export class DistributedActorRegistry implements IActorRegistry {
                 }
             }
         } catch (e) {
+            //console.log('OBTAINED ERROR', e);
+            //console.log(JSON.stringify(e), undefined, 2);
             this.refreshTimer?.pause(5 * 1000);
             throw e;
         }

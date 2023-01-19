@@ -23,6 +23,7 @@ async function main() {
         check(42, await priceOracle.ask('What is the price of an abracadabra?'), 'The price of an unknown product should be 42');
 
         await priceOracle.teach('abracadabra', 99);
+
         check(
             99,
             await priceOracle.ask('What is the price of an abracadabra?'),

@@ -1,13 +1,16 @@
-import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 import { ConfigRunnerBuilder } from '@darlean/core';
 import { test } from './tester';
 import { config } from './persistence.cfg';
+import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
+import { sleep } from '@darlean/utils';
 
 async function main(reuse = false) {
     const builder = new ConfigRunnerBuilder(config());
     const runner = builder.build();
 
     await runner.start();
+
+    await sleep(5000);
 
     try {
         const oracleService = runner.getPortal().retrieve<IOracleService>(ORACLE_SERVICE, []);

@@ -11,6 +11,13 @@
  * * {@link ActorRunnerBuilder} - Class that can be used to construct an actor runner with various settings
  * * {@link ActorRunner} - Class that represents an actor runner that runs and manages actors.
  *
+ * ## Configuration
+ *
+ * The easiest way to configure Darlean applications is by using the {@link ConfigRunnerBuilder}, which understands
+ * configuration files, command-line arguments and environment variables.
+ *
+ * The configuration settings that are supported by Darlean are found in {@link IApplicationCfg}.
+ *
  * ## Actors, instances and wrappers
  *
  * Actors are just plain classes with public async action methods, decorated with {@link action|@action}. They can
