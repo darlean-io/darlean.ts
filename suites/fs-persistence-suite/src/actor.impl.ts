@@ -57,12 +57,12 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
 
         const values = new Array(this.partitionKeyLen + this.sortKeyLen + 1).fill(0);
         for (let i = 0; i < options.partitionKey.length; i++) {
-            values[i] = options.partitionKey[i] ?? 0;
+            values[i] = options.partitionKey[i]?.toString() ?? 0;
         }
         const offset = this.partitionKeyLen;
         if (options.sortKey) {
             for (let i = 0; i < options.sortKey?.length; i++) {
-                values[offset + i] = options.sortKey[i] ?? 0;
+                values[offset + i] = options.sortKey[i]?.toString() ?? 0;
             }
         }
         values[values.length - 1] = options.value;
@@ -84,12 +84,12 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
 
         const values = new Array(this.partitionKeyLen + this.sortKeyLen).fill(0);
         for (let i = 0; i < options.partitionKey.length; i++) {
-            values[i] = options.partitionKey[i] ?? 0;
+            values[i] = options.partitionKey[i]?.toString() ?? 0;
         }
         const offset = this.partitionKeyLen;
         if (options.sortKey) {
             for (let i = 0; i < options.sortKey?.length; i++) {
-                values[offset + i] = options.sortKey[i] ?? 0;
+                values[offset + i] = options.sortKey[i]?.toString() ?? 0;
             }
         }
 
