@@ -44,6 +44,15 @@ export function config(): IApplicationCfg {
                         { compartment: 'fs.oracle-fact', basePath: './persistence/oracle/fact' }
                     ]
                 }
+            },
+            nats: {
+                enabled: true
+            }
+        },
+        messaging: {
+            providers: ['nats'],
+            nats: {
+                hosts: ['127.0.0.1', '127.0.0.1']
             }
         }
     };

@@ -42,9 +42,20 @@ export class NatsServer {
     protected stopping = false;
     protected onUnexpectedStop?: (stderr: string) => void;
     protected running = false;
+    protected clusterSeedUrls?: string[];
+    protected serverListenPort?: number;
+    protected clusterListenUrl?: string;
 
-    constructor(onUnexpectedStop?: (stderr: string) => void) {
+    constructor(
+        onUnexpectedStop?: (stderr: string) => void,
+        serverListenPort?: number,
+        clusterSeedUrls?: string[],
+        clusterListenUrl?: string
+    ) {
         this.onUnexpectedStop = onUnexpectedStop;
+        this.clusterSeedUrls = clusterSeedUrls;
+        this.serverListenPort = serverListenPort;
+        this.clusterListenUrl = clusterListenUrl;
     }
 
     public start(): void {
@@ -55,8 +66,24 @@ export class NatsServer {
         const path = __dirname + '/../../binaries/';
         const fullname = path + filename;
 
-        // console.log('STARTNG', fullname);
-        const process = cp.execFile(fullname, {}, (_error, _stdout, stderr) => {
+        const args = [];
+        if (this.serverListenPort !== undefined) {
+            args.push('--port');
+            args.push(this.serverListenPort.toString());
+        }
+        if (this.clusterListenUrl) {
+            args.push('--cluster');
+            args.push(this.clusterListenUrl);
+
+            if (this.clusterSeedUrls !== undefined && this.clusterSeedUrls.length > 0) {
+                args.push('--routes');
+                args.push(this.clusterSeedUrls.join(','));
+            }
+        }
+
+        // console.log('STARTNG', fullname, args);
+
+        const process = cp.execFile(fullname, args, {}, (_error, _stdout, stderr) => {
             this.running = false;
             this.process = undefined;
             if (!this.stopping) {

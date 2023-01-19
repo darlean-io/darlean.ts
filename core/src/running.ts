@@ -46,8 +46,8 @@ export class ActorRunner {
     protected stopping = false;
     protected starting = false;
 
-    protected starters: Array<() => Promise<void>>;
-    protected stoppers: Array<() => Promise<void>>;
+    protected starters: Array<{ order: number; starter: () => Promise<void> }>;
+    protected stoppers: Array<{ order: number; stopper: () => Promise<void> }>;
 
     constructor(portal: IPortal) {
         this.portal = portal;
@@ -65,8 +65,8 @@ export class ActorRunner {
             return;
         }
         this.starting = true;
-        for (const starter of this.starters) {
-            await starter();
+        for (const starter of this.starters.sort((a, b) => a.order - b.order)) {
+            await starter.starter();
         }
     }
 
@@ -80,8 +80,8 @@ export class ActorRunner {
         }
         this.stopping = true;
 
-        for (const stopper of Array.from(this.stoppers).reverse()) {
-            await stopper();
+        for (const stopper of this.stoppers.sort((a, b) => b.order - a.order)) {
+            await stopper.stopper();
         }
 
         this.stopped = true;
@@ -93,12 +93,12 @@ export class ActorRunner {
         }
     }
 
-    public addStarter(starter: () => Promise<void>) {
-        this.starters.push(starter);
+    public addStarter(starter: () => Promise<void>, order: number) {
+        this.starters.push({ order, starter });
     }
 
-    public addStopper(stopper: () => Promise<void>) {
-        this.stoppers.push(stopper);
+    public addStopper(stopper: () => Promise<void>, order: number) {
+        this.stoppers.push({ order, stopper });
     }
 
     /**
@@ -307,7 +307,7 @@ export class ActorRunnerBuilder {
             if (this.distributedRegistry) {
                 this.distributedRegistry.start();
             }
-        });
+        }, 50);
 
         ar.addStopper(async () => {
             process.off('SIGINT', signalHandler);
@@ -322,7 +322,7 @@ export class ActorRunnerBuilder {
             if (this.remote) {
                 await (this.remote as TransportRemote).finalize();
             }
-        });
+        }, 50);
     }
 
     private createMultiContainer(): MultiTypeInstanceContainer {

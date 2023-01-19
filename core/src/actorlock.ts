@@ -62,7 +62,6 @@ export class DistributedActorLock implements IActorLock {
             // let until = now + result.duration;
             const refreshTimer = this.time.repeat(
                 async () => {
-                    console.log('Refreshing', this.appId, id);
                     // const refreshNow = this.time.machineTicks();
                     const refreshResult = await this.service.acquire({
                         id,

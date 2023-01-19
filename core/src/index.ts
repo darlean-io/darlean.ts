@@ -6,6 +6,8 @@
  *  ## Types for creating an application
  *
  * The following implementations can be used to **create an application that hosts actors**:
+ * * {@link ConfigRunnerBuilder} - Class that construcs an actor runner based on configuration files, command-line
+ *   arguments and environment variables. Internally uses {@link ActorRunnerBuilder}.
  * * {@link ActorRunnerBuilder} - Class that can be used to construct an actor runner with various settings
  * * {@link ActorRunner} - Class that represents an actor runner that runs and manages actors.
  *

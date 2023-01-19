@@ -20,36 +20,38 @@ export interface INatsMessage {
 }
 
 export class NatsTransport implements ITransport {
-    protected deser: IDeSer;
-    protected connection?: NatsConnection;
-    protected subscription?: Subscription;
+    private deser: IDeSer;
+    private seedUrls?: string[];
 
-    constructor(deser: IDeSer) {
+    constructor(deser: IDeSer, seedUrls?: string[]) {
         this.deser = deser;
+        this.seedUrls = seedUrls;
     }
 
     public async connect(appId: string, onMessage: MessageHandler): Promise<ITransportSession> {
-        const session = new NatsTransportSession(this.deser);
+        const session = new NatsTransportSession(this.deser, this.seedUrls);
         await session.connect(appId, onMessage);
         return session;
     }
 }
 
 export class NatsTransportSession implements ITransportSession {
-    protected deser: IDeSer;
-    protected connection?: NatsConnection;
-    protected subscription?: Subscription;
-    protected appId?: string;
-    protected messageHandler?: MessageHandler;
+    private deser: IDeSer;
+    private connection?: NatsConnection;
+    private subscription?: Subscription;
+    private appId?: string;
+    private messageHandler?: MessageHandler;
+    private seedUrls?: string[];
 
-    constructor(deser: IDeSer) {
+    constructor(deser: IDeSer, seedUrls?: string[]) {
         this.deser = deser;
+        this.seedUrls = seedUrls;
     }
 
     public async connect(appId: string, onMessage: MessageHandler): Promise<void> {
         this.appId = appId;
         this.messageHandler = onMessage;
-        this.connection = await connect({ waitOnFirstConnect: true, maxReconnectAttempts: -1 });
+        this.connection = await connect({ waitOnFirstConnect: true, maxReconnectAttempts: -1, servers: this.seedUrls });
         const subscription = this.connection.subscribe(appId);
         this.subscription = subscription;
         nextTick(async () => await this.listen(subscription, onMessage));

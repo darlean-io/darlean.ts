@@ -1,15 +1,11 @@
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
-import { ConfigRunnerBuilder, NatsServer } from '@darlean/core';
+import { ConfigRunnerBuilder } from '@darlean/core';
 import { test } from './tester';
 import { config } from './persistence.cfg';
 
 async function main(reuse = false) {
     const builder = new ConfigRunnerBuilder(config());
     const runner = builder.build();
-
-    const natsServer = new NatsServer();
-
-    natsServer.start();
 
     await runner.start();
 
@@ -19,9 +15,9 @@ async function main(reuse = false) {
     } catch (e) {
         console.log('ERROR', e);
         console.log(JSON.stringify(e, undefined, 2));
+        process.exitCode = 1;
     } finally {
         await runner.stop();
-        natsServer.stop();
     }
 }
 
