@@ -12,6 +12,9 @@ import { connect, ErrorCode, NatsConnection, NatsError, Subscription } from 'nat
 
 export const NATS_ERROR_NOT_CONNECTED = 'NOT_CONNECTED';
 export const NATS_ERROR_SEND_FAILED = 'SEND_FAILED';
+export const NATS_ERROR_SEND_NO_ACK = 'NO_ACK';
+
+const ACK_TIMEOUT = 4000;
 
 export interface INatsMessage {
     envelope: ITransportEnvelope;
@@ -22,14 +25,16 @@ export interface INatsMessage {
 export class NatsTransport implements ITransport {
     private deser: IDeSer;
     private seedUrls?: string[];
+    private ackTimeout: number;
 
-    constructor(deser: IDeSer, seedUrls?: string[]) {
+    constructor(deser: IDeSer, seedUrls?: string[], ackTimeout?: number) {
         this.deser = deser;
         this.seedUrls = seedUrls;
+        this.ackTimeout = ackTimeout ?? ACK_TIMEOUT;
     }
 
     public async connect(appId: string, onMessage: MessageHandler): Promise<ITransportSession> {
-        const session = new NatsTransportSession(this.deser, this.seedUrls);
+        const session = new NatsTransportSession(this.deser, this.seedUrls, this.ackTimeout);
         await session.connect(appId, onMessage);
         return session;
     }
@@ -42,10 +47,12 @@ export class NatsTransportSession implements ITransportSession {
     private appId?: string;
     private messageHandler?: MessageHandler;
     private seedUrls?: string[];
+    private ackTimeout: number;
 
-    constructor(deser: IDeSer, seedUrls?: string[]) {
+    constructor(deser: IDeSer, seedUrls: string[] | undefined, ackTimeout: number) {
         this.deser = deser;
         this.seedUrls = seedUrls;
+        this.ackTimeout = ackTimeout;
     }
 
     public async connect(appId: string, onMessage: MessageHandler): Promise<void> {
@@ -80,7 +87,9 @@ export class NatsTransportSession implements ITransportSession {
             failure: failure === undefined ? undefined : this.deser.serialize(failure)
         };
         try {
-            await this.connection?.request(envelope.receiverId, this.deser.serialize(msg));
+            await this.connection?.request(envelope.receiverId, this.deser.serialize(msg), {
+                timeout: this.ackTimeout || 4000
+            });
         } catch (e) {
             const ne = e as NatsError;
             if (ne.code === ErrorCode.NoResponders) {
@@ -90,9 +99,18 @@ export class NatsTransportSession implements ITransportSession {
                     `Receiver [${envelope.receiverId}] is not registered to the nats transport`
                 );
             } else if (ne.code === ErrorCode.Timeout) {
-                // It is normal to receive a timeout, because we do not send back a reply when we receive a message
+                // It USED TO BE normal to receive a timeout, because we do not send back a reply when we receive a message
                 // (that to avoid an unnecessary round trip). We have our own timeout mechanism that will fire when anything
                 // else goes wrong. So, we can just ignore the timeout.
+                // But we enabled the ack-mechanism ("m.respond()"), so now a timeout is really a signal that something is wrong
+                // and that the receiver did not receive the message,
+                if (this.ackTimeout > 0) {
+                    this.sendFailureMessage(
+                        envelope,
+                        NATS_ERROR_SEND_NO_ACK,
+                        `No ack received after sending to  [${envelope.receiverId}]: [${e}]`
+                    );
+                }
             } else {
                 console.log('Error during nats send:', e, envelope.receiverId);
                 this.sendFailureMessage(envelope, NATS_ERROR_SEND_FAILED, `Unable to send to  [${envelope.receiverId}]: [${e}]`);
@@ -110,8 +128,11 @@ export class NatsTransportSession implements ITransportSession {
             for await (const m of sub) {
                 const data = m.data;
 
-                // We deliberately do not send a response ("m.respond()") because the sender does not need this information.
+                // We deliberately DID do not send a response ("m.respond()") because the sender does not need this information.
                 // It would just cost us additional network traffic.
+                // BUT. It appears that during startup, messages may get lost.
+                // Performance tests did not show a significant drop.
+                m.respond();
 
                 const msg = this.deser.deserialize(Buffer.from(data)) as INatsMessage;
                 const contents = msg.contents ? this.deser.deserialize(msg.contents) : undefined;
