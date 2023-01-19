@@ -24,7 +24,7 @@
  * @packageDocumentation
  */
 
-import { currentScope, SharedExclusiveLock } from '@darlean/utils';
+import { currentScope, Mutex, SharedExclusiveLock } from '@darlean/utils';
 import { idToText } from './various';
 import { normalizeActionName, normalizeActorType } from './shared';
 import { EventEmitter } from 'events';
@@ -240,6 +240,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
     protected methods: Map<string, Function>;
     protected activeContinuation?: () => void;
     protected actorLock?: InstanceWrapperActorLock;
+    protected actorLockMutex: Mutex<void>;
     protected acquiredActorLock?: IAcquiredActorLock;
     protected actorType: string;
 
@@ -257,6 +258,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         const self = this;
         this.state = 'created';
         this.actorLock = actorLock;
+        this.actorLockMutex = new Mutex();
 
         this.methods = this.obtainMethods();
 
@@ -437,20 +439,32 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
             return;
         }
 
-        this.acquiredActorLock = await actorLock(() => {
-            try {
-                this.acquiredActorLock = undefined;
-                this.deactivate();
-            } catch (e) {
-                currentScope().info(
-                    'Error during deactivating actor of type [ActorType] because the actor lock was broken: [Error]',
-                    () => ({
-                        Error: e,
-                        ActorType: this.actorType
-                    })
-                );
+        // This code can be called in parallel (eg when action methods have 'none' locking)!
+        // Prevent it from acquiring actorlock twice by shielding it with a mutex
+
+        await this.actorLockMutex.acquire();
+        try {
+            if (this.acquiredActorLock) {
+                return;
             }
-        });
+
+            this.acquiredActorLock = await actorLock(() => {
+                try {
+                    this.acquiredActorLock = undefined;
+                    this.deactivate();
+                } catch (e) {
+                    currentScope().info(
+                        'Error during deactivating actor of type [ActorType] because the actor lock was broken: [Error]',
+                        () => ({
+                            Error: e,
+                            ActorType: this.actorType
+                        })
+                    );
+                }
+            });
+        } finally {
+            this.actorLockMutex.release();
+        }
     }
 
     protected async releaseActorLock() {
@@ -458,6 +472,8 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         if (!acquiredActorLock) {
             return;
         }
+        this.acquiredActorLock = undefined;
+        this.actorLock = undefined;
         try {
             await acquiredActorLock.release();
         } catch (e) {

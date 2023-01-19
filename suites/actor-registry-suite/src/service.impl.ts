@@ -1,4 +1,4 @@
-import { action, IDeactivatable } from '@darlean/base';
+import { action, deactivator, IDeactivatable } from '@darlean/base';
 import { PollController } from '@darlean/utils';
 import * as uuid from 'uuid';
 
@@ -21,6 +21,8 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
         this.nonce = uuid.v4();
     }
 
+    // No locking because otherwise the long-polled obtain method would always block the deactivator
+    @deactivator({locking: 'none'})
     public async deactivate() {
         this.pollController.finalize();
     }
