@@ -95,4 +95,4 @@ $ npm run doc
 
 Please ignore all the warnings, that still has to be fixed.
 
-At regular times, the most recently generated documentation is uploaded to [https://docs.darlean.ui/latest/].
+At regular times, the most recently generated documentation is uploaded to https://docs.darlean.io/latest/.
