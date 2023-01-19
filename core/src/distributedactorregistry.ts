@@ -2,6 +2,7 @@ import { IActorRegistryService, IActorRegistryService_Push_Request } from '@darl
 import { IAbortable } from '@darlean/base';
 import { Aborter, ITime, ITimer } from '@darlean/utils';
 import { ActorRegistry, IActorRegistry, IActorTypeInfo } from './remoteinvocation';
+import { normalizeActorType } from './shared';
 
 /**
  * Implementation of {@link IActorRegistry} that uses the distributed actor registry functionality
@@ -71,6 +72,7 @@ export class DistributedActorRegistry implements IActorRegistry {
     }
 
     public findPlacement(type: string): IActorTypeInfo | undefined {
+        type = normalizeActorType(type);
         const placement = this.knownRegistry.findPlacement(type);
         if (!placement) {
             if (!this.requestedTypes.includes(type)) {
@@ -82,19 +84,25 @@ export class DistributedActorRegistry implements IActorRegistry {
     }
 
     protected async obtain() {
-        // console.log('OBTAINING', this.nonce);
+        //console.log('OBTAINING', this.nonce, this.requestedTypes);
 
         try {
             this.aborter = new Aborter();
             this.service.aborter(this.aborter);
+
+            // We deliberately do not provide our list of requested actor types to the actorTypes field, because that would
+            // require on our side that as soon as we receive requests for new actor types, we have to abort the current
+            // obtain request and issue a new one. This is complicated logic that we would like to avoid for the time being.
+            // So, always ask for all actors the distributed registry is aware of, and as soon as the distributed registry becomes
+            // aware of new actors, it will stop the long-poll and return us the information.
             const info = await this.service.obtain({
                 nonce: this.nonce,
-                actorTypes: this.requestedTypes
+                actorTypes: undefined
             });
 
             this.nonce = info.nonce;
 
-            // console.log('OBTAINED', JSON.stringify(info));
+            //console.log('OBTAINED', JSON.stringify(info));
             for (const [type, typeinfo] of Object.entries(info.actorInfo ?? {})) {
                 for (const application of typeinfo.applications) {
                     this.knownRegistry.addMapping(type, application.name, {
