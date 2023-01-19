@@ -405,21 +405,21 @@ export class ConfigRunnerBuilder {
     }
 
     protected deriveConfig(): IApplicationCfg {
-        if (this.config) {
-            return this.config;
-        }
-
-        const path = this.fetchString('config', 'CONFIG');
+        const path = this.fetchString('CONFIG', 'config');
         if (path) {
             const contents = fs.readFileSync(path, { encoding: 'utf-8' });
             return json5.parse(contents) as IApplicationCfg;
+        }
+
+        if (this.config) {
+            return this.config;
         }
 
         return {};
     }
 
     protected loadOverrides() {
-        const overrides = this.fetchString('overrides', 'OVERRIDES');
+        const overrides = this.fetchString('OVERRIDES', 'overrides');
         if (overrides) {
             for (const override of overrides.split(',').map((x) => x.trim())) {
                 const contents = fs.readFileSync(override, { encoding: 'utf-8' });
