@@ -49,7 +49,7 @@ An oracle actor has two (asynchronous) methods: one for asking questions (about 
 
 # Implementation
 
-The implementation of the actor is in [oracle.actor.ts].
+The implementation of the actor is in [oracle.actor.ts](oracle.actor.ts).
 
 ```ts
 export class OracleActor implements IOracleActor {
@@ -82,7 +82,7 @@ fact keyword and answer to the knowledge base Map object.
 
 # Suite
 
-To make it easy for a developer to use the actor, we also provide a `suite` function in [oracle.suite.ts] that receives all knowledge facts as parameter, and returns an actor suite that consists of the `OracleActor`:
+To make it easy for a developer to use the actor, we also provide a `suite` function in [oracle.suite.ts](oracle.suite.ts) that receives all knowledge facts as parameter, and returns an actor suite that consists of the `OracleActor`:
 ```ts
 export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
     return new ActorSuite([
@@ -101,7 +101,7 @@ export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
 
 # The example
 
-The example basically is like a mini-application which is found in `index.ts`. It consists of 3 parts, initialization and the actual logic and finalization.
+The example basically is like a mini-application which is found in [index.ts](index.ts). It consists of 3 parts, initialization and the actual logic and finalization.
 
 ## Running
 
@@ -113,7 +113,7 @@ $ npm run example:oracle:1 -w examples
 
 ## Initialization
 
-The following code from [index.ts] configures a local actor runner to which the oracle suite is registered:
+The following code from [index.ts](index.ts) configures a local actor runner to which the oracle suite is registered:
 ```ts
 const builder = new ConfigRunnerBuilder();
 builder.registerSuite(oracle_suite(knowledge));
@@ -141,6 +141,13 @@ const todaysTemperature = await temperatureOracle.ask('What is the temperature o
 We have to clean things up (for example, to allow actors to persist their state in a nice way -- but in this example we do not yet have actors that need to persist anything):
 ```ts
 await runner.stop();
+```
+## configuration
+The configuration for this example is provided in [config.json5](../../config/oracle/allinone/config.json5).
+
+The script as defined in package.json points the application to this script:
+```
+"example:oracle:1": "node lib/oracle/1_the_basics/index.js --darlean-config config/oracle/allinone/config.json5",
 ```
 
 # Discussion & Improvements
