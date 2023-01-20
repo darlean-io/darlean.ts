@@ -46,9 +46,9 @@ Persistence in Darlean uses the following concepts:
 * Persistence is implemented via actors. A **handler** specifies which actor type is responsible for a certain compartment.
 
 In the above configuration snippet, we can see that a specifier `oracle.fact.knowledge` (which is, as we will see
-later, used by the `OracleActor`) is mapped to compartment `fs.oracle-fact`, and that this compartment is handled by an actor of type `io.darlean.fspersistenceservice` (which stands for File System Persistence Service). We also see that this same compartment is stored in `./persistence/oracle/fact`, and that only 1 shard is being used (for what it is worth at this moment).
+later, used by the `OracleActor` to indicate what kind of data it want to store) is mapped to compartment `fs.oracle-fact`, and that this compartment is handled by an actor of type `io.darlean.fspersistenceservice` (which stands for File System Persistence Service). We also see that this same compartment is stored in `./persistence/oracle/fact`, and that only 1 shard is being used (for what it is worth at this moment).
 
-To activate this configuration, we have to adjust the command line arguments in `package.json`:
+To activate this configuration, we have to adjust the `--darlean-config` command line argument in `package.json`:
 ```
 "example:oracle:3": "npx rimraf ./persistence && node lib/oracle/3_do_not_forget/index.js --darlean-config config/oracle/allinone/config-persistence.json5",
 ```
@@ -93,7 +93,7 @@ We simply load the knowledge from the store on activation (when there is no know
 
 So far so good.
 
-We still have to make a very small change in `ask` because we not have to use `this.knowledge.value` instead of just `this.knowledge`:
+We still have to make a very small change in `ask` because we have to use `this.knowledge.value` instead of just `this.knowledge`:
 ```ts
 @action()
     public async ask(question: string): Promise<number> {
@@ -121,10 +121,7 @@ and the same holds for `teach`, but here we also add an extra store whenever we 
 And that's it! Our actor is ready to persist its state! We're ready now to jump to the suite function to properly inject the dependency on the `IPersistence` for the creator of the `OracleActor`:
 ```ts
        creator: (context) => {
-                // Derive the topic from the current actor id. We use the first (and only) id field as topic name.
-                const topic = context.id[0];
-                // Lookup relevant facts for the topic in the knowledge
-                const k = topic ? knowledge?.[topic] : undefined;
+                ...
                 // Create persistence interface. The specifier must match with the one of the `runtime.peristence.specifiers`
                 // filters in the configuration file.
                 const p = context.persistence<Knowledge>('oracle.fact.knowledge');
@@ -133,9 +130,9 @@ And that's it! Our actor is ready to persist its state! We're ready now to jump 
             }
 ```
 
-What we do here is to ask our creation `context` for a new persistence interface of type `Knowledge` with 
+What we do here is to ask our `context` for a new persistence interface of type `Knowledge` with 
 `oracle.fact.knowledge` as specifier. As described before, darlean uses this specifier to determine in which
-compartment the facts are to be stored. The additional mapping from specifier to compartment allows actors to only having to specify what they want to store in a functional way, without having to be dependent on or have knowledge of the specific persistence configuration of the system. 
+compartment the facts are to be stored. The additional mapping from specifier to compartment allows actors to only specify *what* they want to store in a functional way, without having to be dependent on or have knowledge of the specific persistence configuration of the system. The use of specifiers decouples the functionality of actors from the implementation and configuration of the persistence in the cluster.
 
 ## Running the example
 
