@@ -2,7 +2,7 @@ import { IActorRegistrationOptions, IActorSuite } from '@darlean/base';
 import { IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { IPersistenceServiceOptions } from '@darlean/persistence-suite';
 import { sleep } from '@darlean/utils';
-import { NatsTransport } from './infra';
+import { InProcessTransport, NatsTransport } from './infra';
 import { BsonDeSer } from './infra/bsondeser';
 import { NatsServer } from './infra/natsserver';
 import { ActorRunner, ActorRunnerBuilder } from './running';
@@ -25,7 +25,8 @@ export interface IFileSystemCompartmentCfg {
     sortKeyLen?: number;
     shardCount?: number;
     nodes?: string[];
-    basePath: string;
+    basePath?: string;
+    subPath?: string;
 }
 
 export interface IFileSystemPersistenceCfg {
@@ -96,8 +97,9 @@ export interface INatsClientCfg {
  */
 export interface IRuntimeCfg {
     /**
-     * Enables or disables the provided runtime functionalities. Default is false. Can be overruled by
+     * Enables or disables the provided runtime functionalities. Can be overruled by
      * `runtime-enabled` command-line argument or `RUNTIME_ENABLED` environment variable set to `true` or `false`.
+     * @default By default, the runtime functionality is *not* enabled.
      */
     enabled?: boolean;
 
@@ -127,10 +129,17 @@ export interface IRuntimeCfg {
  */
 export interface IMessagingCfg {
     /**
-     * List of messaging providers that are tried in the order listed. Currently, only an empty array or
-     * an array with one element with value `nats` is allowed.
+     * List of messaging transports that are tried in the order listed. Currently, only an empty array or
+     * an array with one element with value `nats` is allowed. Can be overruled by the `messaging-transports` command-line 
+     * argument or the `MESSAGING_TRANSPORTS` environment parameter, that are either a comma-separated list of transports
+     * (currently only 'nats' is allowed) or the word 'none'.
+     * 
+     * @default When explicitly no transports are provided (by means of an empty array or `none` as value for the command-line argument or
+     * environment parameter), an {@link InProcessTransport} instance is used which allows in-process communication
+     * (but not communication between processes). Otherwise, when the transports are not explicitly assigned and are also not explicitly
+     * cleared, the {@link NatsTransport} is used.
      */
-    providers: Array<'nats'>;
+    transports: Array<'nats'>;
 
     /**
      * Client configuration of the Nats message bus.
@@ -148,6 +157,7 @@ export interface IApplicationCfg {
     /**
      * The id under which this application is known in the cluster. Must either be set here,
      * or overruled by the `app-id` command-line argument or `APP_ID` environment setting.
+     * @default `app`.
      */
     appId?: string;
 
@@ -157,6 +167,7 @@ export interface IApplicationCfg {
      * nats message bus, persistence and other services).
      * Must either be set here, or overruled by the `runtime-apps` command-line argument or the
      * `RUNTIME_APPS` environment variable with a comma-separated list of application id's.
+     * @default an array consisting of just the {@link appId}.
      */
     runtimeApps?: string[];
 
@@ -284,6 +295,7 @@ export class ConfigRunnerBuilder {
                     options.compartments.push({
                         compartment: comp.compartment,
                         basePath: comp.basePath,
+                        subPath: comp.subPath,
                         nodes: comp.nodes,
                         partitionKeyLen: comp.partitionKeyLen,
                         sortKeyLen: comp.sortKeyLen,
@@ -298,8 +310,10 @@ export class ConfigRunnerBuilder {
             builder.registerActor(actor);
         }
 
-        for (const provider of config.messaging?.providers ?? ['nats']) {
-            if (provider === 'nats') {
+        const messagingTransports = this.fetchString('MESSAGING_TRANSPORTS', 'messaging-transports')?.split(',').map((x) => x.trim()) ?? config.messaging?.transports ?? ['nats'];
+        let transportSet = false;
+        for (const transport of messagingTransports) {
+            if (transport === 'nats') {
                 const nats = config.messaging?.nats;
                 const seedUrls: string[] = [];
 
@@ -310,7 +324,12 @@ export class ConfigRunnerBuilder {
                     seedUrls.push(hosts[idx] + ':' + (basePort + offsets[idx]).toString());
                 }
                 builder.setRemoteAccess(appId, new NatsTransport(new BsonDeSer(), seedUrls));
+                transportSet = true;
             }
+        }
+
+        if (!transportSet) {
+            builder.setRemoteAccess(appId, new InProcessTransport(new BsonDeSer()));
         }
 
         const app = builder.build();

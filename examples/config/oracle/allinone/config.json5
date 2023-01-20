@@ -1,27 +1,14 @@
+// Minimal config file for an all-in-one application that contains both runtime and application actors
+// in one single application.
+
 {
-    appId: 'app',
-    runtimeApps: ['app'],
     runtime: {
-        enabled: true,
-        persistence: {
-            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
-            specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
-            fs: {
-                compartments: [
-                    { compartment: '*', basePath: './persistence', shardCount: 1 },
-                    { compartment: 'fs.oracle-fact', basePath: './persistence/oracle/fact' }
-                ]
-            }
-        },
-        nats: {
-            enabled: true
-        }
+        // Ensures that this node provides the runtime functionality like the actor registry and actor lock to itself.
+        enabled: true
     },
     messaging: {
-        providers: ['nats'],
-        nats: {
-            hosts: ['127.0.0.1']
-        }
+        // Disable the NATS transport for this all-in-one setup. This will effectively use an in-process transport which
+        // is sufficient for an all-in-one application.
+        transports: []
     }
 }
-

@@ -11,8 +11,8 @@
     "example:oracle:all": "npm run example:oracle:1 && npm run example:oracle:2 && npm run example:oracle:3 && npm run example:oracle:3:reuse && npm run example:oracle:4:cluster1 && npm run example:oracle:4:cluster1:reuse && npm run example:oracle:4:cluster3 && npm run example:oracle:4:cluster3:reuse",
     "example:oracle:1": "node lib/oracle/1_the_basics/index.js --darlean-config config/oracle/allinone/config.json5",
     "example:oracle:2": "node lib/oracle/2_oracle_as_a_service/index.js --darlean-config config/oracle/allinone/config.json5",
-    "example:oracle:3": "npx rimraf ./persistence && node lib/oracle/3_do_not_forget/index.js --darlean-config config/oracle/allinone/config.json5",
-    "example:oracle:3:reuse": "node lib/oracle/3_do_not_forget/index.js --darlean-config config/oracle/allinone/config.json5 --reuse",
+    "example:oracle:3": "npx rimraf ./persistence && node lib/oracle/3_do_not_forget/index.js --darlean-config config/oracle/allinone/config-persistence.json5",
+    "example:oracle:3:reuse": "node lib/oracle/3_do_not_forget/index.js --darlean-config config/oracle/allinone/config-persistence.json5 --reuse",
     "example:oracle:4:cluster1:server": "node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster1/config.json5 --darlean-app-id server --darlean-runtime-enabled true",
     "example:oracle:4:cluster1:client": "node lib/oracle/4_scale_it_up/client.js --darlean-config config/oracle/cluster1/config.json5 --darlean-app-id client",
     "example:oracle:4:cluster1": "npx rimraf ./persistence && concurrently --success first --kill-others \"npm run example:oracle:4:cluster1:server\" \"npm run example:oracle:4:cluster1:client\"",
@@ -23,8 +23,8 @@
     "example:oracle:4:cluster3:reuse": "concurrently --success first --kill-others \"npm run example:oracle:4:cluster3:server -- --darlean-app-id server01\" \"npm run example:oracle:4:cluster3:server -- --darlean-app-id server02\" \"npm run example:oracle:4:cluster3:server -- --darlean-app-id server03\" \"npm run example:oracle:4:cluster3:client -- --reuse\"",
     
     "example:performance:all": "npm run example:performance:n1 && npm run example:performance:n3",
-    "example:performance:n3": "concurrently --success first --kill-others \"node lib/performance/server.js server00 server00,server01,server02\" \"node lib/performance/server.js server01 server00,server01,server02\" \"node lib/performance/server.js server02 server00,server01,server02\" \"node lib/performance/client.js client server00,server01,server02\"",
     "example:performance:n1": "concurrently --success first --kill-others \"node lib/performance/server.js server00 server00\" \"node lib/performance/client.js client server00\"",
+    "example:performance:n3": "concurrently --success first --kill-others \"node lib/performance/server.js server00 server00,server01,server02\" \"node lib/performance/server.js server01 server00,server01,server02\" \"node lib/performance/server.js server02 server00,server01,server02\" \"node lib/performance/client.js client server00,server01,server02\"",
 
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "npx eslint ./src --ext .js,.jsx,.ts,.tsx",
