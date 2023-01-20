@@ -41,14 +41,14 @@ Because we use a monorepo (with multiple packages in one git repo), there apply 
   * suites/persistence-suite
   * suites/fs-persistence-suite
 * Every workspace has its own `package.json`, but there is only one `node_modules` and one `package-lock.json` at the root of the repo
-* The `npm install --workspaces` command automatically creates symlinks that allow all packages to see the most recent versions of all
+* The `npm run install-workspaces` command automatically creates symlinks that allow all packages to see the most recent versions of all
   other packages, without the need for first committing the changes.
 
 ### Installing
 
 To install everything after a fresh pull:
 ```
-$ npm install --workspaces
+$ npm run install-workspaces
 ```
 
 To install only one specific workspace:
