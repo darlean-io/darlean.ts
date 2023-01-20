@@ -7,7 +7,6 @@
   "scripts": {
     "test": "npm run example:oracle:all && npm run example:performance:all",
     "build": "tsc",
-
     "example:oracle:all": "npm run example:oracle:1 && npm run example:oracle:2 && npm run example:oracle:3 && npm run example:oracle:3:reuse && npm run example:oracle:4:cluster1 && npm run example:oracle:4:cluster1:reuse && npm run example:oracle:4:cluster3 && npm run example:oracle:4:cluster3:reuse",
     "example:oracle:1": "node lib/oracle/1_the_basics/index.js --darlean-config config/oracle/allinone/config.json5",
     "example:oracle:2": "node lib/oracle/2_oracle_as_a_service/index.js --darlean-config config/oracle/allinone/config.json5",
@@ -24,11 +23,12 @@
     "example:oracle:5:cluster3:server": "node lib/oracle/5_scalability_continued/server.js --darlean-config config/oracle/cluster3/server.json5",
     "example:oracle:5:cluster3:client": "node lib/oracle/5_scalability_continued/client.js --darlean-config config/oracle/cluster3/client.json5 --darlean-app-id client",
     "example:oracle:5": "npx rimraf ./persistence && concurrently --success first --kill-others \"npm run example:oracle:5:cluster3:server -- --darlean-app-id server01\" \"npm run example:oracle:5:cluster3:server -- --darlean-app-id server02\" \"npm run example:oracle:5:cluster3:server -- --darlean-app-id server03\" \"npm run example:oracle:5:cluster3:client\"",
-
+    "example:oracle:6:cluster3:server": "node lib/oracle/6_wait_a_while/server.js --darlean-config config/oracle/cluster3/server.json5",
+    "example:oracle:6:cluster3:client": "node lib/oracle/6_wait_a_while/client.js --darlean-config config/oracle/cluster3/client.json5 --darlean-app-id client",
+    "example:oracle:6": "npx rimraf ./persistence && concurrently --success first --kill-others \"npm run example:oracle:6:cluster3:server -- --darlean-app-id server01\" \"npm run example:oracle:6:cluster3:server -- --darlean-app-id server02\" \"npm run example:oracle:6:cluster3:server -- --darlean-app-id server03\" \"npm run example:oracle:6:cluster3:client\"",
     "example:performance:all": "npm run example:performance:n1 && npm run example:performance:n3",
     "example:performance:n1": "concurrently --success first --kill-others \"node lib/performance/server.js server00 server00\" \"node lib/performance/client.js client server00\"",
     "example:performance:n3": "concurrently --success first --kill-others \"node lib/performance/server.js server00 server00,server01,server02\" \"node lib/performance/server.js server01 server00,server01,server02\" \"node lib/performance/server.js server02 server00,server01,server02\" \"node lib/performance/client.js client server00,server01,server02\"",
-
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "npx eslint ./src --ext .js,.jsx,.ts,.tsx",
     "prepare": "npm run build",
@@ -64,6 +64,7 @@
   ],
   "dependencies": {
     "@darlean/persistence-suite": "^2.0.0-alpha.0",
-    "rimraf": "^4.1.0"
+    "rimraf": "^4.1.0",
+    "uuid": "^9.0.0"
   }
 }
