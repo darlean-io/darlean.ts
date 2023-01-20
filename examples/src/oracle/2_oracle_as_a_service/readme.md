@@ -1,6 +1,6 @@
 # Distributed Oracle - Part 2 - Oracle as a Service
 
-In the [previous part](../1_the_basics) of this tutorial, we have created a very basic distributed oracle with one virtual actor (`OracleActor`) that was directly invoked by the
+In [Part 1](../1_the_basics) of this tutorial, we have created a very basic distributed oracle with one virtual actor (`OracleActor`) that was directly invoked by the
 application code in `index.ts`. Although this worked, from a software architecture point of view it is not very nice to directly invoke the virtual actor (which is basically implementation
 code) from your application logic. In this part of the tutorial we show you why this is, and how to solve it.
 
@@ -167,4 +167,4 @@ We have made a great step towards software quality by having the implementation 
 by means of a service actor. But we're not done yet: When our `OracleActor`s die (for example because they have
 to reincarnate on another node, or because the cluster is stopped), they lose all of their learned facts.
 
-In the [next part](../3_do_not_forget), we show you how to add persistence to our actors.
+In [Part 3 - Do not Forget](../3_do_not_forget), we show you how to add persistence to our actors.
