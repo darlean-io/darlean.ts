@@ -130,10 +130,10 @@ export interface IRuntimeCfg {
 export interface IMessagingCfg {
     /**
      * List of messaging transports that are tried in the order listed. Currently, only an empty array or
-     * an array with one element with value `nats` is allowed. Can be overruled by the `messaging-transports` command-line 
+     * an array with one element with value `nats` is allowed. Can be overruled by the `messaging-transports` command-line
      * argument or the `MESSAGING_TRANSPORTS` environment parameter, that are either a comma-separated list of transports
      * (currently only 'nats' is allowed) or the word 'none'.
-     * 
+     *
      * @default When explicitly no transports are provided (by means of an empty array or `none` as value for the command-line argument or
      * environment parameter), an {@link InProcessTransport} instance is used which allows in-process communication
      * (but not communication between processes). Otherwise, when the transports are not explicitly assigned and are also not explicitly
@@ -310,7 +310,10 @@ export class ConfigRunnerBuilder {
             builder.registerActor(actor);
         }
 
-        const messagingTransports = this.fetchString('MESSAGING_TRANSPORTS', 'messaging-transports')?.split(',').map((x) => x.trim()) ?? config.messaging?.transports ?? ['nats'];
+        const messagingTransports = this.fetchString('MESSAGING_TRANSPORTS', 'messaging-transports')
+            ?.split(',')
+            .map((x) => x.trim()) ??
+            config.messaging?.transports ?? ['nats'];
         let transportSet = false;
         for (const transport of messagingTransports) {
             if (transport === 'nats') {
