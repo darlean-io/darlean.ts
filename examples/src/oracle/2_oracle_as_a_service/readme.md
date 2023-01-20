@@ -16,7 +16,7 @@ The same principle holds for actor-oriented programming. For many reasons, it ma
 you need to implement new functionality, for which we find out it is better to put it in a separate actor.
 
 Considering our distributed Oracle, future might teach us that besides representing knowledge as simple facts, there could be other types of knowledge that are better represented by means of API calls
-to web services. For example, the `temperature` facts that are now represented as static facts might be better represented by means of a live web call to [[weather.com]]. As a result, we may want to create
+to web services. For example, the `temperature` facts that are now represented as static facts might be better represented by means of a live web call to [weather.com](weather.com). As a result, we may want to create
 a new actor type, `WebApiOracleActor`, and then it makes sense to also rename our existing `OracleActor` into `FactOracleActor` (as it uses static facts to represent its knowledge).
 
 Without decoupling of application code and implementation, we would have to adjust all of our application logic that queries the Oracle. And although that is still possible to do, the situation becomes worse 
@@ -26,7 +26,7 @@ when also other applications have started to rely on our Oracle functionality. A
 
 The recommended way of decoupling implementation from application code is by means of *service actors*. Service actors are (implementation wise) just regular actors. The only differences are:
 * Service actors typically have `Service` as a suffix of the actor type (instead of `Actor` for regular, virtual actors)
-* Service actors typically have `multiplar` configured as `kind`, which means that there can be multiple instances of the same service actor in the cluster.
+* Service actors typically have `multiplar` configured as value of `kind`, which means that there can be multiple instances of the same service actor in the cluster.
 * Service actors typically do not hold state by themselves. They normally just forward incoming calls to the proper underlying virtual actor and return the result.
 
 The interface of service actors (that is, their name and which actions they support and with which parameters) should be quite stable, as it will be used by application code.
