@@ -25,7 +25,7 @@ when also other applications have started to rely on our Oracle functionality. A
 ## Service actors
 
 The recommended way of decoupling implementation from application code is by means of *service actors*. Service actors are (implementation wise) just regular actors. The only differences are:
-* Service actors typically have `Service` as a suffix of the actor type (instead of `Actor` for regular, virtual actors)
+* Service actors typically have `Service` as a suffix of the actor type (instead of `Actor` which is the typical suffix for regular, virtual actors)
 * Service actors typically have `multiplar` configured as value of `kind`, which means that there can be multiple instances of the same service actor in the cluster.
 * Service actors typically do not hold state by themselves. They normally just forward incoming calls to the proper underlying virtual actor and return the result.
 
