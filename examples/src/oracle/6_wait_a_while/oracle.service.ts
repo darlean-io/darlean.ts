@@ -1,14 +1,14 @@
 import { action, ITypedPortal } from '@darlean/base';
-import { IOracleControlActor, IOracleReadActor, IOracleService } from './oracle.intf';
+import { IOracleControllerActor, IOracleReaderActor, IOracleService } from './oracle.intf';
 
 const NR_READERS = 100;
 
 // Implementation of the service that hides the implementation (OracleActor) from the user.
 export class OracleService implements IOracleService {
-    protected controlPortal: ITypedPortal<IOracleControlActor>;
-    protected readerPortal: ITypedPortal<IOracleReadActor>;
+    protected controlPortal: ITypedPortal<IOracleControllerActor>;
+    protected readerPortal: ITypedPortal<IOracleReaderActor>;
 
-    constructor(controlPortal: ITypedPortal<IOracleControlActor>, readerPortal: ITypedPortal<IOracleReadActor>) {
+    constructor(controlPortal: ITypedPortal<IOracleControllerActor>, readerPortal: ITypedPortal<IOracleReaderActor>) {
         this.controlPortal = controlPortal;
         this.readerPortal = readerPortal;
     }
