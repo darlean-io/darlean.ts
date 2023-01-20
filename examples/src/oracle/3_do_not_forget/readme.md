@@ -12,7 +12,7 @@ Darlean provides the actors with properly configured persistence providers. Acto
 ## Configuration
 
 Before actors can use persistency, the cluster has to be configured to provide persistence. That is easily done in the [config-persistence.json5](../../../config/oracle/allinone/config-persistence.json5) configuration file:
-```json
+```ts
 {
     runtime: {
         enabled: true,
