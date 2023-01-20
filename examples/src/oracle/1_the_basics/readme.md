@@ -1,4 +1,4 @@
-# Part 1 - The basics
+# Distributed Oracle - Part 1 - The basics
 
 This example illustrates the implementation of a simple oracle that can answers questions like "What was the temperature of yesterday" and "What is the price of milk".
 
@@ -150,20 +150,14 @@ The script as defined in package.json points the application to this script:
 "example:oracle:1": "node lib/oracle/1_the_basics/index.js --darlean-config config/oracle/allinone/config.json5",
 ```
 
-# Discussion & Improvements
+# What's next?
 So, we have implemented a very basic example of the use of actor technology. What can we improve?
 
-## Use of a service
-
-In this simple example, our custom code *directly* invokes the actual `OracleActor` actors. So, our application has knowledge about our actor *implementation*, which means we cannot
+In this very basic example, our custom code *directly* invokes the actual `OracleActor` actors. So, our application has knowledge about our actor *implementation*, which means we cannot
 refactor our implementation without breaking existing software that uses our oracle. That is a bad practice.
 
 We can fix this by hiding away the implementation behind a service. A service is just an ordinary actor, but with a different class name suffix (`Service` instead of `Actor`). A service actor hides the implementation 
-details from the caller. We will show how to immplement the same oracle using services in the `oracle_with_service` example.
+details from the caller.
 
-## Use of persistence
-
-In this simple example, we use preconfigured facts, and also add some runtime facts using the `teach` action. But, when an `OracleActor` is deactivated (for example because it is automatically
-recycled because the configured maximum amount of alive actors is reached -- this to reduce resource usage), and reactivated later on, it loses all learned facts. We will show how to
-solve this in the `oracle_with_persistence` example, which includes both the service architecture as well as persistency.
+We will show how to immplement the same oracle using services in [Part 2 - Oracle as a Service](../2_oracle_as_a_service/).
 
