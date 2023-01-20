@@ -22,7 +22,7 @@ The following actor suite packages are part of this monorepo:
 
 ### Examples
 We have also included some working examples:
-* [Tutorial of creating an distributed Oracle using Darlean](examples/src)
+* [Tutorial of creating an distributed Oracle using Darlean](examples)
 
 ## Building
 
