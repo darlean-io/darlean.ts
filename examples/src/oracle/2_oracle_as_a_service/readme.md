@@ -124,7 +124,7 @@ export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
 
 The definition of the `OracleActor` is the same as in part 1; the definition of the `OracleService` is new. It defines the actor as
 a `multiplar`, which means that more than once instance is the same actor can be active within the cluster. This is a simple way of
-achieving load balancing, and it does nto cause any issues because the `OracleService` itself does not store state, so it is no issue
+achieving load balancing, and it does not cause any issues because the `OracleService` itself does not store state, so it is no issue
 of having multiple of the same instance active at one moment.
 
 The `creator` factory function first takes the generic portal (`context.portal`), and then derives a sub-portal of the `IOracleActor`
