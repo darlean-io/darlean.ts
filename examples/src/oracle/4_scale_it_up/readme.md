@@ -200,5 +200,3 @@ We can now run our distributed examples using the provided npm scripts:
 I can hear you thinking. Okay, we can deploy multiple applications. That's nice. We can run as many actors as we like, just by configuring more applications. Cool. But... Our `OracleActor`s are still a bottleneck! When the whole world comes to our oracle and starts asking questions about the very same topic, these questions all end up at the same actor instance, which runs on one process at a time, which at some moment will run out of CPU, memory or other resources?
 
 In [Part 5 - Scalability continued](../5_scalability_continued/) we further analyze this situation, we will show why this is in practice not such a big issue, and for those situations in which it is an issue, show a nice solution.
-
-We have lkearWe now know how to add persistence to our actors. So, basically we have finished our distributed oracle. But wait... Did I just say *distributed*? So far, we have only played around with one one all-in-one application right? Just about time to see whether we can turn things into a real client-server distributed applcation in [Part 4 - Scale it up!](../4_scale_it_up/). 
