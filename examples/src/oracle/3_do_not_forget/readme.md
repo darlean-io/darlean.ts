@@ -43,7 +43,7 @@ Before actors can use persistency, the cluster has to be configured to provide p
 Persistence in Darlean uses the following concepts:
 * A **specifier** is a string that actors provide to the framework. The specifier is a hint to the framework in which compartment the state should be persisted.
 * A **compartment** is a part of a store. For example, when storing to a SQL database, every compartment could be its own table. Or when storing to file system, every compartment could be its own folder. It is good practice to group related data in the same compartment, and to put unrelated data in different compartments. That allows management tasks like cleaning up and backing up to be done for a certain part of the system without touching (and possibly breaking) other parts.
-* Like almost everything in Darlean, persistence is implemented via actors. A **handler** specifies which actor type is responsible for a certain compartment.
+* Like almost everything in Darlean, persistence is implemented via actors. A **handler** specifies which actor type is responsible for loading data from and storing data in a certain compartment.
 
 In the above configuration snippet, we can see that a specifier `oracle.fact.knowledge` (which is, as we will see
 later, used by the `OracleActor` to indicate what kind of data it want to store) is mapped to compartment `fs.oracle-fact`, and that this compartment is handled by an actor of type `io.darlean.fspersistenceservice` (which stands for File System Persistence Service). We also see that this same compartment is stored in `./persistence/oracle/fact`, and that only 1 shard is being used (for what it is worth at this moment).
