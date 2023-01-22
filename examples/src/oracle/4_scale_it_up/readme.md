@@ -8,7 +8,7 @@ That means that we now have all ingredients to scale it up, and to move from a s
 
 The nice thing about actor oriented programming as we provide with Darlean is that scalability is already built in. The way we define virtual and service actors makes it possible to move from a single all-in-one scenario to a fully scalable multi-application scenario *without having to change our business logic*.
 
-> Without having to change a single line of code in our actors, we can make the step towards a multiple-application deployment.
+> Without having to change a single line of code in our actors, we can move from a single-process application towards a multiple-application deployment. We just bypassed the [microservice premium](https://martinfowler.com/bliki/MicroservicePremium.html)!
 
 ## So let's start
 
