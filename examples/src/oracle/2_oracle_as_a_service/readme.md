@@ -1,7 +1,7 @@
 # Distributed Oracle - Part 2 - Oracle as a Service
 
 In [Part 1](../1_the_basics) of this tutorial, we have created a very basic distributed oracle with one virtual actor (`OracleActor`) that was directly invoked by the
-application code in `index.ts`. Although this worked, from a software architecture point of view it is not very nice to directly invoke the virtual actor (which is basically implementation
+application code in [index.ts](../1_the_basics/index.ts). Although this worked, from a software architecture point of view it is not very nice to directly invoke the virtual actor (which is basically implementation
 code) from your application logic. In this part of the tutorial we show you why this is, and how to solve it.
 
 ## Decoupling of application code and implementation
@@ -12,7 +12,7 @@ from the application logic.
 
 The advantage is that it is possible to refactor the implementation (for example, to rename objects, or to split them up) without affecting the application logic.
 
-The same principle holds for actor-oriented programming. For many reasons, it may become necessary to refactor the underlying virtual actors. For example, you may not be happy anymore with their name. Or
+The same principle holds for actor-oriented programming (after all, actors are also just plain objects). For many reasons, it may become necessary to refactor the underlying virtual actors. For example, you may not be happy anymore with their name. Or
 you need to implement new functionality, for which we find out it is better to put it in a separate actor.
 
 Considering our distributed Oracle, future might teach us that besides representing knowledge as simple facts, there could be other types of knowledge that are better represented by means of API calls
@@ -25,7 +25,7 @@ when also other applications have started to rely on our Oracle functionality. A
 ## Service actors
 
 The recommended way of decoupling implementation from application code is by means of *service actors*. Service actors are (implementation wise) just regular actors. The only differences are:
-* Service actors typically have `Service` as a suffix of the actor type (instead of `Actor` which is the typical suffix for regular, virtual actors)
+* Service actors typically have `Service` as a suffix of the class name and actor type (instead of `Actor` which is the typical suffix for regular, singular, virtual actors)
 * Service actors typically have `multiplar` configured as value of `kind`, which means that there can be multiple instances of the same service actor in the cluster.
 * Service actors typically do not hold state by themselves. They normally just forward incoming calls to the proper underlying virtual actor and return the result.
 
@@ -65,7 +65,7 @@ export class OracleService implements IOracleService {
 }
 ```
 
-As we can see, this is, implementation wise, just a regular actor with two methods: `ask` and `teach`. They serve the same purpose of the corresponding
+As we can see, this is, implementation-wise, just a regular actor with two methods: `ask` and `teach`. They serve the same purpose of the corresponding
 methods of the `OracleActor`, but they have an additional parameter that defines the `topic` of the question. Application code should hence not only
 provide the question itself, but also the topic to which the question relates. (In a future version, we might implement some AI to automatically derive
 the topic from the question, but we leave that as an excercise to the reader.)
@@ -130,7 +130,7 @@ of having multiple of the same instance active at one moment.
 The `creator` factory function first takes the generic portal (`context.portal`), and then derives a sub-portal of the `IOracleActor`
 type. The sub-portal is passed to the constructor of the `OracleService`.
 
-Note: It is generally considered good practice to supply objects with the least amount of dependencies that they
+> Note: It is generally considered good practice to supply objects with the least amount of dependencies that they
 need to function properly. The same holds for actor implementations. Although it would be possible to give the generic portal
 (`context.portal`) to the `OracleService`, the service only needs access to instances of `IOracleActor`, so it is better to give
 it a sub-portal for only this specific actor type.
