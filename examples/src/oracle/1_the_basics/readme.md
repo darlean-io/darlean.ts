@@ -142,10 +142,28 @@ We have to clean things up (for example, to allow actors to persist their state 
 ```ts
 await runner.stop();
 ```
-## configuration
-The configuration for this example is provided in [config.json5](../../../config/oracle/allinone/config.json5).
+## Configuration
 
-The script as defined in package.json points the application to this script:
+The configuration for this example is provided in [config.json5](../../../config/oracle/allinone/config.json5):
+```ts
+// Minimal config file for an all-in-one application that contains both runtime and application actors
+// in one single application.
+{
+    runtime: {
+        // Ensures that this node provides the runtime functionality like the actor registry and actor lock to itself.
+        enabled: true
+    },
+    messaging: {
+        // Disable the NATS transport for this all-in-one setup. This will effectively use an in-process transport which
+        // is sufficient for an all-in-one application.
+        transports: []
+    }
+}
+```
+
+Note that Darlean supports json5 files, which in addition to ordinary json files, allow comments and do not require keys to be surrounded by quotes.
+
+The `example:oracle:1` script as defined in [package.json](../../../package.json) points the application to this script via the `--darlean-config` command line argument:
 ```
 "example:oracle:1": "node lib/oracle/1_the_basics/index.js --darlean-config config/oracle/allinone/config.json5",
 ```

@@ -83,7 +83,7 @@ To illustrate the flexibility of Darlean, we will show two kinds of configuratio
 * For our setup with one client and 3 servers, we use a separate configuration file for the client, and a separate configuration file for the server. It requires an additional file, but is much cleaner because applications only have access to settings they really need.
 
 ### Single configuration file
-The single configuration file for client and server in a cluster of 1 client and 1 server application is provided in [config.json5](../.././../config/oracle/cluster1/config.json5):
+The single configuration file for client and server in a cluster of 1 client and 1 server application is provided in [config.json5](../../../config/oracle/cluster1/config.json5):
 ```ts
 {
     runtimeApps: ['server'],
@@ -121,12 +121,12 @@ At the bottom, we configure the client and server application to actually use Na
 
 We use command line arguments to pass the config file to the client and server application, and to override certain settings in [package.json](../../../package.json):
 ```
-"example:oracle:4:cluster1:server": "node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster1/config.json5 --darlean-app-id server --darlean-runtime-enabled true",
-"example:oracle:4:cluster1:client": "node lib/oracle/4_scale_it_up/client.js --darlean-config config/oracle/cluster1/config.json5 --darlean-app-id client",    
+$ node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster1/config.json5 --darlean-app-id server --darlean-runtime-enabled true
+$ node lib/oracle/4_scale_it_up/client.js --darlean-config config/oracle/cluster1/config.json5 --darlean-app-id client    
 ```
 So, for the server, we set the app-id to `server`, and enable the runtime to make it a runtime node. For the client, we set the app-id to `client`, and do not make it a runtime node.
 
-Note: in this example, we have chosen to combine our server nodes (that contain our own actors) with the runtime functionality. That is not required. It is also possible to define several (typically 3) dedicated runtime nodes, 2 or more server nodes, and then one or more client nodes. Which approach you take depends on availability requirements, how pure you are in conceptually having things right, and the amount of money you want to spend on hosting.
+*Note: in this example, we have chosen to combine our server nodes (that contain our own actors) with the runtime functionality. That is not required. It is also possible to define several (typically 3) dedicated runtime nodes, 2 or more server nodes, and then one or more client nodes. Which approach you take depends on availability requirements, how pure you are in conceptually having things right, and the amount of money you want to spend on hosting.*
 
 ### Separate configuration files
 
@@ -144,7 +144,7 @@ For the client application, the [client.json5](../../../config/oracle/cluster3/c
     }
 }
 ```
-Quite lean and mean. It defines the applications that form the runtime (the 3 server applications, in this case). The clients needs to know this in order to contact the distributed actor registry to find all the actors in the system.
+Quite lean and mean, isn't it? It defines the applications that form the runtime (the 3 server applications, in this case). The clients needs to know this as a bootstrap in order to contact the distributed actor registry (which are actors itself) to find out on which node the other runtime actors are hosted in the cluster.
 
 It also defines that Nats should be used for messaging, and for each of the runtime apps in the cluster, it defines the corresponding host name or IP address (in this case, localhost, `127.0.0.1`).
 
