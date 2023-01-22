@@ -143,7 +143,7 @@ We have to clean things up (for example, to allow actors to persist their state 
 await runner.stop();
 ```
 ## configuration
-The configuration for this example is provided in [config.json5](../../config/oracle/allinone/config.json5).
+The configuration for this example is provided in [config.json5](../../../config/oracle/allinone/config.json5).
 
 The script as defined in package.json points the application to this script:
 ```
