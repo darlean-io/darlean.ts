@@ -243,5 +243,5 @@ refactor our implementation without breaking existing software that uses our ora
 We can fix this by hiding away the implementation behind a service. A service is just an ordinary actor, but with a different class name suffix (`Service` instead of `Actor`). A service actor hides the implementation 
 details from the caller.
 
-We will show how to immplement the same oracle using services in [Part 2 - Oracle as a Service](../2_oracle_as_a_service/).
+We will show how to implement the exact same oracle functionality using services in [Part 2 - Oracle as a Service](../2_oracle_as_a_service/).
 
