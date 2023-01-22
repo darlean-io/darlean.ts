@@ -1,6 +1,6 @@
 # Darlean Tutorial: A Distributed Oracle
 
-In this tutorial we will show how to use Darlean to create your very first actor-oriented program. We highlight the basics; illustrate good practices like decoupling implementation and invocation by means of service actors; explain persistence; show how easy it is to scale up; and discuss some advanced topics like the multi-writer pattern.
+In this tutorial we will show how to use Darlean to create your (presumably) very first actor-oriented program. We highlight the basics; illustrate good practices like decoupling implementation and invocation by means of service actors; explain persistence; show how easy it is to scale up; and discuss advanced topics like the multi-writer pattern.
 
 # Part 1 - The basics
 
@@ -24,7 +24,7 @@ The knowledge of a rather small oracle could look as follows (see [knowledge.ts]
 }
 ```
 
-The oracle is of course implemented using virtual actor technology. We will start by implementing one virtual actor type (the `OracleActor`) that contains the knowledge for one topic, and that you can ask questions about that one topic. The entire distributed oracle hence consists of multiple such actors, one per topic the oracle knows something about.
+The oracle is of course implemented using virtual actor technology. We will start by implementing one virtual actor type (the `OracleActor`) that contains the knowledge for one topic, and that you can ask questions about that one topic. The entire distributed oracle hence consists of multiple such actor instances, one per topic the oracle knows something about.
 
 Actors are identified by their `id` (which is a `string[]`). We simple give every actor an `id` that consists of only one element: the topic. So, given our previous knowledge configuration, we have `OracleActor`s with id `['temperature']` and `['milk']`.
 
@@ -36,15 +36,15 @@ and the question is `what is the temperature of tomorrow`, it will return `25` b
 
 # Public interface
 
-> Actors are simply implemented as regular classes with methods. Methods that are decorated with `@action` are considered actions by the framework, and they can be invoked from other actors in the cluster.
+Actors are simply implemented as regular classes with methods. Methods that are decorated with `@action` are considered actions by the framework, and they can be invoked from other actors in the cluster.
 
-> Actors can invoke actions on other actors by means of a portal. A portal has a [retrieve](https://docs.darlean.io/latest/IPortal.html#retrieve) method that actors can use to obtain a proxy (stub) to another actor by providing the type name and id of the actor. The resulting stub acts as if it *is* the remote actor, so you can directly invoke (asynchronous) methods on the stub as if it were a regular, local object. The framework takes care of the underlying networking to make this all work. 
+Actors can invoke actions on other actors by means of a portal. A portal has a [retrieve](https://docs.darlean.io/latest/IPortal.html#retrieve) method that actors can use to obtain a proxy (stub) to another actor by providing the type name and id of the actor. The resulting stub acts as if it *is* the remote actor, so you can directly invoke (asynchronous) methods on the stub as if it were a regular, local object. The framework takes care of the underlying networking to make this all work. 
 
 In order for actors to invoke methods on remote actors, we must define an interface type (otherwise, actors must have access to the implementating class of the remote actor, which is obviously what we would like avoid).
 
 The interface of our `OracleActor` actor is defined in [oracle.intf.ts](oracle.intf.ts).
 
-> It is good practice to separate implementation from definition, that is why we place the `IOracleActor` interface in this separate file. That also allows one to invoke the actor from other applications, just by including this interface file (the other application would not require the actual implementation of the actor).
+> Note: It is good practice to separate implementation from definition, that is why we place the `IOracleActor` interface in this separate file. That also allows one to invoke the actor from other applications, just by including this interface file (the other application would not require the actual implementation of the actor).
 
 The interface is straight forward:
 ```ts
@@ -54,7 +54,7 @@ export interface IOracleActor {
 }
 ```
 
-An oracle actor has two (asynchronous) methods: one for asking questions (about the actor's topic), and one for teaching new facts. For this tutorial, we have made the simplification that the oracle only returns numeric answers (like temperatures or prices). When the oracle does not know the answer to a question, it will return [42](https://en.wikipedia.org/wiki/Phrases_from_The_Hitchhiker%27s_Guide_to_the_Galaxy#Answer_to_the_Ultimate_Question_of_Life,_the_Universe,_and_Everything_(42)), the answer to the ultimate question.
+An oracle actor has two (asynchronous) methods: one for asking questions (about the actor's topic), and one for teaching new facts. For this tutorial, we have made the simplification that the oracle only returns numeric answers (like temperatures or prices). When the oracle does not know the answer to a question, it will return 42, the answer to the [ultimate question](https://en.wikipedia.org/wiki/Phrases_from_The_Hitchhiker%27s_Guide_to_the_Galaxy#Answer_to_the_Ultimate_Question_of_Life,_the_Universe,_and_Everything_(42)).
 
 # Implementation
 
@@ -97,7 +97,7 @@ Nothing complicated here. The `OracleActor` really is just an ordinary class. We
 
 To make it easy for a developer to register the actor with the framework, we also provide a `suite` function in [oracle.suite.ts](oracle.suite.ts). This is like a factory function that receives all relevant configuration and preknowledge (in our case: the knowledge facts) as parameter, and returns an actor suite that consists of the `OracleActor`.
 
-Note: An actor suite is in essence just a list of actor definitions.
+> Note: An actor suite is in essence just a list of actor definitions.
 
 ```ts
 export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
@@ -119,11 +119,11 @@ The `suite` function receives the knowledge as a parameter, and returns a new ac
 
 The actor is registered as `singular`, which means (in actor terminology) that there can never be more than 1 instance active within the entire cluster of an actor of the same type and id.
 
-> The opposite of `singular` is `multiplar`, which means (in actor terminology) that the same actor *can* be active multiple times at the same time within the cluster. We'll get back to this in [Part 2](../2_oracle_as_a_service/).
+> The opposite of `singular` is `multiplar`, which means (in actor terminology) that the same actor *can* be active multiple times at the same time within the cluster. In general, singular actors are also known as *virtual* actors; multiplar actors are also known as *service* actors. But more on this in [Part 2](../2_oracle_as_a_service/).
 
 The `creator` function is the heart of the suite. It is invoked by the framework when someone wants to invoke actions on an actor that does not (yet) exist in memory. The provided `context` object (see [IActorCreateContext](https://docs.darlean.io/latest/IActorCreateContext.html)) provides useful information, such as the `Id` for which a new actor instance should be created.
 
-In our example, we use the `Id` field to determine the topic: We have committed ourselves to use the first field of the id to contain the topic. We extract just the knowledge for this topic from our entire knowledge base, and pass this specific topic knowledge to the constructor of the `OracleActor`.
+In our example, we use the `Id` field to determine the topic. Remember that we have committed ourselves to use the first field of the id to contain the topic, extracting the topic from the id is simple. We extract just the bit of knowledge for this one topic from our entire knowledge base, and pass this specific topic knowledge to the constructor of the `OracleActor`.
 
 # The entry point
 
@@ -159,6 +159,32 @@ const temperatureOracle = oraclePortal.retrieve(['temperature']);
 const todaysTemperature = await temperatureOracle.ask('What is the temperature of today?');
 ```
 
+To test that our oracle work correctly, we have implemented some checks as business logic:
+```ts
+const oraclePortal = runner.getPortal().typed<IOracleActor>(ORACLE_ACTOR);
+
+const temperatureOracle = oraclePortal.retrieve(['temperature']);
+check(20, await temperatureOracle.ask('What is the temperature of today?'), "Today's temperature should be ok");
+check(25, await temperatureOracle.ask('How warm is it tomorrow?'), "Tomorrow's temperature should be ok");
+
+const priceOracle = oraclePortal.retrieve(['price']);
+check(2, await priceOracle.ask('What is the price of milk?'), 'The price of milk should be ok');
+check(42, await priceOracle.ask('What is the price of an abracadabra?'), 'The price of an unknown product should be 42');
+
+await priceOracle.teach('abracadabra', 99);
+
+check(
+    99,
+    await priceOracle.ask('What is the price of an abracadabra?'),
+    'A newly learned fact should be used by the oracle'
+);
+check(
+    42,
+    await temperatureOracle.ask('What is the price of an abracadabra?'),
+    'Another oracle instance should not know about the facts of another oracle'
+);
+```
+
 ## Finalization
 We have to clean things up (for example, to allow actors to persist their state in a nice way -- but in this example we do not yet have actors that need to persist anything):
 ```ts
@@ -183,7 +209,7 @@ The configuration for this example is provided in [config.json5](../../../config
 }
 ```
 
-Note that Darlean supports json5 files, which in addition to ordinary json files, allow comments and do not require keys to be surrounded by quotes.
+> Note: Darlean supports json5 files, which in addition to ordinary json files, allow comments and do not require keys to be surrounded by quotes.
 
 The `example:oracle:1` script as defined in [package.json](../../../package.json) points the application to this script via the `--darlean-config` command line argument:
 ```
