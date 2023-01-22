@@ -5,24 +5,24 @@ In [Part 2](../2_oracle_as_a_service) of this tutorial, we have refactored our i
 ## Persistence
 What is still missing is *persistence*. Persistence is the capability of an actor to store and load its internal state from and to persistent storage (like on disk, in a SQL or NOSQL database, or in a cloud database).
 
-Persistence makes it possible for virtual actors to reincarnate: to come alive on a different node without loss of state.
+Persistence makes it possible for virtual actors to reincarnate. That is, to come alive on a different node without loss of state.
 
-Darlean provides the actors with properly configured persistence providers. Actors just have to optionally specify in which compartment they want to store their state, and darlean ensures that the data is properly stored (and later retrieved).
+Darlean provides the actors with properly configured persistence providers. Actors just have to optionally provide a *specifier* that is a hint in which compartment they want to store their state, and darlean ensures that the data is properly stored (and later retrieved).
 
 ## Configuration
 
-Before actors can use persistency, the cluster has to be configured to provide persistence. That is easily done in the [config-persistence.json5](../../../config/oracle/allinone/config-persistence.json5) configuration file:
+Before actors can use persistency, the cluster has to be configured to provide persistence. That is easily done as we can see in the [config-persistence.json5](../../../config/oracle/allinone/config-persistence.json5) configuration file:
 ```ts
 {
     runtime: {
         enabled: true,
         persistence: {
-            // Mapping from compartment mask to which actor type implements the persistence service
-            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
-
             // Mapping from specifiers (that are set in the suite configuration function) to compartment.
             specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
-
+            
+            // Mapping from compartment mask to which actor type implements the persistence service
+            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
+            
             // Configuration of file-system persistence
             fs: {
                 compartments: [
@@ -43,7 +43,7 @@ Before actors can use persistency, the cluster has to be configured to provide p
 Persistence in Darlean uses the following concepts:
 * A **specifier** is a string that actors provide to the framework. The specifier is a hint to the framework in which compartment the state should be persisted.
 * A **compartment** is a part of a store. For example, when storing to a SQL database, every compartment could be its own table. Or when storing to file system, every compartment could be its own folder. It is good practice to group related data in the same compartment, and to put unrelated data in different compartments. That allows management tasks like cleaning up and backing up to be done for a certain part of the system without touching (and possibly breaking) other parts.
-* Persistence is implemented via actors. A **handler** specifies which actor type is responsible for a certain compartment.
+* Like almost everything in Darlean, persistence is implemented via actors. A **handler** specifies which actor type is responsible for a certain compartment.
 
 In the above configuration snippet, we can see that a specifier `oracle.fact.knowledge` (which is, as we will see
 later, used by the `OracleActor` to indicate what kind of data it want to store) is mapped to compartment `fs.oracle-fact`, and that this compartment is handled by an actor of type `io.darlean.fspersistenceservice` (which stands for File System Persistence Service). We also see that this same compartment is stored in `./persistence/oracle/fact`, and that only 1 shard is being used (for what it is worth at this moment).
@@ -64,14 +64,14 @@ export class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
 ```
 We will implement them later.
 
-Next, we change the type of the `knowledge` field to be an `IPersistable` of type `Knowledge`:
+Next, we change the type of the `knowledge` field to be an [IPersistable](https://docs.darlean.io/latest/IPersistable.html) of type `Knowledge`:
 ```ts
     protected knowledge: IPersistable<Knowledge>;
 ```
 What whis means is that the `knowledge` field now has a `load` and `store` method, as well as a `value` field
 (of type `Knowledge`) that contains the last set/loaded value.
 
-We also change the constructor to receive an `IPersistence` instance, and to properly initialize the `knowledge`:
+We also change the constructor to receive an [IPersistence](https://docs.darlean.io/latest/IPersistence.html) instance, and to properly initialize the `knowledge`:
 ```ts
     constructor(persistence: IPersistence<Knowledge>, knowledge?: Knowledge) {
         this.knowledge = persistence.persistable(['knowledge'], undefined, knowledge ?? {});
@@ -79,7 +79,7 @@ We also change the constructor to receive an `IPersistence` instance, and to pro
 ```
 What it does is just to create a new `IPersistable` instance with the provided `knowledge` as value. It does *not* yet load the data from the underlying store (how could it? loading the data is an asynchronous operation, and we are in a synchronous constructor).
 
-Now that we have the constructor right, we can implement the `IActivateable` and `IDeactivateable`:
+Now that we have the constructor right, we can implement the `IActivateable` and `IDeactivateable`. They are literally one-liners:
 ```ts
     public async activate(): Promise<void> {
         await this.knowledge.load();
@@ -131,7 +131,7 @@ And that's it! Our actor is ready to persist its state! We're ready now to jump 
 ```
 
 What we do here is to ask our `context` for a new persistence interface of type `Knowledge` with 
-`oracle.fact.knowledge` as specifier. As described before, darlean uses this specifier to determine in which
+`'oracle.fact.knowledge'` as specifier. As described before, darlean uses this specifier to determine in which
 compartment the facts are to be stored. The additional mapping from specifier to compartment allows actors to only specify *what* they want to store in a functional way, without having to be dependent on or have knowledge of the specific persistence configuration of the system. The use of specifiers decouples the functionality of actors from the implementation and configuration of the persistence in the cluster.
 
 ## Running the example
@@ -154,23 +154,23 @@ $ npm run example:oracle:3:reuse -w examples
 ```
 The reuse flag instructs the code in [index.ts](index.ts) to already expect the correct value even before teaching it:
 ```ts
-if (reuse) {
-            check(
-                99,
-                await oracleService.ask('price', 'What is the price of an abracadabra?'),
-                'The price of a previously learned product should be correct'
-            );
-        } else {
-            check(
-                42,
-                await oracleService.ask('price', 'What is the price of an abracadabra?'),
-                'The price of an unknown product should be 42'
-            );
-        }
+    if (reuse) {
+        check(
+            99,
+            await oracleService.ask('price', 'What is the price of an abracadabra?'),
+            'The price of a previously learned product should be correct'
+        );
+    } else {
+        check(
+            42,
+            await oracleService.ask('price', 'What is the price of an abracadabra?'),
+            'The price of an unknown product should be 42'
+        );
+    }
 
-        await oracleService.teach('price', 'abracadabra', 99);
+    await oracleService.teach('price', 'abracadabra', 99);
 ```
 
 ## What's next?
 
-We now know how to add persistence to our actors. So, basically we have finished our distributed oracle. But wait... Did I just say *distributed*? So far, we have only played around with one one all-in-one application right? Just about time to see whether we can turn things into a real client-server distributed applcation in [Part 4 - Scale it up!](../4_scale_it_up/). 
+We now know how to add persistence to our actors. So, basically we have finished our distributed oracle. But wait... Did I just say *distributed*? So far, we have only played around with one one all-in-one application right? Just about time to see whether we can turn things into a real client-server distributed application that scales like crazy in [Part 4 - Scale it up!](../4_scale_it_up/). 

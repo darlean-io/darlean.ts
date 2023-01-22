@@ -3,8 +3,8 @@
     runtime: {
         enabled: true,
         persistence: {
-            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
             specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
+            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
             fs: {
                 compartments: [
                     { compartment: '*', basePath: './persistence', shardCount: 1 },

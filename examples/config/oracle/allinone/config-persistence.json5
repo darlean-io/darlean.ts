@@ -4,12 +4,12 @@
     runtime: {
         enabled: true,
         persistence: {
-            // Mapping from compartment mask to which actor type implements the persistence service
-            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
-
             // Mapping from specifiers (that are set in the suite configuration function) to compartment.
             specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
 
+            // Mapping from compartment mask to which actor type implements the persistence service
+            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
+            
             // Configuration of file-system persistence
             fs: {
                 compartments: [
