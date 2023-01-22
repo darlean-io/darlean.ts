@@ -6,13 +6,17 @@ That means that we now have all ingredients to scale it up, and to move from a s
 
 ## Scalability
 
-The nice thing about actor oriented programming as we provide with Darlean is that scalability is already built in. The way we define virtual and service actors makes it possible to move from a single all-in-one scenario to a fully scalable multi-application scenario *without having to change our business logic*. Without having to change a single line of code in our actors, we can make the step towards a multiple-application deployment.
+The nice thing about actor oriented programming as we provide with Darlean is that scalability is already built in. The way we define virtual and service actors makes it possible to move from a single all-in-one scenario to a fully scalable multi-application scenario *without having to change our business logic*.
+
+> Without having to change a single line of code in our actors, we can make the step towards a multiple-application deployment.
 
 ## So let's start
 
 In this part of the tutorial, we move towards a client-server scenario.
 * The **client** application is used to ask questions to the oracle
 * The **server** application hosts the Darlean runtime and the oracle actors.
+
+> Note: For this relatively simple application, we have decided to combine our own actors with the Darlean runtime functionality in one application. Depending on our need for availability, on how pure we are when it comes to having our concepts right, and on the amount of money we want to spend on hosting, it would also be possible to create and deploy a set of dedicated runtime applications (that contain just the runtime) *and* a set of dedicated application applications (that contain just our own actors). Advantage of the latter scenario is that it is easier to scale up our oracle actors without having to redeploy the runtime applications. The downside is complexity and cost.
 
 Depending on our configuration, we can then run one client with one server, or run one client with multiple server applications. We will come to that later.
 
@@ -43,7 +47,7 @@ Now that we have the runner, we can start it:
 
 This code starts the runner and sleeps for a short while to give all applications the time to start running. Our business logic comes at the `...`, and when we are done, we stop the runner.
 
-Our business logic that comes at the `...` is identical to part 3 of our tutorial. That is the nice property of actor oriented programming: business logic does not change when deployment changes.
+Our business logic at the `...` is identical to part 3 of our tutorial. That is the nice property of actor oriented programming: business logic does not change when deployment changes.
 
 ```ts
 const oraclePortal = runner.getPortal().typed<IOracleService>(ORACLE_SERVICE);
@@ -89,8 +93,8 @@ The single configuration file for client and server in a cluster of 1 client and
     runtimeApps: ['server'],
     runtime: {
         persistence: {
-            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
             specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
+            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
             fs: {
                 compartments: [
                     { compartment: '*', basePath: './persistence', shardCount: 1 },
@@ -126,8 +130,6 @@ $ node lib/oracle/4_scale_it_up/client.js --darlean-config config/oracle/cluster
 ```
 So, for the server, we set the app-id to `server`, and enable the runtime to make it a runtime node. For the client, we set the app-id to `client`, and do not make it a runtime node.
 
-*Note: in this example, we have chosen to combine our server nodes (that contain our own actors) with the runtime functionality. That is not required. It is also possible to define several (typically 3) dedicated runtime nodes, 2 or more server nodes, and then one or more client nodes. Which approach you take depends on availability requirements, how pure you are in conceptually having things right, and the amount of money you want to spend on hosting.*
-
 ### Separate configuration files
 
 For the setup with one client and 3 servers, we will illustrate what configuration looks like when we split it up into two files: one for the client, and one for the server applications.
@@ -155,8 +157,8 @@ For the server, the configuration is in [server.json5](../../../config/oracle/cl
     runtime: {
         enabled: true,
         persistence: {
-            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
             specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
+            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
             fs: {
                 compartments: [
                     { compartment: '*', basePath: './persistence', shardCount: 1 },
