@@ -34,7 +34,7 @@ export interface IPersistable<T> {
      * provide an {@link IPersistable} with a default initial value, then call {@link load}, and when
      * no data was yet present in the store, the earlier assigned default value is still present.
      */
-    load: () => Promise<T | undefined>;
+    load(): Promise<T | undefined>;
 
     /**
      * Stores the value in the unerlying persistence store.
