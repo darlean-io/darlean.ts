@@ -147,7 +147,7 @@ For a call to `teach`, the service invokes the controller actor, because this ac
 controller actor simply means providing an id with just the topic (so without an instance number).
 
 ```ts
-@action()
+    @action({locking: 'shared'})
     public async teach(topic: string, fact: string, answer: number): Promise<void> {
         // Retrieve a proxy to the controller OracleActor for the specific topic
         const actor = this.actorPortal.retrieve([topic]);
@@ -163,7 +163,7 @@ const NR_FOLLOWERS = 100;
 and simply draw a random number between `0` and `NR_FOLLOWERS` to determine the instance id. Darlean will reuse a previously created actor
 with the same instance id, or create a new actor if it is the first time an actor with that instance id is invoked.
 ```ts
-    @action()
+    @action({locking: 'shared'})
     public async ask(topic: string, question: string): Promise<number> {
         // Retrieve a proxy to a random follower OracleActor for the specific topic
         const actor = this.actorPortal.retrieve([topic, Math.floor(Math.random() * NR_FOLLOWERS).toString()]);

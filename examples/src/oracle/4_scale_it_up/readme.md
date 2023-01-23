@@ -80,6 +80,37 @@ Like the client, it creates a `ConfigRunnerBuilder`, but the server application 
 
 The server is configured to be a *runtime node*. That is, it provides basic Darlean functionality that the cluster needs to operate, such as the distributed actor registry and actor lock, and persistence. Below, we will focus on this configuration.
 
+## One important optimization
+
+When we told you that we did not have to make any code change in your business logic -- we were lying. There is one very small changes we need to make. We should already had done that before, but we did not want
+to bother you with that at that moment. Because of the defensive nature of Darlean, the default action locking
+is set to `exclusive` (the strictest value), *even for service actors* that normally are multiplar. To take advantage of our scalability, it is important to change the locking of the `ask` and `teach` of the `OracleService` actor to
+`shared`:
+```ts
+    @action({locking: 'shared'})
+    public async ask(topic: string, question: string): Promise<number> {
+        // Retrieve a proxy to the OracleActor for the specific topic
+        const actor = this.actorPortal.retrieve([topic]);
+        // Ask the actor the question, and return the answer
+        return await actor.ask(question);
+    }
+
+    @action({locking: 'shared'})
+    public async teach(topic: string, fact: string, answer: number): Promise<void> {
+        // Retrieve a proxy to the OracleActor for the specific topic
+        const actor = this.actorPortal.retrieve([topic]);
+        // Teach the new fact to the actor
+        return await actor.teach(fact, answer);
+    }
+```
+By doing so, multiple parallel calls to `ask` and `teach` are allowed, so even when the actors are slow, the service layer is no bottleneck and just invokes multiple actors at the same time in parallel. This
+has no impact on the safety of our data, because the service actor itself does *not* store any data. It is the underlying *virtual actor* that controls the data, and for which the locking should be set properly.
+
+> Note: We could also make an optimization to the underlying virtual actor (`OracleActor`). In theory, we could have implemented it in such a way that the read-calls to `ask` could all be invoked in parallel, under
+the assertion that the underlying data is not changed meanwhile. We could than change the locking of `ask` to `shared`. But, in this case, it does not matter because the implementation of `ask` does not contain any awaits. As a
+result, it is one synchronous block of code, and the way javascript works (with only one main thread) already means that no 2 calls to `ask` will ever be performed in parallel. That just is not possible. So we have nothing to
+gain here. In fact, it will only cause us trouble when we refactor our code in parts [5](../5_follow_me/) and [6](../6_wait_a_while/) and change how we receive new knowledge.
+
 ## Configuration
 
 To illustrate the flexibility of Darlean, we will show two kinds of configuration.

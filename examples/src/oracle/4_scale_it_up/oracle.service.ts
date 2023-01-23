@@ -9,7 +9,7 @@ export class OracleService implements IOracleService {
         this.actorPortal = actorPortal;
     }
 
-    @action()
+    @action({ locking: 'shared' })
     public async ask(topic: string, question: string): Promise<number> {
         // Retrieve a proxy to the OracleActor for the specific topic
         const actor = this.actorPortal.retrieve([topic]);
@@ -17,7 +17,7 @@ export class OracleService implements IOracleService {
         return await actor.ask(question);
     }
 
-    @action()
+    @action({ locking: 'shared' })
     public async teach(topic: string, fact: string, answer: number): Promise<void> {
         // Retrieve a proxy to the OracleActor for the specific topic
         const actor = this.actorPortal.retrieve([topic]);

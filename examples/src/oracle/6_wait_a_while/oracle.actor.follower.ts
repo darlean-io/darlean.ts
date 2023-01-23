@@ -39,20 +39,18 @@ export class OracleFollowerActor implements IOracleFollowerActor, IActivatable, 
 
     @timer({ locking: 'none' })
     public async refetch(): Promise<void> {
-        if (this.controller) {
-            try {
-                const aborter = new Aborter();
-                this.pollAborter = aborter;
-                this.controller.aborter(aborter);
-                const result = await this.controller.fetch(this.nonce);
-                this.knowledge = result.knowledge;
-                this.nonce = result.nonce;
-            } catch (e) {
-                // When an error occurs, do not resume immediately. It could be that the
-                // error occurs immediately, and that would effectively cause full CPU load
-                // which is what we want to avoid.
-                this.pollHandle?.resume(1000);
-            }
+        try {
+            const aborter = new Aborter();
+            this.pollAborter = aborter;
+            this.controller.aborter(aborter);
+            const result = await this.controller.fetch(this.nonce);
+            this.knowledge = result.knowledge;
+            this.nonce = result.nonce;
+        } catch (e) {
+            // When an error occurs, do not resume immediately. It could be that the
+            // error occurs immediately, and that would effectively cause full CPU load
+            // which is what we want to avoid.
+            this.pollHandle?.pause(1000);
         }
     }
 }

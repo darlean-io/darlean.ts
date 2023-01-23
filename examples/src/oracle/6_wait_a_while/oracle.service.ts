@@ -13,7 +13,7 @@ export class OracleService implements IOracleService {
         this.followerPortal = followerPortal;
     }
 
-    @action()
+    @action({ locking: 'shared' })
     public async ask(topic: string, question: string): Promise<number> {
         // Retrieve a proxy to a random follower OracleActor for the specific topic
         const actor = this.followerPortal.retrieve([topic, Math.floor(Math.random() * NR_FOLLOWERS).toString()]);
@@ -21,7 +21,7 @@ export class OracleService implements IOracleService {
         return await actor.ask(question);
     }
 
-    @action()
+    @action({ locking: 'shared' })
     public async teach(topic: string, fact: string, answer: number): Promise<void> {
         // Retrieve a proxy to the controller OracleActor for the specific topic
         const actor = this.controlPortal.retrieve([topic]);
