@@ -193,8 +193,8 @@ Because we have separate configuration files for client and server, we just have
 ## That's all folks!
 We can now run our distributed examples using the provided npm scripts:
 * `$ npm run example:oracle:4:cluster1` - Deletes persistence folder and runs the client and 1 server 
-* `$ npm run example:oracle:4:cluster3:reuse` - Keeps persistence folder and runs the client and 1 server 
-* `$ npm run example:oracle:4:cluster1` - Deletes persistence folder and runs the client and 3 servers 
+* `$ npm run example:oracle:4:cluster1:reuse` - Keeps persistence folder and runs the client and 1 server 
+* `$ npm run example:oracle:4:cluster3` - Deletes persistence folder and runs the client and 3 servers 
 * `$ npm run example:oracle:4:cluster3:reuse` - Keeps persistence folder and runs the client and 3 servers 
 
 ## What's next?
