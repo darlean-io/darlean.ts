@@ -5,7 +5,7 @@ export interface IOracleControllerActor {
     fetch(nonce: string): Promise<{ nonce: string; knowledge: Knowledge }>;
 }
 
-export interface IOracleReaderActor {
+export interface IOracleFollowerActor {
     ask(question: string): Promise<number>;
 }
 

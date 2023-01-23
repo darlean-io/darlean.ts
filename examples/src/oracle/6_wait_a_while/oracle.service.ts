@@ -1,22 +1,22 @@
 import { action, ITypedPortal } from '@darlean/base';
-import { IOracleControllerActor, IOracleReaderActor, IOracleService } from './oracle.intf';
+import { IOracleControllerActor, IOracleFollowerActor, IOracleService } from './oracle.intf';
 
-const NR_READERS = 100;
+const NR_FOLLOWERS = 100;
 
 // Implementation of the service that hides the implementation (OracleActor) from the user.
 export class OracleService implements IOracleService {
     protected controlPortal: ITypedPortal<IOracleControllerActor>;
-    protected readerPortal: ITypedPortal<IOracleReaderActor>;
+    protected followerPortal: ITypedPortal<IOracleFollowerActor>;
 
-    constructor(controlPortal: ITypedPortal<IOracleControllerActor>, readerPortal: ITypedPortal<IOracleReaderActor>) {
+    constructor(controlPortal: ITypedPortal<IOracleControllerActor>, followerPortal: ITypedPortal<IOracleFollowerActor>) {
         this.controlPortal = controlPortal;
-        this.readerPortal = readerPortal;
+        this.followerPortal = followerPortal;
     }
 
     @action()
     public async ask(topic: string, question: string): Promise<number> {
-        // Retrieve a proxy to a random reader OracleActor for the specific topic
-        const actor = this.readerPortal.retrieve([topic, Math.floor(Math.random() * NR_READERS).toString()]);
+        // Retrieve a proxy to a random follower OracleActor for the specific topic
+        const actor = this.followerPortal.retrieve([topic, Math.floor(Math.random() * NR_FOLLOWERS).toString()]);
         // Ask the actor the question, and return the answer
         return await actor.ask(question);
     }

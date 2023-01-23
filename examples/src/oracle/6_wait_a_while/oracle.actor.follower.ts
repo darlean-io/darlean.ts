@@ -1,8 +1,8 @@
 import { action, IAbortable, IActivatable, IDeactivatable, IVolatileTimer, IVolatileTimerHandle, timer } from '@darlean/base';
-import { IOracleControllerActor, IOracleReaderActor, Knowledge } from './oracle.intf';
+import { IOracleControllerActor, IOracleFollowerActor, Knowledge } from './oracle.intf';
 import { Aborter } from '@darlean/utils';
 
-export class OracleReaderActor implements IOracleReaderActor, IActivatable, IDeactivatable {
+export class OracleFollowerActor implements IOracleFollowerActor, IActivatable, IDeactivatable {
     protected knowledge: Knowledge;
     protected controller: IOracleControllerActor & IAbortable;
     protected pollTimer: IVolatileTimer;

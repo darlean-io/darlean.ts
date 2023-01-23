@@ -31,10 +31,10 @@ export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
                 // Create persistence interface. The specifier must match with the one of the `runtime.peristence.specifiers`
                 // filters in the configuration file.
                 const p = context.persistence<Knowledge>('oracle.fact.knowledge');
-                // Create a reference to the controller (when we are a reader -- which is when our id contains more than 1 part)
+                // Create a reference to the controller (when we are a follower -- which is when our id contains more than 1 part)
                 const controller =
                     context.id.length > 1 ? context.portal.retrieve<IOracleActor>(ORACLE_ACTOR, [context.id[0]]) : undefined;
-                // Create the refresh timer that the reader actor uses to refresh its data from the controller
+                // Create the refresh timer that the follower actor uses to refresh its data from the controller
                 const timer = context.newVolatileTimer();
                 // Create and return a new OracleActor instance with the provided persistence, controller and knowledge
                 return new OracleActor(p, controller, timer, k);

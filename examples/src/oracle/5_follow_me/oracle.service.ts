@@ -1,7 +1,7 @@
 import { action, ITypedPortal } from '@darlean/base';
 import { IOracleActor, IOracleService } from './oracle.intf';
 
-const NR_READERS = 100;
+const NR_FOLLOWERS = 100;
 
 // Implementation of the service that hides the implementation (OracleActor) from the user.
 export class OracleService implements IOracleService {
@@ -13,8 +13,8 @@ export class OracleService implements IOracleService {
 
     @action()
     public async ask(topic: string, question: string): Promise<number> {
-        // Retrieve a proxy to a random reader OracleActor for the specific topic
-        const actor = this.actorPortal.retrieve([topic, Math.floor(Math.random() * NR_READERS).toString()]);
+        // Retrieve a proxy to a random follower OracleActor for the specific topic
+        const actor = this.actorPortal.retrieve([topic, Math.floor(Math.random() * NR_FOLLOWERS).toString()]);
         // Ask the actor the question, and return the answer
         return await actor.ask(question);
     }

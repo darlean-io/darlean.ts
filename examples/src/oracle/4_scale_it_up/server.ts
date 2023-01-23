@@ -8,6 +8,7 @@ async function main() {
     const runner = builder.build();
 
     await runner.run();
+    console.log('RUNNER STOPPED');
 }
 
 if (require.main === module) {

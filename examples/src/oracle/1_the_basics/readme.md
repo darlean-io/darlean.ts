@@ -1,6 +1,6 @@
 # Darlean Tutorial: A Distributed Oracle
 
-In this tutorial we will show how to use Darlean to create your (presumably) very first actor-oriented program. We highlight the basics; illustrate good practices like decoupling implementation and invocation by means of service actors; explain persistence; show how easy it is to scale up; and discuss advanced topics like the multi-writer pattern.
+In this tutorial we will show how to use Darlean to create your (presumably) very first actor-oriented program. We highlight the basics; illustrate good practices like decoupling implementation and invocation by means of service actors; explain persistence; show how easy it is to scale up; and discuss advanced topics like the multi-follower pattern.
 
 # Part 1 - The basics
 

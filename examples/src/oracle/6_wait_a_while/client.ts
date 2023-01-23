@@ -37,7 +37,7 @@ async function main() {
 
         await oracleService.teach('price', 'abracadabra', 99);
 
-        //console.log('Sleep to give the reader actor the time to fetch the newly learned fact (readers refresh every 10 seconds)');
+        //console.log('Sleep to give the follower actor the time to fetch the newly learned fact (followers refresh every 10 seconds)');
         await sleep(5 * 1000);
 
         check(
