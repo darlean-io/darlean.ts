@@ -46,7 +46,7 @@ compares this nonce with its own nonce.
 
 In the [previous part](../5_follow_me/), we already shared the observation that our actor code had become a bit messy, because it basically combined two responsiblities in one class: being a controller (that only writes data and accesses persistence), and being a follower (that only reads data and accesses a controller). So, let's take the time to refactor and to make separate `OracleControllerActor` and `OracleFollowerActor` classes.
 
-> Note: Our introduction of the *service actor* that we did in [Part 2 - Oracle as a Service](../2_oracle_as_a_service/) now allows us to massively refactor our implementation, and as we will show, without having impact on the client side that invokes our oracle! Three times hooray for having separated implementation and interface by means of service actors!
+> Note: Because we have shielded our implementation from the application code by means of the *service actor* that we created in [Part 2 - Oracle as a Service](../2_oracle_as_a_service/), we can now massively refactor our implementation without having impact on the client side that invokes our oracle.
 
 ## The controller actor
 
