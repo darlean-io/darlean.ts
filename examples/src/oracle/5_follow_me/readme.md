@@ -2,11 +2,13 @@
 
 In [Part 4](../4_scale_it_up/) of this tutorial, we made the move from a single all-in-one application towards a scalable client-server solution. For our distributed oracle, every knowledge topic is covered by one virtual actor. So, the system is very scalable when it comes to having a lot of topics. As long as not all users want to know something about the same topic at the same moment, we are very scalable.
 
-Users come in via the `OracleService` actor, which is deployed as `multiplar`. That means that this actor is not restricted to run in a single application at a given moment, so the load to the oracle service actors will be distributed over all available applications. So, no performance bottleneck here, and if there were a performance bottleneck, it could easily be solved by deploying more application instances. It is only the underlying `OracleActor` that is a `singular` that can be a bottleneck.
+Users come in via the `OracleService` actor, which is deployed as `multiplar`. That means that this actor is not restricted to run in a single application at a given moment, so the load to the oracle service actors will be distributed over all available applications. So, no performance bottleneck here, and if there were a performance bottleneck, it could easily be solved by deploying more application instances.
 
-Luckily, there are many applications in which this very straight forward approach does *not* impose a bottleneck:
+*It is only the underlying `OracleActor` that is a `singular` that can be a bottleneck.*
+
+Luckily, there are many applications in which the very straight forward approach we have implemented so far does *not* impose a bottleneck:
 * A 'shopping cart' in an online shop. Although thousands of users could be active in the shop (and at the same time be hammering the `ShoppingCartService` actor), only one or two browser sessions will at the same time operate on the same underlying `ShoppingCartActor`. So, the underlying singular shopping cart actor does not pose a performance bottleneck here.
-* The 'holiday house' in an application that provides cleaners the information which houses need to be cleaned. Like with the previous example, hundreds of cleaner may hammer the `HolidayHouseService` multiplar actor at the same time, but only very few of them will be working on the same house at a time, so only few of them will access the underlying `HolidayHouseActor` at the same time.
+* The 'holiday house' in an application that provides cleaners the information which houses need to be cleaned. Like with the previous example, hundreds of cleaners may hammer the `HolidayHouseService` multiplar actor at the same time, but only very few of them will be working on the same house at a time, so only few of them will access the underlying `HolidayHouseActor` at the same time.
 
 ## All together now
 
@@ -29,6 +31,8 @@ We still use one `OracleActor` class to represent both controller and follower r
 * A follower actor has an id that contain both the topic and an instance number: `['temperature', '99']`.
 
 > Note: Id parts must always be strings, so we must convert the number `99` to the string `'99'`.
+
+## The oracle actor
 
 So, we have to adjust our `OracleActor` in [oracle.actor.ts](oracle.actor.ts).
 
@@ -131,8 +135,8 @@ And when we are a follower, we must implement the `refetch` method that is invok
 And that's it for our actor.
 
 > Note: You may have noticed that there are quite some `if`-statements in this code. That is an indication that our actor is in fact doing two different things: it can behave as a controller, 
-and it can behave as a follower. That makes the code a bit messy. In the [next part](../6_wait_a_while/) of this tutorial, we will refactor this and split up the `OracleActor` in a
-`OracleControllerActor` and a `OracleFollowerActor`. Three times hooray for our prior choice of [implementing a service actor](../2_oracle_as_a_service/) around the `OracleActor`, which allows
+and it can behave as a follower. That makes the code a bit messy. In the [next part](../6_wait_a_while/) of this tutorial, we will refactor this and split up the `OracleActor` in an
+`OracleControllerActor` and an `OracleFollowerActor`. Three times hooray for our prior choice of [implementing a service actor](../2_oracle_as_a_service/) around the `OracleActor`, which allows
 us to do this refactoring without breaking any of the client code! But more on that in [Part 6](../6_wait_a_while/).
 
 ## The service actor
@@ -196,7 +200,7 @@ That's it! We can now run our test code. But, to really see what's happening, le
 
 We have implemented polling for updated knowledge every 10 seconds. When we want to test that mechanism, we must first,
 before teaching our new fact, ensure that all 100 followers are already active. Otherwise, one of them would be activated
-when we perform the test, and it them would fetch the most recent knowledge directly from the `activate` method, and not
+when we perform the test, and it then would fetch the most recent knowledge directly from the `activate` method, and not
 via the timer callback.
 
 So, let's invoke 1000 `ask` requests with 100 at the same time in parallel, assuming that luck is with us and that 1000
@@ -221,7 +225,7 @@ Now we can run the example:
 
 ## What's next?
 
-We now have a rather elegant way of implementing a very high level of concurrency via the multiple follower pattern. What is still a bit of a bummer is that
+We now have a rather elegant way of implementing a very high level of concurrency via the multiple-follower pattern. What is still a bit of a bummer is that
 our refresh timer fires every 10 seconds, which means that we do not respond instantly to updates in our knowledge. For some applications that is no issue,
-but there are also applications for which that is a no-go. Therefore, in [Part 6 - Wait a while], we will introduce the technique of *long polling* which
+but there are also applications for which that is a no-go. Therefore, in [Part 6 - Wait a while](../6_wait_a_while/), we will introduce the technique of *long polling* which
 solves this in a very elegant way.
