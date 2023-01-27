@@ -36,7 +36,7 @@ export class ActorLockService implements IActorLockService {
 
     @action({ locking: 'shared' })
     public async acquire(request: IActorLockService_Acquire_Request): Promise<IActorLockService_Acquire_Response> {
-        currentScope().warning('Acquiring lock');
+        currentScope().debug('Acquiring lock');
         const tasks: ParallelTask<IActorLockService_Acquire_Response, void>[] = [];
         const holders: string[] = [];
         let responses = 0;
@@ -53,6 +53,11 @@ export class ActorLockService implements IActorLockService {
                     requester: request.requester,
                     ttl: request.ttl
                 });
+
+                currentScope().debug('Actor lock resulted in duration [Duration] and holders [Holders]', () => ({
+                    Duration: result.duration,
+                    Holders: result.holders
+                }));
 
                 if (result.holders) {
                     for (const holder of result.holders) {

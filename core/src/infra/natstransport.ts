@@ -1,4 +1,3 @@
-import { nextTick } from 'process';
 import { IDeSer } from './deser';
 import {
     ITransportFailure,
@@ -9,6 +8,7 @@ import {
     TRANSPORT_ERROR_UNKNOWN_RECEIVER
 } from './transport';
 import { connect, ErrorCode, NatsConnection, NatsError, Subscription } from 'nats';
+import { currentScope, deeper, ITraceInfo } from '@darlean/utils';
 
 export const NATS_ERROR_NOT_CONNECTED = 'NOT_CONNECTED';
 export const NATS_ERROR_SEND_FAILED = 'SEND_FAILED';
@@ -20,6 +20,8 @@ export interface INatsMessage {
     envelope: ITransportEnvelope;
     contents?: Buffer;
     failure?: Buffer;
+    cids?: string[];
+    parentUid?: string;
 }
 
 export class NatsTransport implements ITransport {
@@ -61,14 +63,16 @@ export class NatsTransportSession implements ITransportSession {
         this.connection = await connect({ waitOnFirstConnect: true, maxReconnectAttempts: -1, servers: this.seedUrls });
         const subscription = this.connection.subscribe(appId);
         this.subscription = subscription;
-        nextTick(async () => await this.listen(subscription, onMessage));
+        setImmediate(async () => await this.listen(subscription, onMessage));
     }
 
     public async send(envelope: ITransportEnvelope, contents: unknown, failure?: ITransportFailure): Promise<void> {
         if (envelope.receiverId == this.appId) {
             // Bypass NATS. That is not just a performance optimization. It also ensures that when the error situation is that
             // NATS is not available (like, NATS server not running), the error is properly fed back to the calling code.
-            this.messageHandler?.(envelope, contents, failure);
+            deeper('io.darlean.nats.bypass-nats').perform( () =>
+                this.messageHandler?.(envelope, contents, failure)
+            );
             return;
         }
 
@@ -80,16 +84,22 @@ export class NatsTransportSession implements ITransportSession {
             );
             return;
         }
+        
+        const scope = currentScope();
 
         const msg: INatsMessage = {
             envelope,
             contents: contents === undefined ? undefined : this.deser.serialize(contents),
-            failure: failure === undefined ? undefined : this.deser.serialize(failure)
+            failure: failure === undefined ? undefined : this.deser.serialize(failure),
+            cids: scope.getCorrelationIds(),
+            parentUid: scope.getUid()
         };
         try {
-            await this.connection?.request(envelope.receiverId, this.deser.serialize(msg), {
-                timeout: this.ackTimeout || 4000
-            });
+            await deeper('io.darlean.nats.send', envelope.receiverId).perform( () =>
+                this.connection?.request(envelope.receiverId, this.deser.serialize(msg), {
+                    timeout: this.ackTimeout || 4000
+                })
+            );
         } catch (e) {
             const ne = e as NatsError;
             if (ne.code === ErrorCode.NoResponders) {
@@ -126,22 +136,39 @@ export class NatsTransportSession implements ITransportSession {
     protected async listen(sub: Subscription, onMessage: MessageHandler) {
         try {
             for await (const m of sub) {
-                const data = m.data;
+                try {
+                    const data = m.data;
 
-                // We deliberately DID do not send a response ("m.respond()") because the sender does not need this information.
-                // It would just cost us additional network traffic.
-                // BUT. It appears that during startup, messages may get lost.
-                // Performance tests did not show a significant drop.
-                m.respond();
+                    const msg = this.deser.deserialize(Buffer.from(data)) as INatsMessage;
+                    
+                    const traceInfo: ITraceInfo | undefined = (msg.cids || msg.parentUid) ? {
+                        correlationIds: msg.cids || [],
+                        parentSegmentId: msg.parentUid
+                    } : undefined;
+                    deeper('io.darlean.nats.received-message', undefined, undefined, traceInfo).perform( () => {
+                        // We deliberately DID do not send a response ("m.respond()") because the sender does not need this information.
+                        // It would just cost us additional network traffic.
+                        // BUT. It appears that during startup, messages may get lost.
+                        // Performance tests did not show a significant drop.
+                        deeper('io.darlean.nats.send-ack').perform( () => m.respond() );
 
-                const msg = this.deser.deserialize(Buffer.from(data)) as INatsMessage;
-                const contents = msg.contents ? this.deser.deserialize(msg.contents) : undefined;
-                const failure = msg.failure ? (this.deser.deserialize(msg.failure) as ITransportFailure) : undefined;
-
-                onMessage(msg.envelope, contents, failure);
+                        const contents = msg.contents ? this.deser.deserialize(msg.contents) : undefined;
+                        const failure = msg.failure ? (this.deser.deserialize(msg.failure) as ITransportFailure) : undefined;
+                        
+                        deeper('io.darlean.nats.call-message-handler').perform(
+                            () => onMessage(msg.envelope, contents, failure)
+                        );
+                    });
+                } catch (e) {
+                    currentScope().error('Error during handling of incoming message: [Error]', () => ({
+                        Error: e
+                    }));
+                }
             }
         } catch (e) {
             console.log('Error during listen', e);
+            // Panic!!
+            throw e;
         }
     }
 
@@ -153,7 +180,9 @@ export class NatsTransportSession implements ITransportSession {
 
         if (originalEnv.returnEnvelopes) {
             for (const env of originalEnv.returnEnvelopes) {
-                this.send(env, undefined, failure);
+                deeper('io.darlean.nats.send-failure-message').perform(
+                    () => this.send(env, undefined, failure)
+                );
             }
         }
     }

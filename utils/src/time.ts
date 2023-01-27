@@ -1,8 +1,9 @@
 export interface ITimer {
     /**
-     * Cancels the timer. The timer will never fire again.
+     * Cancels the timer. The timer will never fire again. Waits until an eventually running callback
+     * function is stopped.
      */
-    cancel(): void;
+    cancel(): Promise<void>;
 
     /**
      * Pauses the firing of the timer. When duration is specified, the timer is automatically resumed after

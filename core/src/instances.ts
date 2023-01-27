@@ -24,7 +24,7 @@
  * @packageDocumentation
  */
 
-import { currentScope, Mutex, SharedExclusiveLock } from '@darlean/utils';
+import { currentScope, deeper, Mutex, SharedExclusiveLock } from '@darlean/utils';
 import { idToText } from './various';
 import { normalizeActionName, normalizeActorType } from './shared';
 import { EventEmitter } from 'events';
@@ -33,6 +33,7 @@ import {
     ApplicationError,
     FrameworkError,
     FRAMEWORK_ERROR_FINALIZING,
+    FRAMEWORK_ERROR_INCORRECT_STATE,
     FRAMEWORK_ERROR_UNKNOWN_ACTION,
     FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE,
     IActionDecorable,
@@ -85,7 +86,7 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
 
     public async delete(id: string[]): Promise<void> {
         const idt = idToText(id);
-        return this.deleteImpl(idt);
+        return await this.deleteImpl(idt);
     }
 
     public obtain(id: string[]): T {
@@ -106,6 +107,9 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
             this.instances.set(idt, current);
             return current;
         }
+        
+        // TODO: Is this correct here? Should we not return a proxy, and should the proxy
+        // not throw an error when metods are invoked while finalizing??
         if (this.finalizing) {
             throw new FrameworkError(
                 FRAMEWORK_ERROR_FINALIZING,
@@ -136,8 +140,13 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
     }
 
     public async finalize(): Promise<void> {
+        // console.log('Finalizing container', this.actorType);
         this.finalizing = true;
-        for (const instance of this.instances.keys()) {
+        // Make a copy of this.instances to avoid the deletion operations to have impact on the
+        // iterator like missing items. Because finalizing = true, we should not add items anymore
+        // to this.instances.
+        const keys = Array.from(this.instances.keys());
+        for (const instance of keys) {
             await this.deleteImpl(instance);
         }
     }
@@ -145,7 +154,13 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
     protected async deleteImpl(id: string): Promise<void> {
         const instance = this.instances.get(id);
         if (instance) {
-            await instance.deactivate();
+            // console.log('Deleting instance', this.actorType, id);
+            try {
+                await instance.deactivate();
+                // console.log('Deleted instance', this.actorType, id);
+            } catch (e) {
+                console.log('Error deleting instance', this.actorType, id, e);
+            }
         }
     }
 
@@ -240,7 +255,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
     protected methods: Map<string, Function>;
     protected activeContinuation?: () => void;
     protected actorLock?: InstanceWrapperActorLock;
-    protected actorLockMutex: Mutex<void>;
+    protected lifecycleMutex: Mutex<void>;
     protected acquiredActorLock?: IAcquiredActorLock;
     protected actorType: string;
 
@@ -258,7 +273,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         const self = this;
         this.state = 'created';
         this.actorLock = actorLock;
-        this.actorLockMutex = new Mutex();
+        this.lifecycleMutex = new Mutex();
 
         this.methods = this.obtainMethods();
 
@@ -268,7 +283,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 const func = this.methods.get(name);
                 if (func) {
                     return function (...args: unknown[]) {
-                        return self.handleCall(func, args);
+                        return self.handleCall(func, name, args);
                     };
                 } else {
                     throw new FrameworkError(
@@ -290,47 +305,35 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
      * method when it exists and waiting for it to complete) and then invalidates the internal proxy (that could have previously been
      * obtained via {@link getProxy}), so that all future requests to the proxy raise an exception. Once deactivated, deactivation cannot be undone.
      */
-    public async deactivate(): Promise<void> {
-        if (this.state !== 'deactivating' && this.state !== 'inactive') {
-            if (this.state === 'created') {
-                // Nothing to do; we have not been activated yet, and also activation has not been
-                // scheduled yet (otherwise, our state would be 'activating'). So, just mark ourselves
-                // as being 'inactive'.
-                this.state = 'inactive';
-                return;
-            } else if (this.state === 'activating') {
-                // Tricky situation. Activation has been triggered, and may already be in process, or may
-                // still be waiting to acquire the proper lock. Once activation is complete, it will change
-                // state to 'active'. We must wait for that to happen.
-                // Important: while waiting for this, another request for deactivation can also come in this
-                // situation, so we cannot be sure that we are alone.
-                // Solution: When the field is not yet set, set the activeContinuation field with a promise that
-                // resolves when the state becomes active, and then wait for that.
-                if (!this.activeContinuation) {
-                    const p = new Promise<void>((resolve) => {
-                        this.activeContinuation = resolve;
-                    });
-                    await p;
+    public async deactivate(skipMutex = false): Promise<void> {
+        await deeper('io.darlean.instances.deactivate').perform( async () => {
+            if (!skipMutex) {
+                await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform( () => this.lifecycleMutex.acquire() );
+            }
+            try {
+                if (this.state === 'created') {
+                    return;
+                }
+    
+                if (this.state !== 'inactive') {
+                    this.state = 'deactivating';
+    
+                    try {
+                        const func = this.methods.get(DEACTIVATOR);
+                        await this.handleCall(func, DEACTIVATOR, [], { locking: 'exclusive' }, undefined, true);
+                    } finally {
+                        this.revoke();
+                        this.state = 'inactive';
+                        await this.releaseActorLock();
+                        this.emit('deactivated');
+                    }
+                }
+            } finally {
+                if (!skipMutex) {
+                    this.lifecycleMutex.release();
                 }
             }
-            // State must be 'active' now, and we should be the only one in this code block.
-
-            this.state = 'deactivating';
-
-            // At this moment, we are the only parallel request that can perform deactivation, because other
-            // parallel requests will never make it into the above if statement anymore (state from deactivating
-            // can only become inactive, nothing else).
-
-            try {
-                const func = this.methods.get(DEACTIVATOR);
-                await this.handleCall(func, [], { locking: 'exclusive' });
-            } finally {
-                this.revoke();
-                this.state = 'inactive';
-                await this.releaseActorLock();
-                this.emit('deactivated');
-            }
-        }
+        });
     }
 
     /**
@@ -358,78 +361,90 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 });
             }
         }
-        return await this.handleCall(method, args);
+        return await this.handleCall(method, typeof method === 'string' ? method : method?.name ?? '', args);
     }
 
     protected async handleCall(
         method: Function | undefined,
+        actionName: string,
         args: unknown,
         defaultConfig?: IActionDecoration,
-        conditional?: () => boolean
+        conditional?: () => boolean,
+        shortCircuit = false
     ): Promise<unknown> {
-        const config = (method as IActionDecorable)?._darlean_options;
+        return await deeper('io.darlean.instances.handle-call', `${this.actorType}::${method?.name}`).perform( async () => {
+            const config = (method as IActionDecorable)?._darlean_options;
 
-        if (!config && !defaultConfig && method !== undefined) {
-            // Only accept calls to methods that are explicitly marked to be an action. This is
-            // a security measure that stops unintended access to methods that are not intended
-            // to be invoked as action.
-            throw new Error(`Method [${method?.name}] is not an action (is it properly decorated with @action?)`);
-        }
-
-        await this.ensureActorLock();
-
-        const locking = config?.locking ?? defaultConfig?.locking ?? 'exclusive';
-
-        const callId = this.callCounter.toString();
-        this.callCounter++;
-
-        await this.ensureActive();
-        await this.acquireLocalLock(locking, callId);
-
-        try {
-            if (method) {
-                if (!conditional || conditional()) {
-                    // Invoke the actual method on the underlying instance
-                    return await method.apply(this.instance, args);
-                }
+            if (!config && !defaultConfig && method !== undefined) {
+                // Only accept calls to methods that are explicitly marked to be an action. This is
+                // a security measure that stops unintended access to methods that are not intended
+                // to be invoked as action.
+                throw new Error(`Method [${method?.name}] is not an action (is it properly decorated with @action?)`);
             }
-        } catch (e) {
-            throw toApplicationError(e);
-        } finally {
-            this.releaseLocalLock(locking, callId);
-        }
+    
+            const locking = config?.locking ?? defaultConfig?.locking ?? 'exclusive';
+    
+            const callId = this.callCounter.toString();
+            this.callCounter++;
+    
+            if (!shortCircuit) {
+                await deeper('io.darlean.instances.ensure-active').perform(() => this.ensureActive());
+            }
+
+            await deeper('io.darlean.instances.acquire-local-lock').perform(() => this.acquireLocalLock(locking, callId));
+    
+            try {
+                if (method) {
+                    if (!conditional || conditional()) {
+                        // Invoke the actual method on the underlying instance
+                        const scope = (actionName === ACTIVATOR) ? 'actor.invoke-activator' : (actionName === DEACTIVATOR) ? 'actor.invoke-deactivator' : 'actor.invoke-action';
+                        return await deeper(scope, `${this.actorType}::${actionName}`).perform( 
+                            () => method.apply(this.instance, args)
+                        );
+                    }
+                }
+            } catch (e) {
+                throw toApplicationError(e);
+            } finally {
+                this.releaseLocalLock(locking, callId);
+            }    
+        });
     }
 
     protected async ensureActive(): Promise<void> {
-        if (this.state === 'created') {
-            this.state = 'activating';
+        await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform( () => this.lifecycleMutex.acquire() );
+        try {            
+            if (this.state === 'created') {
+                this.state = 'activating';
 
-            // The before checks ensure that, even in the case of parallel (multiplexed) requests,
-            // and even when there is no locking configured for func, the fact that we are now
-            // here means that no other request will ever get here. So we are sure that the activation
-            // is never performed more than once.
+                try {
+                    await deeper('io.darlean.instances.ensure-actor-lock').perform( () => this.ensureActorLock() );
 
-            try {
-                const func = this.methods.get(ACTIVATOR);
+                    const func = this.methods.get(ACTIVATOR);
 
-                // It could be that while handleCall is waiting for its (normally exclusive) lock, our
-                // state changes. However, the implementation of state change logic is such that the
-                // only possible state change (a change to 'inactive' when deactivation
-                // was requested in between) is not possible because deactivate waits until we are active
-                // before continuing.
-                await this.handleCall(func, [], { locking: 'exclusive' });
-            } finally {
-                this.state = 'active';
-
-                // Trigger the continuation of code that was waiting for activation to be completed.
-                if (this.activeContinuation) {
-                    this.activeContinuation();
+                    await this.handleCall(func, ACTIVATOR, [], { locking: 'exclusive' }, undefined, true);
+                
+                    this.state = 'active';
+                } catch (e) {
+                    await this.deactivate(true);
+                    throw e;
                 }
             }
+
+            if (this.state === 'inactive') {
+                // TODO Move this code to perform_call because it first has to acquire action lock, and in between,
+                // state may have been changed
+                throw new FrameworkError(FRAMEWORK_ERROR_INCORRECT_STATE, 'It is not allowed to execute an action when the state is [State]', {
+                    State: this.state
+                });
+            }
+        } finally {
+            this.lifecycleMutex.release();
         }
     }
 
     protected async ensureActorLock() {
+        // Assume we are already in the lifecycleLock
         const actorLock = this.actorLock;
         if (!actorLock) {
             return;
@@ -439,19 +454,22 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
             return;
         }
 
-        // This code can be called in parallel (eg when action methods have 'none' locking)!
-        // Prevent it from acquiring actorlock twice by shielding it with a mutex
+        if (this.acquiredActorLock) {
+            return;
+        }
 
-        await this.actorLockMutex.acquire();
-        try {
-            if (this.acquiredActorLock) {
-                return;
-            }
+        if (!this.actorLock) {
+            throw new Error('No actor lock available, instance likely to be deactivated');
+        }
 
-            this.acquiredActorLock = await actorLock(() => {
+        // console.log('Acquiring actor lock', this.actorType);
+
+        this.acquiredActorLock = await actorLock(() => {
+            this.acquiredActorLock = undefined;
+            this.actorLock = undefined;
+            setImmediate(async () => {
                 try {
-                    this.acquiredActorLock = undefined;
-                    this.deactivate();
+                    await this.deactivate();
                 } catch (e) {
                     currentScope().info(
                         'Error during deactivating actor of type [ActorType] because the actor lock was broken: [Error]',
@@ -462,12 +480,12 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                     );
                 }
             });
-        } finally {
-            this.actorLockMutex.release();
-        }
+        });
+    
     }
 
     protected async releaseActorLock() {
+        // Assume we are already in the lifecycle mutex
         const acquiredActorLock = this.acquiredActorLock;
         if (!acquiredActorLock) {
             return;

@@ -9,6 +9,7 @@ export const FRAMEWORK_ERROR_UNKNOWN_ACTION = 'UNKNOWN_ACTION';
 export const FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE = 'UNKNOWN_ACTOR_TYPE';
 export const FRAMEWORK_ERROR_ACTOR_LOCK_FAILED = 'ACTOR_LOCK_FAILED';
 export const FRAMEWORK_ERROR_FINALIZING = 'FINALIZING';
+export const FRAMEWORK_ERROR_INCORRECT_STATE = 'INCORRECT_STATE';
 
 /**
  * Indicates that long running actions on an object that implements IAbortable can be aborted

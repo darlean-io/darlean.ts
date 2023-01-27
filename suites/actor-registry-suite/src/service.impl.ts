@@ -1,5 +1,5 @@
 import { action, deactivator, IDeactivatable } from '@darlean/base';
-import { PollController } from '@darlean/utils';
+import { currentScope, PollController } from '@darlean/utils';
 import * as uuid from 'uuid';
 
 import {
@@ -58,6 +58,9 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
 
     @action({ locking: 'shared' })
     public async push(options: IActorRegistryService_Push_Request): Promise<void> {
+        currentScope().deep('Pushed options [Options]', () => ({
+            Options: JSON.stringify(options)
+        }));
         let changed = false;
         for (const [actorType, actorInfo] of Object.entries(options.actorInfo)) {
             let ourInfo = this.byActorType.get(actorType);
@@ -86,6 +89,12 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
                 changed = true;
             }
         }
+
+        currentScope().deep('After push [Changed] [ActorTypes] [ActorInfos]', () => ({
+            Changed: changed,
+            ActorTypes: Array.from(this.byActorType.keys()),
+            ActorInfos: JSON.stringify(Array.from(this.byActorType.values()))
+        }));
 
         if (changed) {
             this.nonce = uuid.v4();

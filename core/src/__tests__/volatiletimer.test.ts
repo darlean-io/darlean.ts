@@ -1,4 +1,3 @@
-import { Logger } from '@darlean/utils';
 import { Time } from '@darlean/utils';
 import { sleep } from '@darlean/utils';
 import { action, IActivatable, IVolatileTimer, IVolatileTimerHandle } from '@darlean/base';
@@ -26,7 +25,6 @@ class TimerActor implements IActivatable {
 
 describe('Volatile timer', () => {
     test('VolatileTimer basic test', async () => {
-        new Logger();
         const time = new Time();
         const timer = new VolatileTimer<TimerActor>(time);
         const actor = new TimerActor(timer);

@@ -1,3 +1,5 @@
+import { currentScope } from "./tracing";
+
 export interface ITasksResult<TaskResult, FinalResult> {
     results: ITaskResult<TaskResult>[];
     result?: FinalResult;
@@ -43,7 +45,7 @@ export async function parallel<TaskResult, FinalResult>(
         let abort = false;
         let done = false;
         let nrunning = 0;
-        const nextTick = maxConcurrency ?? 0 < 0;
+        const nextTick = (maxConcurrency ?? 0) < 0;
         maxConcurrency = maxConcurrency === undefined ? undefined : Math.abs(maxConcurrency);
 
         let timer: NodeJS.Timeout | undefined;
@@ -82,32 +84,37 @@ export async function parallel<TaskResult, FinalResult>(
                     const result = results.results[idx];
                     try {
                         nrunning++;
-                        task(
-                            /*abort*/ (finalResult) => {
-                                if (done) {
-                                    return;
-                                }
-                                results.result = finalResult;
-                                results.status = 'aborted';
-                                abort = true;
-                            }
-                        )
-                            .then((value: TaskResult) => {
-                                if (done) {
-                                    return;
-                                }
-                                result.result = value;
-                                result.done = true;
-                                closeOneTask();
-                            })
-                            .catch((e) => {
-                                if (done) {
-                                    return;
-                                }
-                                result.error = e;
-                                result.done = true;
-                                closeOneTask();
+                        const idxString = idx.toString();
+                        process.nextTick( async () => {
+                            await currentScope().branch('io.darlean.parallel', idxString).perform( async () => {
+                                try {
+                                    const value = await task(
+                                        /*abort*/ (finalResult) => {
+                                            if (done) {
+                                                return;
+                                            }
+                                            results.result = finalResult;
+                                            results.status = 'aborted';
+                                            abort = true;
+                                        }
+                                    );
+    
+                                    if (done) {
+                                        return;
+                                    }
+                                    result.result = value;
+                                    result.done = true;
+                                    closeOneTask();
+                                } catch(e) {
+                                    if (done) {
+                                        return;
+                                    }
+                                    result.error = e;
+                                    result.done = true;
+                                    closeOneTask();
+                                }    
                             });
+                        });
                     } catch (e) {
                         if (done) {
                             return;

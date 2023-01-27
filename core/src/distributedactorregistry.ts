@@ -1,6 +1,6 @@
 import { IActorRegistryService, IActorRegistryService_Push_Request } from '@darlean/actor-registry-suite';
 import { IAbortable } from '@darlean/base';
-import { Aborter, ITime, ITimer } from '@darlean/utils';
+import { Aborter, currentScope, ITime, ITimer } from '@darlean/utils';
 import { ActorRegistry, IActorRegistry, IActorTypeInfo } from './remoteinvocation';
 import { normalizeActorType } from './shared';
 
@@ -54,14 +54,15 @@ export class DistributedActorRegistry implements IActorRegistry {
         );
     }
 
-    public stop() {
+    public async stop() {
+        const promises = [];
         if (this.refreshTimer) {
-            this.refreshTimer.cancel();
+            promises.push(this.refreshTimer.cancel());
             this.refreshTimer = undefined;
         }
 
         if (this.pushTimer) {
-            this.pushTimer.cancel();
+            promises.push(this.pushTimer.cancel());
             this.pushTimer = undefined;
         }
 
@@ -69,6 +70,8 @@ export class DistributedActorRegistry implements IActorRegistry {
         if (this.aborter) {
             this.aborter.abort();
         }
+
+        await Promise.all(promises);
     }
 
     public findPlacement(type: string): IActorTypeInfo | undefined {
@@ -100,6 +103,16 @@ export class DistributedActorRegistry implements IActorRegistry {
                 actorTypes: undefined
             });
 
+            currentScope().debug('Actor registry responded with nonce [Nonce] and actor types [ActorTypes]', () => ({
+                Nonce: info.nonce,
+                ActorTypes: Array.from(Object.keys(info.actorInfo ?? {}))
+            }));
+
+            currentScope().deep('Actor registry responded with nonce [Nonce] and actor info [ActorInfo]', () => ({
+                Nonce: info.nonce,
+                ActorInfo: JSON.stringify(info.actorInfo ?? {})
+            }));
+
             this.nonce = info.nonce;
 
             // console.log('OBTAINED', JSON.stringify(info));
@@ -116,6 +129,7 @@ export class DistributedActorRegistry implements IActorRegistry {
             //console.log('OBTAINED ERROR', e);
             //console.log(JSON.stringify(e), undefined, 2);
             this.refreshTimer?.pause(5 * 1000);
+            currentScope().warning('Error during obtaining actor registry: [Error]', () => ({Error: e}));
             throw e;
         }
     }

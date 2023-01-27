@@ -7,6 +7,7 @@ import {
     IMultiTypeInstanceContainer,
     IRemote
 } from '@darlean/base';
+import { deeper } from '@darlean/utils';
 import * as uuid from 'uuid';
 import { IEnvelope } from './infra/envelope';
 import { ITransport, ITransportEnvelope, ITransportFailure, ITransportSession } from './infra/transport';
@@ -62,6 +63,11 @@ export class TransportRemote implements IRemote {
         await this.session?.finalize();
         this.session = undefined;
 
+        const pending = this.pendingCalls;
+        this.pendingCalls = new Map();
+        for (const p of pending.values()) {
+            console.log('PENDING CALL', p);
+        }
         // The following code cancels aLL pending calls which effectively helps to
         // prevent the application from hanging at exit, but doing so is a sign that
         // somewhere else things are not cleaned up properly.
@@ -75,6 +81,12 @@ export class TransportRemote implements IRemote {
     }
 
     public async invoke(options: IInvokeOptions): Promise<IInvokeResult> {
+        return deeper('io.darlean.remotetransport.invoke', options.destination).perform(
+            () => this.invokeImpl(options)
+        );
+    }
+    
+    protected async invokeImpl(options: IInvokeOptions): Promise<IInvokeResult> {
         const callId = uuid.v4();
 
         const env: ITransportEnvelope = {
@@ -112,6 +124,7 @@ export class TransportRemote implements IRemote {
             if (this.session) {
                 this.session.send(env, this.toTransportRequest(options.content as IActorCallRequest));
             } else {
+                clearTimeout(call.timeout);
                 resolve({
                     errorCode: TRANSPORT_ERROR_TRANSPORT_ERROR,
                     errorParameters: {
@@ -190,51 +203,53 @@ export class TransportRemote implements IRemote {
             } else {
                 // Handle a new message that is to be sent to a local actor
                 setImmediate(async () => {
-                    try {
-                        const request = this.fromTransportRequest(contents as ITransportActorCallRequest);
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const proxy = this.instanceContainer.obtain(request.actorType, request.actorId) as any;
+                    const request = this.fromTransportRequest(contents as ITransportActorCallRequest);
+                    await deeper('io.darlean.remotetransport.incoming-action', `${request.actorType}::${request.actorId}::${request.actionName}`).perform( async () => {
                         try {
-                            const result = await proxy[request.actionName](...request.arguments);
-                            const response: IActorCallResponse = {
-                                result
-                            };
-                            for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
-                                this.session?.send(returnEnvelope, this.toTransportResponse(response));
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const proxy = this.instanceContainer.obtain(request.actorType, request.actorId) as any;
+                            try {
+                                const result = await proxy[request.actionName](...request.arguments);
+                                const response: IActorCallResponse = {
+                                    result
+                                };
+                                for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
+                                    this.session?.send(returnEnvelope, this.toTransportResponse(response));
+                                }
+                            } catch (e) {
+                                const err = toActionError(e);
+    
+                                const msg = `in ${request.actorType}::${request.actionName} (application: ${this.appId})`;
+                                if (err.stack) {
+                                    const lines = err.stack.split('\n');
+                                    const lines2 = [lines[0], '    ' + msg, ...lines.slice(1)];
+                                    err.stack = lines2.join('\n');
+                                } else {
+                                    err.stack = msg;
+                                }
+    
+                                // The proxy already catches application errors and properly encapsulates those
+                                // within an ApplicationError. Also, when framework errors occur, they are
+                                // delivered as FrameworkError. So, we just have to make sure here that anything
+                                // unexpected that passed through is nicely converted.
+                                const response: IActorCallResponse = {
+                                    error: err
+                                };
+    
+                                for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
+                                    this.session?.send(returnEnvelope, this.toTransportResponse(response));
+                                }
                             }
                         } catch (e) {
-                            const err = toActionError(e);
-
-                            const msg = `in ${request.actorType}::${request.actionName} (application: ${this.appId})`;
-                            if (err.stack) {
-                                const lines = err.stack.split('\n');
-                                const lines2 = [lines[0], '    ' + msg, ...lines.slice(1)];
-                                err.stack = lines2.join('\n');
-                            } else {
-                                err.stack = msg;
-                            }
-
-                            // The proxy already catches application errors and properly encapsulates those
-                            // within an ApplicationError. Also, when framework errors occur, they are
-                            // delivered as FrameworkError. So, we just have to make sure here that anything
-                            // unexpected that passed through is nicely converted.
                             const response: IActorCallResponse = {
-                                error: err
+                                error: toFrameworkError(e)
                             };
-
+    
                             for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
                                 this.session?.send(returnEnvelope, this.toTransportResponse(response));
                             }
-                        }
-                    } catch (e) {
-                        const response: IActorCallResponse = {
-                            error: toFrameworkError(e)
-                        };
-
-                        for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
-                            this.session?.send(returnEnvelope, this.toTransportResponse(response));
-                        }
-                    }
+                        }    
+                    });
                 });
             }
         }

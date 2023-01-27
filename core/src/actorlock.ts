@@ -62,16 +62,22 @@ export class DistributedActorLock implements IActorLock {
             // let until = now + result.duration;
             const refreshTimer = this.time.repeat(
                 async () => {
+                    // console.log('REFRESH ACTOR LOCK', id);
                     // const refreshNow = this.time.machineTicks();
-                    const refreshResult = await this.service.acquire({
-                        id,
-                        requester: this.appId,
-                        ttl: 60 * 1000,
-                        singleStage: true
-                    });
-                    if (refreshResult.duration > 0) {
-                        // until = refreshNow + refreshResult.duration;
-                    } else {
+                    try {
+                        const refreshResult = await this.service.acquire({
+                            id,
+                            requester: this.appId,
+                            ttl: 60 * 1000,
+                            singleStage: true
+                        });
+                        if (refreshResult.duration > 0) {
+                            // until = refreshNow + refreshResult.duration;
+                        } else {
+                            onBroken();
+                        }
+                    } catch (e) {
+                        console.log('ERROR DURING REFRESH ACTOR LOCK', e);
                         onBroken();
                     }
                 },
@@ -80,7 +86,7 @@ export class DistributedActorLock implements IActorLock {
             );
             return {
                 release: async () => {
-                    refreshTimer.cancel();
+                    await refreshTimer.cancel();
                     await this.service.release({
                         id,
                         requester: this.appId
@@ -90,8 +96,8 @@ export class DistributedActorLock implements IActorLock {
         } else {
             throw new FrameworkError(
                 FRAMEWORK_ERROR_ACTOR_LOCK_FAILED,
-                `It was not possible to acquire the actor lock for [Id]. It is likely hold by one of [${FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION}].`,
-                { [FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION]: result.holders, Id: id }
+                `It was not possible to acquire the actor lock for [Id] by [AppId]. It is likely hold by one of [${FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION}].`,
+                { [FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION]: result.holders, Id: id, AppId: this.appId }
             );
         }
     }

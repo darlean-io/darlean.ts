@@ -23,7 +23,10 @@ export async function sleep(ms: number, aborter?: Aborter): Promise<void> {
         });
     }
     return new Promise((resolve) => {
-        const timer = setTimeout(resolve, ms);
+        const timer = setTimeout(() => {
+            // console.log('Resolve timer', ms);
+            resolve();
+        }, ms);
         if (aborter) {
             aborter.handle(() => {
                 clearTimeout(timer);
@@ -116,6 +119,8 @@ export function decodeKey(key: string): string[] {
     });
 }
 
+export let pendingMutexes = 0;
+
 export class Mutex<T> {
     protected queue: Array<(value: T | undefined) => void>;
     protected held = false;
@@ -130,6 +135,7 @@ export class Mutex<T> {
     public async acquire(): Promise<T | undefined> {
         if (this.held) {
             return new Promise((resolve) => {
+                pendingMutexes++;
                 this.queue.push(resolve);
             });
         }
@@ -140,6 +146,7 @@ export class Mutex<T> {
         if (this.queue.length > 0) {
             const q0 = this.queue[0];
             this.queue.splice(0, 1);
+            pendingMutexes--;
             q0(value);
             return true;
         }
@@ -223,5 +230,43 @@ export class Aborter {
         const handler = this.handler;
         this.handler = undefined;
         handler?.();
+    }
+}
+
+export type ApplicationStopHandler = (signal?: string, code?: number, error?: Error) => void;
+let applicationStopHandlers: ApplicationStopHandler[] = [];
+let stopHandlersRegistered = false;
+
+export function onApplicationStop(handler: ApplicationStopHandler) {
+    applicationStopHandlers.push(handler);
+    if (!stopHandlersRegistered) {
+        stopHandlersRegistered = true;
+
+        process.on('exit', (code) => {
+            const handlers = applicationStopHandlers;
+            applicationStopHandlers = [];
+            handlers.forEach( (handler) => handler(undefined, code, undefined));
+            
+        });
+        
+        ['SIGINT', 'SIGUSR1', 'SIGUSR2', 'SIGTERM'].forEach( (signal) => process.on(signal, () => {
+            const handlers = applicationStopHandlers;
+            applicationStopHandlers = [];
+            handlers.forEach( (handler) => handler(signal, undefined, undefined));
+        }));
+        
+        process.on('uncaughtException', (error) => {
+            process.exitCode = 1;  // According to docs, without setting it here it will be set to 0
+            const handlers = applicationStopHandlers;
+            applicationStopHandlers = [];
+            handlers.forEach( (handler) => handler(undefined, undefined, error))
+        });        
+    }
+}
+
+export function offApplicationStop(handler: ApplicationStopHandler) {
+    const idx = applicationStopHandlers.indexOf(handler);
+    if (idx >= 0) {
+        applicationStopHandlers.splice(idx, 1);
     }
 }

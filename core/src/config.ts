@@ -1,13 +1,14 @@
 import { IActorRegistrationOptions, IActorSuite } from '@darlean/base';
 import { IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { IPersistenceServiceOptions } from '@darlean/persistence-suite';
-import { sleep } from '@darlean/utils';
+import { notifier, onApplicationStop, sleep } from '@darlean/utils';
 import { InProcessTransport, NatsTransport } from './infra';
 import { BsonDeSer } from './infra/bsondeser';
 import { NatsServer } from './infra/natsserver';
 import { ActorRunner, ActorRunnerBuilder } from './running';
 import * as json5 from 'json5';
 import * as fs from 'fs';
+import path from 'path';
 
 export interface IPersistenceSpecifierCfg {
     specifier: string;
@@ -180,6 +181,23 @@ export interface IApplicationCfg {
      * Configuration of the message bus that allows inter-application communication.
      */
     messaging?: IMessagingCfg;
+
+    /**
+     * Prefix (including path) of the pidFile for this process. When set, the application creates a pid file
+     * and checks during startup whether it is not already running. The value can be overruled
+     * with the `pid-file-prefix` command-line argument and the `PID_FILE_PREFIX` environment variable, both of which
+     * can be set to `none` to disable the pidFile functionality.
+     * @default `'./pid/'`
+     */
+    pidFilePrefix?: string;
+
+    /**
+     * Prefix (including path) of the runFile for this process. When set, the application creates a run file
+     * at start up, and automatically stops itself gracefully when the file is no longer present. The value can be overruled
+     * with the `run-file-prefix` command-line argument and the `RUN_FILE_PREFIX` environment variable, both of which
+     * can be set to `none` to disable the runFile functionality. When not set, the {@link pidFilePrefix} is used as run file prefix.
+     */
+    runFilePrefix?: string;
 }
 
 /**
@@ -208,6 +226,7 @@ export class ConfigRunnerBuilder {
     private envPrefix: string;
     private argPrefix: string;
     private overrides: Map<string, string>;
+    private appId?: string;
 
     constructor(config?: IApplicationCfg, envPrefix?: string, argPrefix?: string) {
         this.config = config;
@@ -239,6 +258,10 @@ export class ConfigRunnerBuilder {
         return this;
     }
 
+    public getAppId(): string {
+        return this.appId ?? '';
+    }
+
     public build(): ActorRunner {
         const config = this.deriveConfig();
         this.loadOverrides();
@@ -246,6 +269,7 @@ export class ConfigRunnerBuilder {
         const builder = new ActorRunnerBuilder();
 
         const appId = this.fetchString('APP_ID', 'app-id') ?? config.appId ?? 'app';
+        this.appId = appId;
         const runtimeApps = this.fetchString('RUNTIME_APPS', 'runtime-apps')
             ?.split(',')
             .map((x) => x.trim()) ??
@@ -360,27 +384,99 @@ export class ConfigRunnerBuilder {
 
                     const server = new NatsServer(
                         (stderr) => {
-                            console.log('NATS suddenly stopped', stderr);
+                            notifier().error('io.darlean.natsserver,Stopped', 'NATS server[AppId] suddenly stopped: [Error]',
+                              () => ({AppId: appId, Error: stderr}));
                         },
                         serverListenPort,
                         clusterSeeds,
-                        clusterListenUrl
+                        clusterListenUrl,
+                        appId
                     );
 
                     app.addStarter(async () => {
+                        notifier().info('io.darlean.natsserver.Starting', 'Starting NATS server [AppId]...', 
+                            () => ({AppId: appId}));
                         server.start();
                         await sleep(2000);
-                    }, 20);
+                        notifier().info('io.darlean.natsserver.Running', 'NATS server [AppId] is running.', 
+                            () => ({AppId: appId}));
+                    }, 20, 'Nats server');
 
                     app.addStopper(async () => {
                         server.stop();
                         await sleep(2000);
-                    }, 20);
+                    }, 20, 'Nats server');
                 }
             }
         }
 
+        this.configurePidAndRun(appId, app, config);
+
         return app;
+    }
+
+    protected configurePidAndRun(appId: string, runner: ActorRunner, config: IApplicationCfg) {
+        let pidFilePrefix = this.fetchString('PID_FILE_PREFIX', 'pid-file-prefix') ?? config.pidFilePrefix ?? './pid/';
+        if (pidFilePrefix === 'none') {
+            pidFilePrefix = '';
+        }
+        let runFilePrefix = this.fetchString('RUN_FILE_PREFIX', 'run-file-prefix') ?? config.runFilePrefix ?? pidFilePrefix;
+        if (runFilePrefix === 'none') {
+            runFilePrefix = '';
+        }
+
+        const pid = process.pid.toString();
+
+        if (pidFilePrefix) {
+            const pidFile = pidFilePrefix + makeNice(appId) + '.pid';
+            const pidFolder = path.dirname(pidFile);
+            runner.addStarter(async () => {
+                if (fs.existsSync(pidFile)) {
+                    throw new Error(
+                        `Not allowed to start: another instance of [${appId}] may already be running. Ensure it is stopped and that [${pidFile}] is deleted.`
+                    );
+                }
+                fs.mkdirSync(pidFolder, { recursive: true });
+                fs.writeFileSync(pidFile, pid, {});
+            }, 10, 'PID File Check');
+            // Do the cleanup in onApplicationStop instead of runner.addStopper, because we also want this cleanup
+            // to be performed when the application crashes so heavily that the asynchronous runner stop code is not
+            // properly executed.
+            onApplicationStop( () => {
+                fs.rmSync(pidFile, { force: true });
+            });
+            runner.addStopper(async () => {
+                fs.rmSync(pidFile, { force: true });
+            }, 10, 'PID File Remove');
+        }
+
+        if (runFilePrefix) {
+            const abort = new AbortController();
+
+            const runFile = runFilePrefix + makeNice(appId) + '.run';
+            const runFolder = path.dirname(runFile);
+            runner.addStarter(async () => {
+                fs.mkdirSync(runFolder, { recursive: true });
+                fs.writeFileSync(runFile, pid);
+                fs.watch(runFile, { signal: abort.signal }, (eventType) => {
+                    if (eventType === 'rename') {
+                        console.log('Removal of run-file detected, gracefully stopping the application...');
+                        runner.stop();
+                    }
+                });
+            }, 11, 'Run File Watcher');
+            // Do the cleanup in onApplicationStop instead of runner.addStopper, because we also want this cleanup
+            // to be performed when the application crashes so heavily that the asynchronous runner stop code is not
+            // properly executed.
+            // The watching however must be stopped when the runner stops, otherwise the pending eventloop task prevent
+            // the onApplicationStop from ever being triggered.
+            runner.addStopper(async () => {
+                abort.abort();
+            }, 11, 'Run File Stop Watching')
+            onApplicationStop( () => {
+                fs.rmSync(runFile, { force: true });
+            });
+        }
     }
 
     protected fetchString(envName: string, argName: string): string | undefined {
@@ -467,4 +563,9 @@ function truefalse(value: string | undefined) {
         return undefined;
     }
     return value.toLowerCase() === 'true';
+}
+
+function makeNice(value: string) {
+    // Replaces all characters that are not a-z, A-Z or _ with a -.
+    return value.replace(/(\W+)/gi, '-');
 }

@@ -3,4 +3,5 @@ export interface IPerformanceActor {
     get(): Promise<number>;
 }
 
-export const PERFORMANCE_ACTOR = 'PerformanceActor';
+export const PERFORMANCE_ACTOR_STATIC = 'PerformanceActorStatic';
+export const PERFORMANCE_ACTOR_VIRTUAL = 'PerformanceActorVirtual';

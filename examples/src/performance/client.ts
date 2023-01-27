@@ -1,37 +1,25 @@
-import { ActorRunnerBuilder, NatsServer } from '@darlean/core';
-import { IPerformanceActor, PERFORMANCE_ACTOR } from './actor.intf';
-import { parallel, ParallelTask, Time } from '@darlean/utils';
+import { IPerformanceActor, PERFORMANCE_ACTOR_STATIC } from './actor.intf';
+import { FileTracer, parallel, ParallelTask, Time, Tracer } from '@darlean/utils';
+import { ConfigRunnerBuilder } from '@darlean/core';
 
-async function main(appId: string, servers: string[]) {
-    const builder = new ActorRunnerBuilder();
-    builder.setRemoteAccess(appId);
-    builder.setDefaultApps(servers);
+async function main(servers: string[]) {
+    const tracer = new Tracer(undefined, undefined, undefined, [
+        { scope: 'io.darlean.remote.invoke', interval: 1000 }
+    ]);
+    const toFile = new FileTracer(tracer, 'client');
 
-    builder.registerActor({
-        type: PERFORMANCE_ACTOR,
-        kind: 'multiplar',
-        apps: servers,
-        placement: {
-            version: '20230112',
-            bindIdx: 0
-        }
-    });
+    const builder = new ConfigRunnerBuilder();
     const runner = builder.build();
-
-    const natsServer = new NatsServer();
-
-    natsServer.start();
-
     await runner.start();
-
+    
     try {
         const time = new Time();
-        const portal = runner.getPortal().typed<IPerformanceActor>(PERFORMANCE_ACTOR);
+        const portal = runner.getPortal().typed<IPerformanceActor>(PERFORMANCE_ACTOR_STATIC);
 
         const tasks: ParallelTask<number, void>[] = [];
         for (let i = 0; i < 100000; i++) {
             tasks.push(async () => {
-                const app = `server0${i % servers.length}`;
+                const app = servers[i % servers.length];
                 const actor = portal.retrieve([app, i.toString()]);
                 const result = await actor.add(i, 5);
                 return result;
@@ -39,26 +27,49 @@ async function main(appId: string, servers: string[]) {
         }
 
         const start = time.machineTicks();
-        await parallel(tasks, 60 * 1000, 1000);
-        const stop = time.machineTicks();
-        const duration = stop - start;
-        const perSecond = tasks.length / (duration * 0.001);
-        console.log('Finished', duration, 'ms', ' / ', perSecond, '/sec');
+        const results = await parallel(tasks, 120 * 1000, 100);
+        if (results.status === 'completed') {
+            let success = 0;
+            let error = 0;
+            results.results.forEach( (result) => {
+                if (result.done && !result.error) {
+                    success++;
+                }
+                if (result.error) {
+                    error++;
+                }
+            });
+            
+            console.log('Errors', error);
+            if (error > 0) {
+                process.exitCode = 2;
+            }
+
+            const stop = time.machineTicks();
+            const duration = stop - start;
+            const perSecond = success / (duration * 0.001);
+            console.log('Finished', duration, 'ms', ' / ', perSecond, '/sec');
+
+            if (perSecond < 4000) {
+                // process.exitCode = 3;
+            }
+        }
     } catch (e) {
         console.log('ERROR', e);
         console.log(JSON.stringify(e, undefined, 2));
     } finally {
         await runner.stop();
-        natsServer.stop();
-    }
+        toFile.dump();
+    }    
 }
 
 if (require.main === module) {
     const args = process.argv.slice(2);
-    const appId = args[0];
-    const servers = args[1].split(',');
-
-    main(appId, servers)
+    
+    const idx = args.indexOf('--servers');
+    const servers = (idx >= 0) ? args[idx+1]?.split(',') : ['server'];
+    
+    main(servers)
         .then()
         .catch((e) => console.log(e));
 }

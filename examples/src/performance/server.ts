@@ -1,24 +1,23 @@
-import { suite as actor_suite } from './actor.impl';
-import { ActorRunnerBuilder } from '@darlean/core';
+import { ConfigRunnerBuilder } from '@darlean/core';
+import { FileTracer, Tracer } from '@darlean/utils';
+import { static_suite, virtual_suite } from './actor.impl';
 
-async function main(appId: string, servers: string[]) {
-    const builder = new ActorRunnerBuilder();
-    builder.setRemoteAccess(appId);
-    builder.setDefaultApps(servers);
-    builder.hostActorLock(servers, 1);
-    builder.registerSuite(actor_suite());
+async function main() {
+    const tracer = new Tracer(undefined, undefined, undefined, [
+    ]);
+    
+    const builder = new ConfigRunnerBuilder();
+    const toFile = new FileTracer(tracer, builder.getAppId());
 
+    builder.registerSuite(static_suite());
+    builder.registerSuite(virtual_suite());
     const runner = builder.build();
-    await runner.start();
     await runner.run();
+    toFile.dump();
 }
 
 if (require.main === module) {
-    const args = process.argv.slice(2);
-    const appId = args[0];
-    const servers = args[1].split(',');
-
-    main(appId, servers)
+    main()
         .then()
         .catch((e) => console.log(e));
 }

@@ -7,12 +7,13 @@
  * @packageDocumentation
  */
 export * from './formatting';
-export * from './logging';
 export * from './parallel';
 export * from './selock';
 export * from './signalqueue';
 export * from './time';
 export * from './timeimpl';
 export * from './tracing';
+export * from './notifications';
 export * from './util';
 export * from './polling';
+export * from './tracetofile';

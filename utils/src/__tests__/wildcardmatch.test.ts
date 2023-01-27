@@ -29,7 +29,6 @@ describe('Wildcardmatch', () => {
             ['ba', false]
         ];
         for (const c of cases) {
-            console.log(c);
             const parts: string[] = [];
             expect(wildcardMatch(c[0] as string, mask, parts)).toBe(c[1]);
             if (c[1]) {
@@ -50,7 +49,6 @@ describe('Wildcardmatch', () => {
             ['cba', true, ['cb']]
         ];
         for (const c of cases) {
-            console.log(c);
             const parts: string[] = [];
             expect(wildcardMatch(c[0] as string, mask, parts)).toBe(c[1]);
             if (c[1]) {
@@ -76,7 +74,6 @@ describe('Wildcardmatch', () => {
             ['aaa', true, ['', 'aa']]
         ];
         for (const c of cases) {
-            console.log(c);
             const parts: string[] = [];
             expect(wildcardMatch(c[0] as string, mask, parts)).toBe(c[1]);
             if (c[1]) {
@@ -98,7 +95,6 @@ describe('Wildcardmatch', () => {
             ['abba', true, ['bb']]
         ];
         for (const c of cases) {
-            console.log(c);
             const parts: string[] = [];
             expect(wildcardMatch(c[0] as string, mask, parts)).toBe(c[1]);
             if (c[1]) {
@@ -116,7 +112,6 @@ describe('Wildcardmatch', () => {
             ['b.c', false]
         ];
         for (const c of cases) {
-            console.log(c);
             const parts: string[] = [];
             expect(wildcardMatch(c[0] as string, mask, parts)).toBe(c[1]);
             if (c[1]) {
