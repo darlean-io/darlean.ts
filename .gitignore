@@ -1,3 +1,5 @@
 node_modules
 docs
 persistence
+pid
+trace
