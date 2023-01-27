@@ -345,9 +345,6 @@ export class ActorRunnerBuilder {
 
             await this.multiContainer?.finalize();
 
-            if (this.portal) {
-                this.portal.finalize();
-            }
             if (this.remote) {
                 await (this.remote as TransportRemote).finalize();
             }
