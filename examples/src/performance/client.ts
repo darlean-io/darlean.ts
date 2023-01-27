@@ -3,15 +3,13 @@ import { FileTracer, parallel, ParallelTask, Time, Tracer } from '@darlean/utils
 import { ConfigRunnerBuilder } from '@darlean/core';
 
 async function main(servers: string[]) {
-    const tracer = new Tracer(undefined, undefined, undefined, [
-        { scope: 'io.darlean.remote.invoke', interval: 1000 }
-    ]);
+    const tracer = new Tracer(undefined, undefined, undefined, [{ scope: 'io.darlean.remote.invoke', interval: 1000 }]);
     const toFile = new FileTracer(tracer, 'client');
 
     const builder = new ConfigRunnerBuilder();
     const runner = builder.build();
     await runner.start();
-    
+
     try {
         const time = new Time();
         const portal = runner.getPortal().typed<IPerformanceActor>(PERFORMANCE_ACTOR_STATIC);
@@ -31,7 +29,7 @@ async function main(servers: string[]) {
         if (results.status === 'completed') {
             let success = 0;
             let error = 0;
-            results.results.forEach( (result) => {
+            results.results.forEach((result) => {
                 if (result.done && !result.error) {
                     success++;
                 }
@@ -39,7 +37,7 @@ async function main(servers: string[]) {
                     error++;
                 }
             });
-            
+
             console.log('Errors', error);
             if (error > 0) {
                 process.exitCode = 2;
@@ -60,15 +58,15 @@ async function main(servers: string[]) {
     } finally {
         await runner.stop();
         toFile.dump();
-    }    
+    }
 }
 
 if (require.main === module) {
     const args = process.argv.slice(2);
-    
+
     const idx = args.indexOf('--servers');
-    const servers = (idx >= 0) ? args[idx+1]?.split(',') : ['server'];
-    
+    const servers = idx >= 0 ? args[idx + 1]?.split(',') : ['server'];
+
     main(servers)
         .then()
         .catch((e) => console.log(e));

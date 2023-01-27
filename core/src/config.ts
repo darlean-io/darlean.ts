@@ -384,8 +384,11 @@ export class ConfigRunnerBuilder {
 
                     const server = new NatsServer(
                         (stderr) => {
-                            notifier().error('io.darlean.natsserver,Stopped', 'NATS server[AppId] suddenly stopped: [Error]',
-                              () => ({AppId: appId, Error: stderr}));
+                            notifier().error(
+                                'io.darlean.natsserver.Stopped',
+                                'NATS server[AppId] suddenly stopped: [Error]',
+                                () => ({ AppId: appId, Error: stderr })
+                            );
                         },
                         serverListenPort,
                         clusterSeeds,
@@ -393,19 +396,29 @@ export class ConfigRunnerBuilder {
                         appId
                     );
 
-                    app.addStarter(async () => {
-                        notifier().info('io.darlean.natsserver.Starting', 'Starting NATS server [AppId]...', 
-                            () => ({AppId: appId}));
-                        server.start();
-                        await sleep(2000);
-                        notifier().info('io.darlean.natsserver.Running', 'NATS server [AppId] is running.', 
-                            () => ({AppId: appId}));
-                    }, 20, 'Nats server');
+                    app.addStarter(
+                        async () => {
+                            notifier().info('io.darlean.natsserver.Starting', 'Starting NATS server [AppId]...', () => ({
+                                AppId: appId
+                            }));
+                            server.start();
+                            await sleep(2000);
+                            notifier().info('io.darlean.natsserver.Running', 'NATS server [AppId] is running.', () => ({
+                                AppId: appId
+                            }));
+                        },
+                        20,
+                        'Nats server'
+                    );
 
-                    app.addStopper(async () => {
-                        server.stop();
-                        await sleep(2000);
-                    }, 20, 'Nats server');
+                    app.addStopper(
+                        async () => {
+                            server.stop();
+                            await sleep(2000);
+                        },
+                        20,
+                        'Nats server'
+                    );
                 }
             }
         }
@@ -430,24 +443,32 @@ export class ConfigRunnerBuilder {
         if (pidFilePrefix) {
             const pidFile = pidFilePrefix + makeNice(appId) + '.pid';
             const pidFolder = path.dirname(pidFile);
-            runner.addStarter(async () => {
-                if (fs.existsSync(pidFile)) {
-                    throw new Error(
-                        `Not allowed to start: another instance of [${appId}] may already be running. Ensure it is stopped and that [${pidFile}] is deleted.`
-                    );
-                }
-                fs.mkdirSync(pidFolder, { recursive: true });
-                fs.writeFileSync(pidFile, pid, {});
-            }, 10, 'PID File Check');
+            runner.addStarter(
+                async () => {
+                    if (fs.existsSync(pidFile)) {
+                        throw new Error(
+                            `Not allowed to start: another instance of [${appId}] may already be running. Ensure it is stopped and that [${pidFile}] is deleted.`
+                        );
+                    }
+                    fs.mkdirSync(pidFolder, { recursive: true });
+                    fs.writeFileSync(pidFile, pid, {});
+                },
+                10,
+                'PID File Check'
+            );
             // Do the cleanup in onApplicationStop instead of runner.addStopper, because we also want this cleanup
             // to be performed when the application crashes so heavily that the asynchronous runner stop code is not
             // properly executed.
-            onApplicationStop( () => {
+            onApplicationStop(() => {
                 fs.rmSync(pidFile, { force: true });
             });
-            runner.addStopper(async () => {
-                fs.rmSync(pidFile, { force: true });
-            }, 10, 'PID File Remove');
+            runner.addStopper(
+                async () => {
+                    fs.rmSync(pidFile, { force: true });
+                },
+                10,
+                'PID File Remove'
+            );
         }
 
         if (runFilePrefix) {
@@ -455,25 +476,33 @@ export class ConfigRunnerBuilder {
 
             const runFile = runFilePrefix + makeNice(appId) + '.run';
             const runFolder = path.dirname(runFile);
-            runner.addStarter(async () => {
-                fs.mkdirSync(runFolder, { recursive: true });
-                fs.writeFileSync(runFile, pid);
-                fs.watch(runFile, { signal: abort.signal }, (eventType) => {
-                    if (eventType === 'rename') {
-                        console.log('Removal of run-file detected, gracefully stopping the application...');
-                        runner.stop();
-                    }
-                });
-            }, 11, 'Run File Watcher');
+            runner.addStarter(
+                async () => {
+                    fs.mkdirSync(runFolder, { recursive: true });
+                    fs.writeFileSync(runFile, pid);
+                    fs.watch(runFile, { signal: abort.signal }, (eventType) => {
+                        if (eventType === 'rename') {
+                            console.log('Removal of run-file detected, gracefully stopping the application...');
+                            runner.stop();
+                        }
+                    });
+                },
+                11,
+                'Run File Watcher'
+            );
             // Do the cleanup in onApplicationStop instead of runner.addStopper, because we also want this cleanup
             // to be performed when the application crashes so heavily that the asynchronous runner stop code is not
             // properly executed.
             // The watching however must be stopped when the runner stops, otherwise the pending eventloop task prevent
             // the onApplicationStop from ever being triggered.
-            runner.addStopper(async () => {
-                abort.abort();
-            }, 11, 'Run File Stop Watching')
-            onApplicationStop( () => {
+            runner.addStopper(
+                async () => {
+                    abort.abort();
+                },
+                11,
+                'Run File Stop Watching'
+            );
+            onApplicationStop(() => {
                 fs.rmSync(runFile, { force: true });
             });
         }

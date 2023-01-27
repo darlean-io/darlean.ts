@@ -1,18 +1,12 @@
-import { onApplicationStop } from "./util";
+import { onApplicationStop } from './util';
 import * as fs from 'fs';
 import * as pathlib from 'path';
 import * as uuid from 'uuid';
-import { Tracer } from "./tracing";
-import { replaceArguments } from "./formatting";
-import { performance } from "perf_hooks";
+import { Tracer } from './tracing';
+import { replaceArguments } from './formatting';
+import { performance } from 'perf_hooks';
 
-const fillers: string[] = [
-    '     ',
-    '    ',
-    '   ',
-    '  ',
-    ' '
-];
+const fillers: string[] = ['     ', '    ', '   ', '  ', ' '];
 
 export interface IEventStruct {
     uid: string;
@@ -40,7 +34,7 @@ export interface ILeaveStruct extends IEventStruct {
 }
 
 export interface ILogStruct extends IEventStruct {
-    args?: {[key: string]: unknown},
+    args?: { [key: string]: unknown };
     parentUid?: string;
 }
 
@@ -56,7 +50,7 @@ export class FileTracer {
         this.application = application;
         this.items = [];
         this.uid = uuid.v4();
-        this.path = path ?? './trace'
+        this.path = path ?? './trace';
 
         tracer.on('enter', (event) => {
             const struct: IEnterStruct = {
@@ -70,8 +64,8 @@ export class FileTracer {
                 parentUid: event.getParentUid(),
                 cids: event.getCorrelationIds(),
                 application: this.application
-            }
-            this.items.push( JSON.stringify(struct));
+            };
+            this.items.push(JSON.stringify(struct));
         });
 
         tracer.on('exit', (event) => {
@@ -94,7 +88,7 @@ export class FileTracer {
                 application: this.application,
                 exception: event.getException()?.toString()
             };
-            this.items.push( JSON.stringify(struct));    
+            this.items.push(JSON.stringify(struct));
         });
 
         tracer.on('rawLog', (event) => {
@@ -109,10 +103,10 @@ export class FileTracer {
                 cids: event.scope.getCorrelationIds(),
                 application: this.application
             };
-            this.items.push( JSON.stringify(struct));    
+            this.items.push(JSON.stringify(struct));
         });
 
-        onApplicationStop( () => {
+        onApplicationStop(() => {
             this.dump();
         });
     }
@@ -120,7 +114,7 @@ export class FileTracer {
     public dump() {
         const fullName = [this.path, `${this.uid}.json.txt`].join('/');
         const p = pathlib.dirname(fullName);
-        fs.mkdirSync(p, {recursive: true});
+        fs.mkdirSync(p, { recursive: true });
         const contents = this.items.join('\n');
         fs.writeFileSync(fullName, contents);
     }

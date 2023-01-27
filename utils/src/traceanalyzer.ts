@@ -1,5 +1,5 @@
-import * as fs from "fs";
-import { IEnterStruct, IEventStruct, ILeaveStruct, ILogStruct } from "./tracetofile";
+import * as fs from 'fs';
+import { IEnterStruct, IEventStruct, ILeaveStruct, ILogStruct } from './tracetofile';
 
 interface INode {
     uid: string;
@@ -47,8 +47,7 @@ export class TraceAnalyzer {
                     this.nodes.set(enter.uid, node);
                 }
                 node.enter = enter;
-            } else
-            if (event.level === 'leave') {
+            } else if (event.level === 'leave') {
                 const leave = event as ILeaveStruct;
                 let node = this.nodes.get(leave.uid);
                 if (!node) {
@@ -66,10 +65,10 @@ export class TraceAnalyzer {
                 const node: INode = {
                     uid: log.uid,
                     application: log.application,
-                    children: [],
+                    children: []
                 };
                 node.log = log;
-                this.nodes.set(log.uid, node)
+                this.nodes.set(log.uid, node);
             }
         }
 
@@ -107,13 +106,18 @@ export class TraceAnalyzer {
     public dumpRoots(app?: string) {
         let n = 0;
         for (const root of this.roots) {
-            if ((app === undefined) || (root.application === app)) {
-                console.log(`${root.uid.substring(0, 8)} ${(root.leave?.duration?.toFixed(2) ?? '-').padStart(8, ' ')}ms ${root.application?.padEnd(20)} ${this.extractSectionName(root)}`);
+            if (app === undefined || root.application === app) {
+                console.log(
+                    `${root.uid.substring(0, 8)} ${(root.leave?.duration?.toFixed(2) ?? '-').padStart(
+                        8,
+                        ' '
+                    )}ms ${root.application?.padEnd(20)} ${this.extractSectionName(root)}`
+                );
                 n++;
                 if (n > 100) {
                     console.log(`(and ${this.roots.length - n} more root events`);
                     break;
-                }    
+                }
             }
         }
     }
@@ -122,22 +126,29 @@ export class TraceAnalyzer {
         let n = 0;
         for (const [cid, node] of Array.from(this.cids.entries()).sort((a, b) => sortNodes(a[1], b[1]))) {
             if (node) {
-                if ((app === undefined) || (node?.application === app)) {
+                if (app === undefined || node?.application === app) {
                     const moment = node.enter?.moment ?? node.leave?.moment ?? node.log?.moment ?? 0;
                     let time = '';
                     if (epoch === undefined) {
                         const date = new Date(moment);
-                        time = `${date.getHours().toString()}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}.${date.getMilliseconds().toString().padStart(3, '0')}`;
+                        time = `${date.getHours().toString()}:${date.getMinutes().toString().padStart(2, '0')}:${date
+                            .getSeconds()
+                            .toString()
+                            .padStart(2, '0')}.${date.getMilliseconds().toString().padStart(3, '0')}`;
                     } else {
                         time = (moment - epoch).toFixed(2).padStart(10, ' ');
                     }
-                    
-                    console.log(`${cid.substring(0, 8)} ${(node.leave?.duration?.toFixed(2) ?? '-').padStart(8, ' ')}ms ${time.padStart(10)} ${node.application?.padEnd(20)} ${this.extractSectionName(node)}`);
+
+                    console.log(
+                        `${cid.substring(0, 8)} ${(node.leave?.duration?.toFixed(2) ?? '-').padStart(8, ' ')}ms ${time.padStart(
+                            10
+                        )} ${node.application?.padEnd(20)} ${this.extractSectionName(node)}`
+                    );
                     n++;
                     if (n > 100) {
                         console.log(`(and ${this.roots.length - n} more cid's`);
                         break;
-                    }    
+                    }
                 }
             }
         }
@@ -148,12 +159,20 @@ export class TraceAnalyzer {
         const moment = node.enter?.moment ?? node.leave?.moment ?? node.log?.moment ?? 0;
         if (epoch === undefined) {
             const date = new Date(moment);
-            time = `${date.getHours().toString()}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}.${date.getMilliseconds().toString().padStart(3, '0')}`;
+            time = `${date.getHours().toString()}:${date.getMinutes().toString().padStart(2, '0')}:${date
+                .getSeconds()
+                .toString()
+                .padStart(2, '0')}.${date.getMilliseconds().toString().padStart(3, '0')}`;
         } else {
             time = (moment - epoch).toFixed(2).padStart(10, ' ');
         }
 
-        console.log(`${node.uid.substring(0, 8)} ${(node.leave?.duration?.toFixed(2) ?? '-').padStart(8, ' ')}ms ${time} ${node.application?.padEnd(15)} ${indent} ${this.extractSectionName(node)}`);
+        console.log(
+            `${node.uid.substring(0, 8)} ${(node.leave?.duration?.toFixed(2) ?? '-').padStart(
+                8,
+                ' '
+            )}ms ${time} ${node.application?.padEnd(15)} ${indent} ${this.extractSectionName(node)}`
+        );
         if (node.children.length > 0) {
             for (const child of node.children) {
                 this.dumpTreeOld(child, epoch);
@@ -179,7 +198,10 @@ export class TraceAnalyzer {
             const moment = node.enter?.moment ?? node.leave?.moment ?? node.log?.moment ?? 0;
             if (epoch === undefined) {
                 const date = new Date(moment);
-                time = `${date.getHours().toString()}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}.${date.getMilliseconds().toString().padStart(3, '0')}`;
+                time = `${date.getHours().toString()}:${date.getMinutes().toString().padStart(2, '0')}:${date
+                    .getSeconds()
+                    .toString()
+                    .padStart(2, '0')}.${date.getMilliseconds().toString().padStart(3, '0')}`;
             } else {
                 time = (moment - epoch).toFixed(2).padStart(10, ' ');
             }
@@ -189,9 +211,16 @@ export class TraceAnalyzer {
             const levelIndent = ''.padStart(item.level * 2, ' ');
 
             const branches = this.analyzeBranch(node);
-            const branchInfo = branches.length > 0 ? ` See branch(es) ${branches.map( (x) => x.substring(0, 8)).join(', ')}` : '';
+            const branchInfo = branches.length > 0 ? ` See branch(es) ${branches.map((x) => x.substring(0, 8)).join(', ')}` : '';
 
-            console.log(`${node.uid.substring(0, 8)} ${(node.leave?.duration?.toFixed(2) ?? '-').padStart(8, ' ')}ms ${time} ${node.application?.padEnd(15)} ${appIndent} | ${levelIndent} ${this.extractSectionName(node)}${branchInfo}`);
+            console.log(
+                `${node.uid.substring(0, 8)} ${(node.leave?.duration?.toFixed(2) ?? '-').padStart(
+                    8,
+                    ' '
+                )}ms ${time} ${node.application?.padEnd(15)} ${appIndent} | ${levelIndent} ${this.extractSectionName(
+                    node
+                )}${branchInfo}`
+            );
         }
     }
 
@@ -214,7 +243,10 @@ export class TraceAnalyzer {
             const moment = node.enter?.moment ?? node.leave?.moment ?? node.log?.moment ?? 0;
             if (epoch === undefined) {
                 const date = new Date(moment);
-                time = `${date.getHours().toString()}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}.${date.getMilliseconds().toString().padStart(3, '0')}`;
+                time = `${date.getHours().toString()}:${date.getMinutes().toString().padStart(2, '0')}:${date
+                    .getSeconds()
+                    .toString()
+                    .padStart(2, '0')}.${date.getMilliseconds().toString().padStart(3, '0')}`;
             } else {
                 time = (moment - epoch).toFixed(2).padStart(10, ' ');
             }
@@ -224,15 +256,23 @@ export class TraceAnalyzer {
             const levelIndent = ''.padStart(level * 2, ' ');
 
             const branches = this.analyzeBranch(node);
-            const branchInfo = branches.length > 0 ? ` See branch(es) ${branches.map( (x) => x.substring(0, 8)).join(', ')}` : '';
+            const branchInfo = branches.length > 0 ? ` See branch(es) ${branches.map((x) => x.substring(0, 8)).join(', ')}` : '';
 
-            console.log(`${node.uid.substring(0, 8)} ${(node.leave?.duration?.toFixed(2) ?? '-').padStart(8, ' ')}ms ${time} ${node.application?.padEnd(15)} ${appIndent} | ${levelIndent} ${this.extractSectionName(node)}${branchInfo}`);
+            console.log(
+                `${node.uid.substring(0, 8)} ${(node.leave?.duration?.toFixed(2) ?? '-').padStart(
+                    8,
+                    ' '
+                )}ms ${time} ${node.application?.padEnd(15)} ${appIndent} | ${levelIndent} ${this.extractSectionName(
+                    node
+                )}${branchInfo}`
+            );
         }
     }
 
     public scanTree(node: INode, level: number, items: IScanItem[]) {
         items.push({
-            level, node
+            level,
+            node
         });
         if (node.children.length > 0) {
             for (const child of node.children) {
@@ -264,14 +304,12 @@ export class TraceAnalyzer {
     }
 
     protected extractSectionName(node: INode) {
-        const ex = (node.leave?.exception) ? ' with exception ' + node.leave?.exception : '';
+        const ex = node.leave?.exception ? ' with exception ' + node.leave?.exception : '';
         if (node.enter) {
             return `[${cleanScope(node.enter.scope)}] ${node.enter.id ?? ''}${ex}`;
-        } else
-        if (node.leave) {
+        } else if (node.leave) {
             return `[${cleanScope(node.leave.scope)}] ${node.leave.id ?? ''}`;
-        } else
-        if (node.log) {
+        } else if (node.log) {
             return `${node.log.level.toUpperCase().padEnd(7)} ${node.log.message}`;
         }
         return '';
@@ -307,7 +345,7 @@ function sortNodes(a: INode, b: INode) {
     if (ma === mb) {
         const mma = a.enter?.momentExact ?? 0;
         const mmb = b.enter?.momentExact ?? 0;
-        return (mma - mmb);
+        return mma - mmb;
     } else {
         return ma - mb;
     }
@@ -321,7 +359,7 @@ function sortScanItems(a: IScanItem, b: IScanItem) {
     return result;
 }
 
-export function loadEventFiles(cid?: string): [epoch: number|undefined, events: IEventStruct[]] {
+export function loadEventFiles(cid?: string): [epoch: number | undefined, events: IEventStruct[]] {
     const items: IEventStruct[] = [];
     let epoch: number | undefined;
 
@@ -330,18 +368,18 @@ export function loadEventFiles(cid?: string): [epoch: number|undefined, events: 
     for (const file of files) {
         if (file.endsWith('json.txt')) {
             try {
-                const raw = fs.readFileSync(path + file, {encoding: 'utf-8'});
+                const raw = fs.readFileSync(path + file, { encoding: 'utf-8' });
                 const lines = raw.split('\n');
                 for (const line of lines) {
                     try {
                         const struct = JSON.parse(line) as IEventStruct;
-                        
+
                         if (struct.moment) {
-                            if ((epoch === undefined) || (struct.moment < epoch)) {
+                            if (epoch === undefined || struct.moment < epoch) {
                                 epoch = struct.moment;
                             }
                         }
-                        
+
                         if (cid) {
                             for (const c of struct.cids ?? []) {
                                 if (c.startsWith(cid)) {
@@ -367,19 +405,17 @@ export function loadEventFiles(cid?: string): [epoch: number|undefined, events: 
 if (require.main === module) {
     const app = findArg('app');
     const cid = findArg('cid');
-    
+
     const [epoch, events] = loadEventFiles(cid);
     const analyzer = new TraceAnalyzer(events, epoch);
 
     if (app) {
         analyzer.dumpCids(app, epoch);
-    } else
-    if (cid) {
+    } else if (cid) {
         analyzer.dumpTree();
     } else {
         analyzer.dumpCids(undefined, epoch);
     }
-
 }
 
 function findArg(name: string): string | undefined {

@@ -270,43 +270,43 @@ export class RemotePortal implements IPortal {
                 // Assume the caller is only trying to get functions (not properties, fields etc)
                 // we simply return a getter function implementation.
                 return async function (...args: unknown[]) {
-                    return await deeper('io.darlean.remote.invoke', `${type}::${id}::${prop.toString()}`).perform( async () => {
+                    return await deeper('io.darlean.remote.invoke', `${type}::${id}::${prop.toString()}`).perform(async () => {
                         let aborted = false;
                         const aborter = nextCallAborter;
                         nextCallAborter = undefined;
                         let subAborter: Aborter | undefined;
-    
+
                         // console.log('ABORTER', prop.toString(), aborter);
-    
+
                         if (aborter) {
                             aborter.handle(() => {
                                 aborted = true;
                                 subAborter?.abort();
                             });
                         }
-    
+
                         const actorType = normalizeActorType(type);
                         const actionName = normalizeActionName(prop.toString());
-    
+
                         const content: IActorCallRequest = {
                             actorType,
                             actorId: id,
                             actionName,
                             arguments: Array.from(args)
                         };
-    
+
                         const info: { suggestion: string | undefined } = { suggestion: undefined };
-    
+
                         const placement = self.registry.findPlacement(type)?.placement;
                         if (placement?.sticky && self.placementCache) {
                             info.suggestion = self.placementCache.get(actorType, id);
                         }
-    
+
                         const backoff = self.backoff.begin(5000);
                         const nested: FrameworkError[] = [];
                         let breaking = false;
                         let idx = -1;
-                            
+
                         for (const destination of self.iterateDestinations(actorType, id, info)) {
                             if (breaking) {
                                 break;
@@ -314,132 +314,136 @@ export class RemotePortal implements IPortal {
                             idx++;
 
                             let haveResult = false;
-                            const result = await deeper('io.darlean.remoteinvocation.try-one-destination', destination).perform( async () => {
-                                // console.log('ITERATING', actorType, id, aborted, destination);
-                                if (aborted) {
-                                    throw new FrameworkError(
-                                        FRAMEWORK_ERROR_INVOKE_ERROR,
-                                        'Interrupted while invoking remote method [ActionName] on an instance of [ActorType]',
-                                        {
-                                            ActorType: actorType,
-                                            ActionName: actionName
-                                        },
-                                        undefined,
-                                        nested
-                                    );
-                                }
-                                const moment = Date.now();
-    
-                                if (destination !== '') {
-                                    info.suggestion = undefined;
-                                    subAborter = aborter ? new Aborter() : undefined;
-    
-                                    const options: IInvokeOptions = {
-                                        destination,
-                                        content,
-                                        aborter: subAborter
-                                    };
-    
-                                    const result = await self.remote.invoke(options);
-                                    subAborter = undefined;
-    
-                                    if (result.errorCode) {
+                            const result = await deeper('io.darlean.remoteinvocation.try-one-destination', destination).perform(
+                                async () => {
+                                    // console.log('ITERATING', actorType, id, aborted, destination);
+                                    if (aborted) {
+                                        throw new FrameworkError(
+                                            FRAMEWORK_ERROR_INVOKE_ERROR,
+                                            'Interrupted while invoking remote method [ActionName] on an instance of [ActorType]',
+                                            {
+                                                ActorType: actorType,
+                                                ActionName: actionName
+                                            },
+                                            undefined,
+                                            nested
+                                        );
+                                    }
+                                    const moment = Date.now();
+
+                                    if (destination !== '') {
+                                        info.suggestion = undefined;
+                                        subAborter = aborter ? new Aborter() : undefined;
+
+                                        const options: IInvokeOptions = {
+                                            destination,
+                                            content,
+                                            aborter: subAborter
+                                        };
+
+                                        const result = await self.remote.invoke(options);
+                                        subAborter = undefined;
+
+                                        if (result.errorCode) {
+                                            nested.push(
+                                                new FrameworkError(
+                                                    result.errorCode,
+                                                    (result.errorParameters?.[TRANSPORT_ERROR_PARAMETER_MESSAGE] as string) ??
+                                                        result.errorCode,
+                                                    {
+                                                        requestTime: new Date(moment).toISOString(),
+                                                        requestOptions: options,
+                                                        requestResult: result
+                                                    }
+                                                )
+                                            );
+                                        } else {
+                                            if (result.content) {
+                                                let ok = false;
+                                                try {
+                                                    const response = result.content as IActorCallResponse;
+                                                    if (response.error) {
+                                                        if (response.error.kind === 'framework') {
+                                                            const redirect = response.error.parameters?.[
+                                                                FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION
+                                                            ] as string[];
+                                                            if (redirect) {
+                                                                info.suggestion = redirect[0];
+                                                            }
+                                                            nested.push(toFrameworkError(response.error));
+                                                        } else {
+                                                            ok = true;
+                                                            throw new ApplicationError(
+                                                                response.error.code,
+                                                                response.error.template,
+                                                                response.error.parameters,
+                                                                response.error.stack,
+                                                                response.error.nested,
+                                                                response.error.message
+                                                            );
+                                                        }
+                                                    } else {
+                                                        ok = true;
+                                                        haveResult = true;
+                                                        return response.result;
+                                                    }
+                                                } finally {
+                                                    if (ok && placement?.sticky && self.placementCache) {
+                                                        // console.log('UPDATE PLACEMENT', actorType, id, options.destination);
+                                                        self.placementCache.put(actorType, id, options.destination);
+                                                    }
+                                                }
+                                            } else {
+                                                throw new Error('No content');
+                                            }
+                                        }
+                                    } else {
                                         nested.push(
                                             new FrameworkError(
-                                                result.errorCode,
-                                                (result.errorParameters?.[TRANSPORT_ERROR_PARAMETER_MESSAGE] as string) ??
-                                                    result.errorCode,
+                                                FRAMEWORK_ERROR_NO_RECEIVERS_AVAILABLE,
+                                                'No receivers available at [RequestTime] to process an action on an instance of [ActorType]',
                                                 {
-                                                    requestTime: new Date(moment).toISOString(),
-                                                    requestOptions: options,
-                                                    requestResult: result
+                                                    RequestTime: new Date(moment).toISOString(),
+                                                    ActorType: actorType,
+                                                    ActionName: actionName
                                                 }
                                             )
                                         );
-                                    } else {
-                                        if (result.content) {
-                                            let ok = false;
+                                    }
+
+                                    // console.log('ITERATED, BACKING OFF');
+                                    currentScope().debug('Aborted? [Aborted]', () => ({ Aborted: aborted }));
+
+                                    if (!aborted) {
+                                        const skip = idx < 2 && info.suggestion;
+                                        if (!skip) {
+                                            subAborter = aborter ? new Aborter() : undefined;
                                             try {
-                                                const response = result.content as IActorCallResponse;
-                                                if (response.error) {
-                                                    
-                                                    if (response.error.kind === 'framework') {
-                                                        const redirect =
-                                                            response.error.parameters?.[FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION] as string[];
-                                                        if (redirect) {
-                                                            info.suggestion = redirect[0];
-                                                        }
-                                                        nested.push(toFrameworkError(response.error));
-                                                    } else {
-                                                        ok = true;
-                                                        throw new ApplicationError(
-                                                            response.error.code,
-                                                            response.error.template,
-                                                            response.error.parameters,
-                                                            response.error.stack,
-                                                            response.error.nested,
-                                                            response.error.message
-                                                        );
-                                                    }
-                                                } else {
-                                                    ok = true;
-                                                    haveResult = true;
-                                                    return response.result;
+                                                currentScope().debug('Backing off...');
+                                                const backoffContinues = await deeper(
+                                                    'io.darlean.remoteinvocation.backoff'
+                                                ).perform(() => backoff(aborter));
+                                                currentScope().debug('Backed off.');
+
+                                                if (!backoffContinues) {
+                                                    breaking = true;
+                                                    return;
                                                 }
                                             } finally {
-                                                if (ok && placement?.sticky && self.placementCache) {
-                                                    // console.log('UPDATE PLACEMENT', actorType, id, options.destination);
-                                                    self.placementCache.put(actorType, id, options.destination);
-                                                }
+                                                subAborter = undefined;
                                             }
-                                        } else {
-                                            throw new Error('No content');
-                                        }
-                                    }
-                                } else {
-                                    nested.push(
-                                        new FrameworkError(
-                                            FRAMEWORK_ERROR_NO_RECEIVERS_AVAILABLE,
-                                            'No receivers available at [RequestTime] to process an action on an instance of [ActorType]',
-                                            {
-                                                RequestTime: new Date(moment).toISOString(),
-                                                ActorType: actorType,
-                                                ActionName: actionName
-                                            }
-                                        )
-                                    );
-                                }
-    
-                                // console.log('ITERATED, BACKING OFF');
-                                currentScope().debug('Aborted? [Aborted]', () => ({Aborted: aborted}));
-    
-                                if (!aborted) {
-                                    const skip = ((idx < 2) && (info.suggestion));
-                                    if (!skip) {
-                                        subAborter = aborter ? new Aborter() : undefined;
-                                        try {
-                                            currentScope().debug('Backing off...')
-                                            const backoffContinues = await deeper('io.darlean.remoteinvocation.backoff').perform( () => backoff(aborter));
-                                            currentScope().debug('Backed off.')
-                                            
-                                            if (!backoffContinues) {
-                                                breaking = true;
-                                                return;
-                                            }
-                                        } finally {
-                                            subAborter = undefined;
                                         }
                                     }
                                 }
-                            });
+                            );
 
                             if (haveResult) {
                                 return result;
                             }
-    
+
                             // console.log('BACKED OFF');
                         }
-                    
+
                         // console.log('ALL RETRIES DONE');
 
                         if (placement?.sticky && self.placementCache) {
@@ -487,7 +491,7 @@ export class RemotePortal implements IPortal {
                 I: i,
                 Suggestion: info.suggestion ?? 'no suggestion'
             }));
-            
+
             if (info.suggestion) {
                 const sug = info.suggestion;
                 info.suggestion = undefined;

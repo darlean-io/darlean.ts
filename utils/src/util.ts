@@ -245,22 +245,23 @@ export function onApplicationStop(handler: ApplicationStopHandler) {
         process.on('exit', (code) => {
             const handlers = applicationStopHandlers;
             applicationStopHandlers = [];
-            handlers.forEach( (handler) => handler(undefined, code, undefined));
-            
+            handlers.forEach((handler) => handler(undefined, code, undefined));
         });
-        
-        ['SIGINT', 'SIGUSR1', 'SIGUSR2', 'SIGTERM'].forEach( (signal) => process.on(signal, () => {
-            const handlers = applicationStopHandlers;
-            applicationStopHandlers = [];
-            handlers.forEach( (handler) => handler(signal, undefined, undefined));
-        }));
-        
+
+        ['SIGINT', 'SIGUSR1', 'SIGUSR2', 'SIGTERM'].forEach((signal) =>
+            process.on(signal, () => {
+                const handlers = applicationStopHandlers;
+                applicationStopHandlers = [];
+                handlers.forEach((handler) => handler(signal, undefined, undefined));
+            })
+        );
+
         process.on('uncaughtException', (error) => {
-            process.exitCode = 1;  // According to docs, without setting it here it will be set to 0
+            process.exitCode = 1; // According to docs, without setting it here it will be set to 0
             const handlers = applicationStopHandlers;
             applicationStopHandlers = [];
-            handlers.forEach( (handler) => handler(undefined, undefined, error))
-        });        
+            handlers.forEach((handler) => handler(undefined, undefined, error));
+        });
     }
 }
 

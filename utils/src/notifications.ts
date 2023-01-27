@@ -72,7 +72,7 @@ export declare interface Notifier {
 
 export class Notifier extends ev.EventEmitter implements INotifier {
     public levels?: string[];
-    
+
     constructor(levels: string[]) {
         super();
         this.levels = levels;

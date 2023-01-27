@@ -47,8 +47,8 @@ export class ActorRunner {
     protected stopping = false;
     protected starting = false;
 
-    protected starters: Array<{ order: number; name: string, starter: () => Promise<void> }>;
-    protected stoppers: Array<{ order: number; name: string, stopper: () => Promise<void> }>;
+    protected starters: Array<{ order: number; name: string; starter: () => Promise<void> }>;
+    protected stoppers: Array<{ order: number; name: string; stopper: () => Promise<void> }>;
 
     constructor(portal: IPortal) {
         this.portal = portal;
@@ -67,17 +67,17 @@ export class ActorRunner {
         }
         this.starting = true;
         for (const starter of this.starters.sort((a, b) => a.order - b.order)) {
-            notifier().debug('io.darlean.runner.starter.Invoke', 'Invoking starter [Name].',
-              () => ({Name: starter.name}));
+            notifier().debug('io.darlean.runner.starter.Invoke', 'Invoking starter [Name].', () => ({ Name: starter.name }));
             try {
                 await starter.starter();
-                notifier().debug('io.darlean.runner.starter.Done', 'Starter [Name] done',
-                    () => ({Name: starter.name}));
+                notifier().debug('io.darlean.runner.starter.Done', 'Starter [Name] done', () => ({ Name: starter.name }));
             } catch (e) {
-                notifier().error('io.darlean.runner.starter.Failed', 'Unable to invoke starter [Name]: [Error]',
-                    () => ({Name: starter.name, Error: e}));
-                throw e;  
-            }      
+                notifier().error('io.darlean.runner.starter.Failed', 'Unable to invoke starter [Name]: [Error]', () => ({
+                    Name: starter.name,
+                    Error: e
+                }));
+                throw e;
+            }
         }
     }
 
@@ -298,11 +298,9 @@ export class ActorRunnerBuilder {
         const handler: ApplicationStopHandler = (signal, code, error) => {
             if (signal) {
                 console.log('Received stop signal', signal);
-            } else
-            if (code) {
+            } else if (code) {
                 console.log('Received exit with code', code);
-            } else
-            if (error) {
+            } else if (error) {
                 console.log('Uncaught error', error);
             }
 
@@ -315,40 +313,49 @@ export class ActorRunnerBuilder {
                 console.log('STOPPED');
             });
         };
-        
-        ar.addStarter(async () => {
-            onApplicationStop(handler);
 
-            if (this.remote) {
-                notifier().info('io.darlean.transport.Init', 'Initializing transport...');
-                try {
-                    await (this.remote as TransportRemote).init();
-                    notifier().info('io.darlean.transport.Initialized', 'Transport initialized.');
-                } catch (e) {
-                    notifier().error('io.darlean.transport.Failed', 'Failed to initialize transport: [Error]',
-                      () => ({Error: e}));
-                    throw e;
+        ar.addStarter(
+            async () => {
+                onApplicationStop(handler);
+
+                if (this.remote) {
+                    notifier().info('io.darlean.transport.Init', 'Initializing transport...');
+                    try {
+                        await (this.remote as TransportRemote).init();
+                        notifier().info('io.darlean.transport.Initialized', 'Transport initialized.');
+                    } catch (e) {
+                        notifier().error('io.darlean.transport.Failed', 'Failed to initialize transport: [Error]', () => ({
+                            Error: e
+                        }));
+                        throw e;
+                    }
                 }
-            }
 
-            if (this.distributedRegistry) {
-                this.distributedRegistry.start();
-            }
-        }, 50, 'default');
+                if (this.distributedRegistry) {
+                    this.distributedRegistry.start();
+                }
+            },
+            50,
+            'default'
+        );
 
-        ar.addStopper(async () => {
-            offApplicationStop(handler);
+        ar.addStopper(
+            async () => {
+                offApplicationStop(handler);
 
-            if (this.distributedRegistry) {
-                await this.distributedRegistry.stop();
-            }
+                if (this.distributedRegistry) {
+                    await this.distributedRegistry.stop();
+                }
 
-            await this.multiContainer?.finalize();
+                await this.multiContainer?.finalize();
 
-            if (this.remote) {
-                await (this.remote as TransportRemote).finalize();
-            }
-        }, 50, 'default');
+                if (this.remote) {
+                    await (this.remote as TransportRemote).finalize();
+                }
+            },
+            50,
+            'default'
+        );
     }
 
     private createMultiContainer(): MultiTypeInstanceContainer {

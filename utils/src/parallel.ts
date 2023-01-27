@@ -1,4 +1,4 @@
-import { currentScope } from "./tracing";
+import { currentScope } from './tracing';
 
 export interface ITasksResult<TaskResult, FinalResult> {
     results: ITaskResult<TaskResult>[];
@@ -85,35 +85,37 @@ export async function parallel<TaskResult, FinalResult>(
                     try {
                         nrunning++;
                         const idxString = idx.toString();
-                        process.nextTick( async () => {
-                            await currentScope().branch('io.darlean.parallel', idxString).perform( async () => {
-                                try {
-                                    const value = await task(
-                                        /*abort*/ (finalResult) => {
-                                            if (done) {
-                                                return;
+                        process.nextTick(async () => {
+                            await currentScope()
+                                .branch('io.darlean.parallel', idxString)
+                                .perform(async () => {
+                                    try {
+                                        const value = await task(
+                                            /*abort*/ (finalResult) => {
+                                                if (done) {
+                                                    return;
+                                                }
+                                                results.result = finalResult;
+                                                results.status = 'aborted';
+                                                abort = true;
                                             }
-                                            results.result = finalResult;
-                                            results.status = 'aborted';
-                                            abort = true;
+                                        );
+
+                                        if (done) {
+                                            return;
                                         }
-                                    );
-    
-                                    if (done) {
-                                        return;
+                                        result.result = value;
+                                        result.done = true;
+                                        closeOneTask();
+                                    } catch (e) {
+                                        if (done) {
+                                            return;
+                                        }
+                                        result.error = e;
+                                        result.done = true;
+                                        closeOneTask();
                                     }
-                                    result.result = value;
-                                    result.done = true;
-                                    closeOneTask();
-                                } catch(e) {
-                                    if (done) {
-                                        return;
-                                    }
-                                    result.error = e;
-                                    result.done = true;
-                                    closeOneTask();
-                                }    
-                            });
+                                });
                         });
                     } catch (e) {
                         if (done) {

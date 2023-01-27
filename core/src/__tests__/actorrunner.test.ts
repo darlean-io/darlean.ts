@@ -37,7 +37,7 @@ describe('Actor runner & builder', () => {
             capacity: 10
         });
         const app = builder.build();
-        
+
         await app.start();
 
         const portal = app.getPortal();
@@ -89,7 +89,7 @@ describe('Actor runner & builder', () => {
 
         // Persistence is cleared, value was stored before clear, expect no value is present for actor
         expect(await a0.getLastValue()).toBe('');
-        
+
         await app.stop();
     });
 

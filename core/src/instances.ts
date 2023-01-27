@@ -107,7 +107,7 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
             this.instances.set(idt, current);
             return current;
         }
-        
+
         // TODO: Is this correct here? Should we not return a proxy, and should the proxy
         // not throw an error when metods are invoked while finalizing??
         if (this.finalizing) {
@@ -306,18 +306,18 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
      * obtained via {@link getProxy}), so that all future requests to the proxy raise an exception. Once deactivated, deactivation cannot be undone.
      */
     public async deactivate(skipMutex = false): Promise<void> {
-        await deeper('io.darlean.instances.deactivate').perform( async () => {
+        await deeper('io.darlean.instances.deactivate').perform(async () => {
             if (!skipMutex) {
-                await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform( () => this.lifecycleMutex.acquire() );
+                await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform(() => this.lifecycleMutex.acquire());
             }
             try {
                 if (this.state === 'created') {
                     return;
                 }
-    
+
                 if (this.state !== 'inactive') {
                     this.state = 'deactivating';
-    
+
                     try {
                         const func = this.methods.get(DEACTIVATOR);
                         await this.handleCall(func, DEACTIVATOR, [], { locking: 'exclusive' }, undefined, true);
@@ -372,7 +372,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         conditional?: () => boolean,
         shortCircuit = false
     ): Promise<unknown> {
-        return await deeper('io.darlean.instances.handle-call', `${this.actorType}::${method?.name}`).perform( async () => {
+        return await deeper('io.darlean.instances.handle-call', `${this.actorType}::${method?.name}`).perform(async () => {
             const config = (method as IActionDecorable)?._darlean_options;
 
             if (!config && !defaultConfig && method !== undefined) {
@@ -381,25 +381,30 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 // to be invoked as action.
                 throw new Error(`Method [${method?.name}] is not an action (is it properly decorated with @action?)`);
             }
-    
+
             const locking = config?.locking ?? defaultConfig?.locking ?? 'exclusive';
-    
+
             const callId = this.callCounter.toString();
             this.callCounter++;
-    
+
             if (!shortCircuit) {
                 await deeper('io.darlean.instances.ensure-active').perform(() => this.ensureActive());
             }
 
             await deeper('io.darlean.instances.acquire-local-lock').perform(() => this.acquireLocalLock(locking, callId));
-    
+
             try {
                 if (method) {
                     if (!conditional || conditional()) {
                         // Invoke the actual method on the underlying instance
-                        const scope = (actionName === ACTIVATOR) ? 'actor.invoke-activator' : (actionName === DEACTIVATOR) ? 'actor.invoke-deactivator' : 'actor.invoke-action';
-                        return await deeper(scope, `${this.actorType}::${actionName}`).perform( 
-                            () => method.apply(this.instance, args)
+                        const scope =
+                            actionName === ACTIVATOR
+                                ? 'actor.invoke-activator'
+                                : actionName === DEACTIVATOR
+                                ? 'actor.invoke-deactivator'
+                                : 'actor.invoke-action';
+                        return await deeper(scope, `${this.actorType}::${actionName}`).perform(() =>
+                            method.apply(this.instance, args)
                         );
                     }
                 }
@@ -407,23 +412,23 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 throw toApplicationError(e);
             } finally {
                 this.releaseLocalLock(locking, callId);
-            }    
+            }
         });
     }
 
     protected async ensureActive(): Promise<void> {
-        await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform( () => this.lifecycleMutex.acquire() );
-        try {            
+        await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform(() => this.lifecycleMutex.acquire());
+        try {
             if (this.state === 'created') {
                 this.state = 'activating';
 
                 try {
-                    await deeper('io.darlean.instances.ensure-actor-lock').perform( () => this.ensureActorLock() );
+                    await deeper('io.darlean.instances.ensure-actor-lock').perform(() => this.ensureActorLock());
 
                     const func = this.methods.get(ACTIVATOR);
 
                     await this.handleCall(func, ACTIVATOR, [], { locking: 'exclusive' }, undefined, true);
-                
+
                     this.state = 'active';
                 } catch (e) {
                     await this.deactivate(true);
@@ -434,9 +439,13 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
             if (this.state === 'inactive') {
                 // TODO Move this code to perform_call because it first has to acquire action lock, and in between,
                 // state may have been changed
-                throw new FrameworkError(FRAMEWORK_ERROR_INCORRECT_STATE, 'It is not allowed to execute an action when the state is [State]', {
-                    State: this.state
-                });
+                throw new FrameworkError(
+                    FRAMEWORK_ERROR_INCORRECT_STATE,
+                    'It is not allowed to execute an action when the state is [State]',
+                    {
+                        State: this.state
+                    }
+                );
             }
         } finally {
             this.lifecycleMutex.release();
@@ -481,7 +490,6 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 }
             });
         });
-    
     }
 
     protected async releaseActorLock() {

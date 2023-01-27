@@ -9,14 +9,14 @@ async function main() {
     const runner = builder.build();
 
     const tracer = new Tracer('app', builder.getAppId(), undefined, [
-        {scope: 'io.darlean.timer-callback', id: 'Actor registry refresh'},
-        {scope: 'io.darlean.timer-callback', id: 'Actor registry push'},
-        {scope: 'io.darlean.remote.incoming-action', id: 'io.darlean.actorregistryservice::::push'},
-        {scope: 'io.darlean.remote.incoming-action', id: 'io.darlean.actorregistryservice::::obtain'}
+        { scope: 'io.darlean.timer-callback', id: 'Actor registry refresh' },
+        { scope: 'io.darlean.timer-callback', id: 'Actor registry push' },
+        { scope: 'io.darlean.remote.incoming-action', id: 'io.darlean.actorregistryservice::::push' },
+        { scope: 'io.darlean.remote.incoming-action', id: 'io.darlean.actorregistryservice::::obtain' }
     ]);
     new FileTracer(tracer, builder.getAppId());
     // , {correlationIds: ['ROOT']}
-    await tracer.newChildScope('runner', undefined, undefined).perform( async () => {
+    await tracer.newChildScope('runner', undefined, undefined).perform(async () => {
         await runner.run();
     });
 }

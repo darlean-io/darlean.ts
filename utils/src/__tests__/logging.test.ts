@@ -37,7 +37,7 @@ describe('Logging', () => {
     });
 
     test('Async nested', async () => {
-        const events: {parentUid?: string, uid: string, scope: string}[] = [];
+        const events: { parentUid?: string; uid: string; scope: string }[] = [];
         const logger = new Tracer();
         logger.on('enter', (event) => {
             events.push({
@@ -47,13 +47,13 @@ describe('Logging', () => {
             });
         });
         expect(currentScope()).toBe(logger.root());
-        const a = logger.newChildScope('A', undefined, undefined, {correlationIds: ['A']});
+        const a = logger.newChildScope('A', undefined, undefined, { correlationIds: ['A'] });
         await a.perform(async () => {
             expect(currentScope()).toBe(a);
             expect(currentScope().getCorrelationIds()).toStrictEqual(['A']);
             const b = deeper('B');
             expect(b.getCorrelationIds()).toStrictEqual(['A']);
-            await b.perform( async () => {
+            await b.perform(async () => {
                 expect(currentScope()).toBe(b);
                 await sleep(20);
                 expect(currentScope()).toBe(b);
@@ -61,7 +61,7 @@ describe('Logging', () => {
             });
             expect(currentScope()).toBe(a);
             const c = deeper('C');
-            await c.perform( async () => {
+            await c.perform(async () => {
                 expect(currentScope()).toBe(c);
                 await sleep(20);
                 expect(currentScope()).toBe(c);
@@ -76,7 +76,6 @@ describe('Logging', () => {
         expect(events[2]?.scope).toBe('C');
         expect(events[2]?.parentUid).toBe(events[0].uid);
     });
-
 
     test('Async complex with all proper callAsyncs', async () => {
         const logger = new Tracer();

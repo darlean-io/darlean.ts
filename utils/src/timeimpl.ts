@@ -42,7 +42,7 @@ export class Time implements ITime {
         let cancelDone: () => void | undefined;
 
         const scope = currentScope();
-        setImmediate( async () => {
+        setImmediate(async () => {
             if (debug) {
                 timers.set(name, true);
             }
@@ -56,14 +56,13 @@ export class Time implements ITime {
                         scope.error('Error in callback of timer [Name]: [Error]', () => ({
                             Name: name,
                             Error: e
-                        }))
+                        }));
                     } finally {
-                        if ((repeatsLeft === -1) || (repeatsLeft > 0)) {
+                        if (repeatsLeft === -1 || repeatsLeft > 0) {
                             if (resumeMoment === -1) {
                                 // Wait forever
-                                nextDelay = 1000*1000*1000;
-                            } else
-                            if (resumeMoment === undefined) {
+                                nextDelay = 1000 * 1000 * 1000;
+                            } else if (resumeMoment === undefined) {
                                 nextDelay = interval;
                             } else {
                                 nextDelay = resumeMoment - performance.now();
@@ -81,7 +80,7 @@ export class Time implements ITime {
                 }
             }
             if (cancelDone) {
-                cancelDone()
+                cancelDone();
             }
 
             cancelled = true;
@@ -119,7 +118,7 @@ export class Time implements ITime {
                     aborter?.abort();
                 }
             }
-        }
+        };
     }
 
     public sleep(ms: number): Promise<void> {

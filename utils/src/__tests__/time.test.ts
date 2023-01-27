@@ -7,16 +7,20 @@ describe('Time repeat', () => {
         // perform the pause instead of continuing immediately (which was a bug).
         const time = new Time();
         let n = 0;
-        const timer = time.repeat(async () => {
-            if (n === 0) {
-                timer.pause(2000);
-            }
-            n++;
-        }, 'Test timer', 10);
+        const timer = time.repeat(
+            async () => {
+                if (n === 0) {
+                    timer.pause(2000);
+                }
+                n++;
+            },
+            'Test timer',
+            10
+        );
         await sleep(1000);
         expect(n).toBe(1);
         await sleep(2000);
         expect(n).toBeGreaterThan(10);
         await timer.cancel();
-    })
+    });
 });

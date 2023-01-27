@@ -81,11 +81,9 @@ export class TransportRemote implements IRemote {
     }
 
     public async invoke(options: IInvokeOptions): Promise<IInvokeResult> {
-        return deeper('io.darlean.remotetransport.invoke', options.destination).perform(
-            () => this.invokeImpl(options)
-        );
+        return deeper('io.darlean.remotetransport.invoke', options.destination).perform(() => this.invokeImpl(options));
     }
-    
+
     protected async invokeImpl(options: IInvokeOptions): Promise<IInvokeResult> {
         const callId = uuid.v4();
 
@@ -204,7 +202,10 @@ export class TransportRemote implements IRemote {
                 // Handle a new message that is to be sent to a local actor
                 setImmediate(async () => {
                     const request = this.fromTransportRequest(contents as ITransportActorCallRequest);
-                    await deeper('io.darlean.remotetransport.incoming-action', `${request.actorType}::${request.actorId}::${request.actionName}`).perform( async () => {
+                    await deeper(
+                        'io.darlean.remotetransport.incoming-action',
+                        `${request.actorType}::${request.actorId}::${request.actionName}`
+                    ).perform(async () => {
                         try {
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const proxy = this.instanceContainer.obtain(request.actorType, request.actorId) as any;
@@ -218,7 +219,7 @@ export class TransportRemote implements IRemote {
                                 }
                             } catch (e) {
                                 const err = toActionError(e);
-    
+
                                 const msg = `in ${request.actorType}::${request.actionName} (application: ${this.appId})`;
                                 if (err.stack) {
                                     const lines = err.stack.split('\n');
@@ -227,7 +228,7 @@ export class TransportRemote implements IRemote {
                                 } else {
                                     err.stack = msg;
                                 }
-    
+
                                 // The proxy already catches application errors and properly encapsulates those
                                 // within an ApplicationError. Also, when framework errors occur, they are
                                 // delivered as FrameworkError. So, we just have to make sure here that anything
@@ -235,7 +236,7 @@ export class TransportRemote implements IRemote {
                                 const response: IActorCallResponse = {
                                     error: err
                                 };
-    
+
                                 for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
                                     this.session?.send(returnEnvelope, this.toTransportResponse(response));
                                 }
@@ -244,11 +245,11 @@ export class TransportRemote implements IRemote {
                             const response: IActorCallResponse = {
                                 error: toFrameworkError(e)
                             };
-    
+
                             for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
                                 this.session?.send(returnEnvelope, this.toTransportResponse(response));
                             }
-                        }    
+                        }
                     });
                 });
             }

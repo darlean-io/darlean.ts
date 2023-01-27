@@ -129,7 +129,7 @@ export class DistributedActorRegistry implements IActorRegistry {
             //console.log('OBTAINED ERROR', e);
             //console.log(JSON.stringify(e), undefined, 2);
             this.refreshTimer?.pause(5 * 1000);
-            currentScope().warning('Error during obtaining actor registry: [Error]', () => ({Error: e}));
+            currentScope().warning('Error during obtaining actor registry: [Error]', () => ({ Error: e }));
             throw e;
         }
     }

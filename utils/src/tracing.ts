@@ -76,7 +76,7 @@ class EmptyScope implements IScope {
     public branch(_scope: string, _id?: string | string[], _traceAtts?: TraceAtts, _tracing?: ITraceInfo): IScope {
         return new EmptyScope();
     }
-    
+
     public finish(): void {
         //
     }
@@ -206,7 +206,7 @@ export class Tracer extends ev.EventEmitter {
                     }
                 }
                 if (filter.id) {
-                    if (!(id2.startsWith(filter.id))) {
+                    if (!id2.startsWith(filter.id)) {
                         continue;
                     }
                 }
@@ -238,7 +238,7 @@ export class Scope implements IScope {
     protected uid?: string;
     protected exception?: unknown;
     protected subTraceInfo?: ITraceInfo;
-    
+
     constructor(
         root: Tracer,
         parent: Scope | undefined,
@@ -267,7 +267,7 @@ export class Scope implements IScope {
                 this.traceInfo = {
                     correlationIds: [uuid.v4()],
                     parentSegmentId: this.getParentUid()
-                }
+                };
             }
         }
 
@@ -315,7 +315,7 @@ export class Scope implements IScope {
             args,
             tags: () => this.getTags()
         });
-        
+
         if (!this.root.levels?.includes(level)) {
             return;
         }
@@ -341,7 +341,7 @@ export class Scope implements IScope {
             now.getSeconds().toString().padStart(2, '0') +
             '.' +
             now.getMilliseconds().toString().padEnd(3, '0').substr(0, 3);
-        
+
         this.root.emit('filteredLog', {
             scope: this,
             level,
@@ -349,7 +349,7 @@ export class Scope implements IScope {
             args,
             tags: () => this.getTags()
         });
-    
+
         console.log(`${time} [${scope}] ${level.toUpperCase()} ${replaceArguments(msg, args?.())}`);
     }
 
@@ -379,18 +379,13 @@ export class Scope implements IScope {
 
     public newChildScope(scope: string, id?: string | string[], traceAtts?: TraceAtts, tracing?: ITraceInfo): IScope {
         const traceinfobase = tracing ?? this.subTraceInfo ?? this.traceInfo;
-        const traceinfo: ITraceInfo | undefined = traceinfobase ? {
-            correlationIds: traceinfobase.correlationIds,
-            parentSegmentId: tracing?.parentSegmentId ?? this.getUid()
-        } : undefined;
-        return new Scope(
-            this.root,
-            this,
-            scope,
-            id,
-            traceAtts,
-            traceinfo
-        );
+        const traceinfo: ITraceInfo | undefined = traceinfobase
+            ? {
+                  correlationIds: traceinfobase.correlationIds,
+                  parentSegmentId: tracing?.parentSegmentId ?? this.getUid()
+              }
+            : undefined;
+        return new Scope(this.root, this, scope, id, traceAtts, traceinfo);
     }
 
     public branch(scope: string, id?: string | string[], traceAtts?: TraceAtts, tracing?: ITraceInfo): IScope {
@@ -398,22 +393,19 @@ export class Scope implements IScope {
             return this.newChildScope(scope, id, traceAtts, tracing);
         }
 
-        const subtracing: ITraceInfo | undefined = tracing ?? this.traceInfo ? {
-            correlationIds: [uuid.v4()]
-        } : undefined;
-        const scopeTracing: ITraceInfo | undefined = this.traceInfo ? {
-            correlationIds: [...this.traceInfo.correlationIds, ...subtracing?.correlationIds ?? []],
-            parentSegmentId: this.getUid()
-        } : undefined;
-        return new Scope(
-            this.root,
-            this,
-            scope,
-            id,
-            traceAtts,
-            scopeTracing,
-            subtracing
-        );
+        const subtracing: ITraceInfo | undefined =
+            tracing ?? this.traceInfo
+                ? {
+                      correlationIds: [uuid.v4()]
+                  }
+                : undefined;
+        const scopeTracing: ITraceInfo | undefined = this.traceInfo
+            ? {
+                  correlationIds: [...this.traceInfo.correlationIds, ...(subtracing?.correlationIds ?? [])],
+                  parentSegmentId: this.getUid()
+              }
+            : undefined;
+        return new Scope(this.root, this, scope, id, traceAtts, scopeTracing, subtracing);
     }
 
     public getUid(): string {
@@ -442,7 +434,6 @@ export class Scope implements IScope {
     public getException(): unknown {
         return this.exception;
     }
-
 
     public findScopeId(scope: string): string | string[] | undefined {
         if (this.scope === scope) {

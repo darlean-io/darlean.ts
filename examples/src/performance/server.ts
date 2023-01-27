@@ -3,9 +3,8 @@ import { FileTracer, Tracer } from '@darlean/utils';
 import { static_suite, virtual_suite } from './actor.impl';
 
 async function main() {
-    const tracer = new Tracer(undefined, undefined, undefined, [
-    ]);
-    
+    const tracer = new Tracer(undefined, undefined, undefined, []);
+
     const builder = new ConfigRunnerBuilder();
     const toFile = new FileTracer(tracer, builder.getAppId());
 
