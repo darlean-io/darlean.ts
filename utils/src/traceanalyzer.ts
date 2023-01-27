@@ -114,7 +114,7 @@ export class TraceAnalyzer {
                     )}ms ${root.application?.padEnd(20)} ${this.extractSectionName(root)}`
                 );
                 n++;
-                if (n > 100) {
+                if (n > 1000) {
                     console.log(`(and ${this.roots.length - n} more root events`);
                     break;
                 }
@@ -145,8 +145,8 @@ export class TraceAnalyzer {
                         )} ${node.application?.padEnd(20)} ${this.extractSectionName(node)}`
                     );
                     n++;
-                    if (n > 100) {
-                        console.log(`(and ${this.roots.length - n} more cid's`);
+                    if (n > 1000) {
+                        console.log(`(and ${this.cids.size - n} more cid's`);
                         break;
                     }
                 }
