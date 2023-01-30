@@ -2,7 +2,7 @@ To educate and entertain, we have created some examples that you can look at and
 
 # Example 1: Tutorial. A distributed oracle.
 
-In this tutorial, we will show you the basics of actor oriented programming with Darlean by making a distributed oracle to which we can everything we want to know, like "What is the temperature of tomorrow?"
+In this tutorial, we will show you the basics of actor oriented programming with Darlean by making a distributed oracle to which we can ask whatever we'd like to know, like "What is the temperature of tomorrow?"
 or "How much does a bottle of wine cost?".
 
 * Part 1: [The basics](src/oracle/1_the_basics) - A basic oracle using virtual actor technology
