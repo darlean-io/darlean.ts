@@ -1,14 +1,4 @@
 // Minimal config file for an all-in-one application that contains both runtime and application actors
 // in one single application.
 
-{
-    runtime: {
-        // Ensures that this node provides the runtime functionality like the actor registry and actor lock to itself.
-        enabled: true
-    },
-    messaging: {
-        // Disable the NATS transport for this all-in-one setup. This will effectively use an in-process transport which
-        // is sufficient for an all-in-one application.
-        transports: []
-    }
-}
+{}

@@ -270,13 +270,16 @@ export class ConfigRunnerBuilder {
 
         const appId = this.fetchString('APP_ID', 'app-id') ?? config.appId ?? 'app';
         this.appId = appId;
-        const runtimeApps = this.fetchString('RUNTIME_APPS', 'runtime-apps')
+        const runtimeAppsExplicit = this.fetchString('RUNTIME_APPS', 'runtime-apps')
             ?.split(',')
             .map((x) => x.trim()) ??
-            config.runtimeApps ?? [appId];
+            config.runtimeApps;
+        const runtimeApps = runtimeAppsExplicit ?? [appId];
+        const allInOne = runtimeAppsExplicit === undefined;
+        const implicitRuntime = runtimeAppsExplicit?.includes(appId);
         const runtimeEnabledString = this.fetchString('RUNTIME_ENABLED', 'runtime-enabled');
         const runtimeEnabled =
-            runtimeEnabledString === undefined ? config.runtime?.enabled : runtimeEnabledString.toLowerCase() === 'true';
+            runtimeEnabledString === undefined ? config.runtime?.enabled ?? (allInOne || implicitRuntime) : runtimeEnabledString.toLowerCase() === 'true';
 
         builder.setRuntimeApps(runtimeApps);
 
@@ -334,10 +337,11 @@ export class ConfigRunnerBuilder {
             builder.registerActor(actor);
         }
 
-        const messagingTransports = this.fetchString('MESSAGING_TRANSPORTS', 'messaging-transports')
+        const messagingTransportsExplicit = this.fetchString('MESSAGING_TRANSPORTS', 'messaging-transports')
             ?.split(',')
             .map((x) => x.trim()) ??
-            config.messaging?.transports ?? ['nats'];
+            config.messaging?.transports;
+        const messagingTransports = messagingTransportsExplicit ?? allInOne ? [] : ['nats'];
         let transportSet = false;
         for (const transport of messagingTransports) {
             if (transport === 'nats') {
@@ -361,11 +365,11 @@ export class ConfigRunnerBuilder {
 
         const app = builder.build();
 
-        if (runtimeEnabled && config.runtime?.nats?.enabled) {
+        if (runtimeEnabled) {
             const nats = config.messaging?.nats;
             const runtimenats = config.runtime?.nats;
             const enabled = truefalse(this.fetchString('NATS_SERVER_ENABLED', 'nats-server-enabled')) ?? runtimenats?.enabled;
-            if (enabled) {
+            if ((enabled === undefined) || (enabled === true)) {
                 const appidx = runtimeApps.indexOf(appId);
                 const hosts = this.deriveHosts(nats, runtimeApps);
                 if (appidx >= 0 && appidx < hosts.length) {
@@ -419,6 +423,10 @@ export class ConfigRunnerBuilder {
                         20,
                         'Nats server'
                     );
+                } else {
+                    if (enabled === true) {
+                        throw new Error('Nats-server is set to enabled, but current app-id is not in the list of runtime-apps');
+                    }
                 }
             }
         }
@@ -547,7 +555,8 @@ export class ConfigRunnerBuilder {
     }
 
     protected deriveHosts(nats: INatsClientCfg | undefined, appIds: string[]) {
-        const hosts = this.fetchString('NATS_HOSTS', 'nats-hosts')?.split(',') ?? nats?.hosts ?? [];
+        const hostsExplicit = this.fetchString('NATS_HOSTS', 'nats-hosts')?.split(',') ?? nats?.hosts;
+        const hosts = hostsExplicit ?? appIds.map(() => '127.0.0.1');
         return hosts.slice(0, appIds.length);
     }
 

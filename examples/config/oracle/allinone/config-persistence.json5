@@ -2,7 +2,6 @@
 // for an all-in-one application.
 {
     runtime: {
-        enabled: true,
         persistence: {
             // Mapping from specifiers (that are set in the suite configuration function) to compartment.
             specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
@@ -21,8 +20,5 @@
                 ]
             }
         },
-    },
-    messaging: {
-        transports: []
     }
 }

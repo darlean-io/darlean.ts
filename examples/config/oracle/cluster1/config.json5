@@ -11,15 +11,6 @@
                 ]
             }
         },
-        nats: {
-            enabled: true
-        }
-    },
-    messaging: {
-        providers: ['nats'],
-        nats: {
-            hosts: ['127.0.0.1']
-        }
     }
 }
 
