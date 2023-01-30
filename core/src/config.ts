@@ -1,5 +1,5 @@
-import { IActorRegistrationOptions, IActorSuite } from '@darlean/base';
-import { IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
+import { FS_PERSISTENCE_SERVICE, IActorRegistrationOptions, IActorSuite } from '@darlean/base';
+import { IFsPersistenceCompartment, IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { IPersistenceServiceOptions } from '@darlean/persistence-suite';
 import { notifier, onApplicationStop, sleep } from '@darlean/utils';
 import { InProcessTransport, NatsTransport } from './infra';
@@ -302,13 +302,23 @@ export class ConfigRunnerBuilder {
                     compartments: [],
                     handlers: []
                 };
-                for (const spec of runtime?.persistence?.specifiers || []) {
+                
+                const DEFAULT_SPECIFIER: IPersistenceSpecifierCfg = {
+                    specifier: '*',
+                    compartment: 'fs.default'
+                };
+                for (const spec of runtime?.persistence?.specifiers || [DEFAULT_SPECIFIER]) {
                     options.compartments.push({
                         compartment: spec.compartment,
                         specifier: spec.specifier
                     });
                 }
-                for (const handler of runtime?.persistence?.handlers || []) {
+
+                const DEFAULT_HANDLER: IPersistenceHandlerCfg = {
+                    compartment: 'fs.*',
+                    actorType: FS_PERSISTENCE_SERVICE
+                };
+                for (const handler of runtime?.persistence?.handlers || [DEFAULT_HANDLER]) {
                     options.handlers.push({
                         compartment: handler.compartment,
                         actorType: handler.actorType
@@ -321,7 +331,12 @@ export class ConfigRunnerBuilder {
                 const options: IFsPersistenceOptions = {
                     compartments: []
                 };
-                for (const comp of runtime?.persistence?.fs?.compartments || []) {
+                const DEFAULT_COMPARTMENT: IFsPersistenceCompartment = {
+                    compartment: 'fs.*',
+                    basePath: './persistence/',
+                    shardCount: 1
+                };
+                for (const comp of runtime?.persistence?.fs?.compartments || [DEFAULT_COMPARTMENT]) {
                     options.compartments.push({
                         compartment: comp.compartment,
                         basePath: comp.basePath,
