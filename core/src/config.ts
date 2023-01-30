@@ -10,6 +10,9 @@ import * as json5 from 'json5';
 import * as fs from 'fs';
 import path from 'path';
 
+const DMB_BASE_PORT = 4500;
+const DMB_CLUSTER_PORT_BASE = 5500;
+
 export interface IPersistenceSpecifierCfg {
     specifier: string;
     compartment: string;
@@ -54,41 +57,41 @@ export interface IActorRegistryCfg {
 }
 
 /**
- * Configuration for runtime apps that provide a Nats server.
+ * Configuration for runtime apps that provide a DMB (Darlean Message Bus) server.
  */
-export interface INatsServerCfg {
+export interface IDmbServerCfg {
     /**
-     * Enables or disables whether this application launches a Nats server. Default is `false`.
-     * Can be overruled by `nats-server-enabled` command-line argument and `NATS_SERVER_ENABLED`
+     * Enables or disables whether this application launches a DMB server. Default is `false`.
+     * Can be overruled by `dmb-server-enabled` command-line argument and `DMB_SERVER_ENABLED`
      * environment variable set to `true` or `false`.
      */
     enabled?: boolean;
 
     /**
-     * Port number of the cluster port for the first nats server on a given host. A cluster port is a port on
-     * which other nats servers in the cluster connect (regular clients do *not* connect to the cluster port).
-     * Subsequent nats servers on the same host are automatically assigned incrementing cluster port numbers.
-     * Default value is 4222. Can be uverrules by `nats-cluster-port-base` command-line argument and `NATS_CLUSTER_PORT_BASE`
+     * Port number of the cluster port for the first DMB server on a given host. A cluster port is a port on
+     * which other DMB servers in the cluster connect (regular clients do *not* connect to the cluster port).
+     * Subsequent DMB servers on the same host are automatically assigned incrementing cluster port numbers.
+     * Default value is 5500. Can be uverrules by `dmb-cluster-port-base` command-line argument and `DMB_CLUSTER_PORT_BASE`
      * environment variable set to `true` or `false`.
      */
     clusterPortBase?: number;
 }
 
 /**
- * Configuration for apps that want to connect as client to Nats.
+ * Configuration for apps that want to connect as client to the Darlean Message Bus.
  */
-export interface INatsClientCfg {
+export interface IDmbClientCfg {
     /**
      * List of host names or IP addresses, one for each item in {@link IApplicationCfg.runtimeApps}. Can
-     * be overruled by `nats-hosts` command-line argument and `NATS_HOST` environment variable set to a comma-separated
+     * be overruled by `dmb-hosts` command-line argument and `DMB_HOSTS` environment variable set to a comma-separated
      * list of host names.
      */
     hosts?: string[];
 
     /**
-     * Port number for the first nats server on a given host. Subsequent nats servers on the same host
-     * are automatically assigned incrementing port numbers. Default value is 4222. Can be overruled by
-     * `nats-base-port` command-line argument and `NATS_BASE_PORT` environment variable.
+     * Port number for the first DMB server on a given host. Subsequent DMB servers on the same host
+     * are automatically assigned incrementing port numbers. Default value is 4500. Can be overruled by
+     * `dmb-base-port` command-line argument and `DMB_BASE_PORT` environment variable.
      */
     basePort?: number;
 }
@@ -120,9 +123,9 @@ export interface IRuntimeCfg {
     actorRegistry?: IActorRegistryCfg;
 
     /**
-     * Configuration of the nats message bus.
+     * Configuration of the DMB message bus server.
      */
-    nats?: INatsServerCfg;
+    dmb?: IDmbServerCfg;
 }
 
 /**
@@ -131,21 +134,21 @@ export interface IRuntimeCfg {
 export interface IMessagingCfg {
     /**
      * List of messaging transports that are tried in the order listed. Currently, only an empty array or
-     * an array with one element with value `nats` is allowed. Can be overruled by the `messaging-transports` command-line
+     * an array with one element with value 'dmb' is allowed. Can be overruled by the `messaging-transports` command-line
      * argument or the `MESSAGING_TRANSPORTS` environment parameter, that are either a comma-separated list of transports
-     * (currently only 'nats' is allowed) or the word 'none'.
+     * (currently only 'dmb' is allowed) or the word 'none'.
      *
      * @default When explicitly no transports are provided (by means of an empty array or `none` as value for the command-line argument or
      * environment parameter), an {@link InProcessTransport} instance is used which allows in-process communication
      * (but not communication between processes). Otherwise, when the transports are not explicitly assigned and are also not explicitly
-     * cleared, the {@link NatsTransport} is used.
+     * cleared, the {@link NatsTransport} (on which DMB is currently based) is used.
      */
-    transports: Array<'nats'>;
+    transports: Array<'dmb'>;
 
     /**
-     * Client configuration of the Nats message bus.
+     * Client configuration of the Darlean Message Bus.
      */
-    nats?: INatsClientCfg;
+    dmb?: IDmbClientCfg;
 }
 
 /**
@@ -165,7 +168,7 @@ export interface IApplicationCfg {
     /**
      * List of application id's that together provide the runtime of the Darlean cluster
      * (that is, provide the actor registry and actor lock, and optionally provide the
-     * nats message bus, persistence and other services).
+     * Darlean Message Bus, persistence and other services).
      * Must either be set here, or overruled by the `runtime-apps` command-line argument or the
      * `RUNTIME_APPS` environment variable with a comma-separated list of application id's.
      * @default an array consisting of just the {@link appId}.
@@ -341,16 +344,16 @@ export class ConfigRunnerBuilder {
             ?.split(',')
             .map((x) => x.trim()) ??
             config.messaging?.transports;
-        const messagingTransports = messagingTransportsExplicit ?? allInOne ? [] : ['nats'];
+        const messagingTransports = messagingTransportsExplicit ?? allInOne ? [] : ['dmb'];
         let transportSet = false;
         for (const transport of messagingTransports) {
-            if (transport === 'nats') {
-                const nats = config.messaging?.nats;
+            if (transport === 'dmb') {
+                const dmb = config.messaging?.dmb;
                 const seedUrls: string[] = [];
 
-                const hosts = this.deriveHosts(nats, runtimeApps);
+                const hosts = this.deriveHosts(dmb, runtimeApps);
                 const offsets = this.derivePortOffsets(hosts);
-                const basePort = this.fetchNumber('NATS_BASE_PORT', 'nats-base-port') ?? nats?.basePort ?? 4222;
+                const basePort = this.fetchNumber('DMB_BASE_PORT', 'dmb-base-port') ?? dmb?.basePort ?? DMB_BASE_PORT;
                 for (let idx = 0; idx < hosts.length; idx++) {
                     seedUrls.push(hosts[idx] + ':' + (basePort + offsets[idx]).toString());
                 }
@@ -366,19 +369,19 @@ export class ConfigRunnerBuilder {
         const app = builder.build();
 
         if (runtimeEnabled) {
-            const nats = config.messaging?.nats;
-            const runtimenats = config.runtime?.nats;
-            const enabled = truefalse(this.fetchString('NATS_SERVER_ENABLED', 'nats-server-enabled')) ?? runtimenats?.enabled;
+            const dmb = config.messaging?.dmb;
+            const runtimedmb = config.runtime?.dmb;
+            const enabled = truefalse(this.fetchString('DMB_SERVER_ENABLED', 'dmb-server-enabled')) ?? runtimedmb?.enabled;
             if ((enabled === undefined) || (enabled === true)) {
                 const appidx = runtimeApps.indexOf(appId);
-                const hosts = this.deriveHosts(nats, runtimeApps);
+                const hosts = this.deriveHosts(dmb, runtimeApps);
                 if (appidx >= 0 && appidx < hosts.length) {
                     const offsets = this.derivePortOffsets(hosts);
-                    const basePort = this.fetchNumber('NATS_BASE_PORT', 'nats-base-port') ?? nats?.basePort ?? 4222;
+                    const basePort = this.fetchNumber('DMB_BASE_PORT', 'dmb-base-port') ?? dmb?.basePort ?? DMB_BASE_PORT;
                     const clusterPortBase =
-                        this.fetchNumber('NATS_CLUSTER_BASE_PORT', 'nats-cluster-base-port') ??
-                        runtimenats?.clusterPortBase ??
-                        5222;
+                        this.fetchNumber('DMB_CLUSTER_BASE_PORT', 'dmb-cluster-base-port') ??
+                        runtimedmb?.clusterPortBase ??
+                        DMB_CLUSTER_PORT_BASE;
                     const clusterSeeds: string[] = [];
                     for (let idx = 0; idx < hosts.length; idx++) {
                         clusterSeeds.push('nats://' + hosts[idx] + ':' + (clusterPortBase + offsets[idx]).toString());
@@ -389,8 +392,8 @@ export class ConfigRunnerBuilder {
                     const server = new NatsServer(
                         (stderr) => {
                             notifier().error(
-                                'io.darlean.natsserver.Stopped',
-                                'NATS server[AppId] suddenly stopped: [Error]',
+                                'io.darlean.dmbserver.Stopped',
+                                'DMB NATS server[AppId] suddenly stopped: [Error]',
                                 () => ({ AppId: appId, Error: stderr })
                             );
                         },
@@ -402,17 +405,17 @@ export class ConfigRunnerBuilder {
 
                     app.addStarter(
                         async () => {
-                            notifier().info('io.darlean.natsserver.Starting', 'Starting NATS server [AppId]...', () => ({
+                            notifier().info('io.darlean.dmbserver.Starting', 'Starting DMB NATS server [AppId]...', () => ({
                                 AppId: appId
                             }));
                             server.start();
                             await sleep(2000);
-                            notifier().info('io.darlean.natsserver.Running', 'NATS server [AppId] is running.', () => ({
+                            notifier().info('io.darlean.dmbserver.Running', 'DMB NATS server [AppId] is running.', () => ({
                                 AppId: appId
                             }));
                         },
                         20,
-                        'Nats server'
+                        'DMB NATS server'
                     );
 
                     app.addStopper(
@@ -421,11 +424,11 @@ export class ConfigRunnerBuilder {
                             await sleep(2000);
                         },
                         20,
-                        'Nats server'
+                        'DMB NATS server'
                     );
                 } else {
                     if (enabled === true) {
-                        throw new Error('Nats-server is set to enabled, but current app-id is not in the list of runtime-apps');
+                        throw new Error('DMB-server is set to enabled, but current app-id is not in the list of runtime-apps.');
                     }
                 }
             }
@@ -554,8 +557,8 @@ export class ConfigRunnerBuilder {
         return result;
     }
 
-    protected deriveHosts(nats: INatsClientCfg | undefined, appIds: string[]) {
-        const hostsExplicit = this.fetchString('NATS_HOSTS', 'nats-hosts')?.split(',') ?? nats?.hosts;
+    protected deriveHosts(dmb: IDmbClientCfg | undefined, appIds: string[]) {
+        const hostsExplicit = this.fetchString('DMB_HOSTS', 'dmb-hosts')?.split(',') ?? dmb?.hosts;
         const hosts = hostsExplicit ?? appIds.map(() => '127.0.0.1');
         return hosts.slice(0, appIds.length);
     }
