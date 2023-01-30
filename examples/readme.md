@@ -1,6 +1,6 @@
 To educate and entertain, we have created some examples that you can look at and play with.
 
-# Example 1: A distributed oracle
+# Example 1: Tutorial. A distributed oracle.
 
 In this tutorial, we will show you the basics of actor oriented programming with Darlean by making a distributed oracle to which we can everything we want to know, like "What is the temperature of tomorrow?"
 or "How much does a bottle of wine cost?".
@@ -18,7 +18,7 @@ $ npm run install-workspaces
 $ npm run example:oracle:all -w examples
 ```
 
-# Example 2: Performance benchmark
+# Example 2: A performance benchmark.
 
 A rudimentary [performance benchmark](src/performance) on two deployment setups:
 * One client and one server node, all running on one computer
