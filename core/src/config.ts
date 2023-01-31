@@ -307,7 +307,7 @@ export class ConfigRunnerBuilder {
                     specifier: '*',
                     compartment: 'fs.default'
                 };
-                for (const spec of runtime?.persistence?.specifiers || [DEFAULT_SPECIFIER]) {
+                for (const spec of [DEFAULT_SPECIFIER, ...runtime?.persistence?.specifiers ?? []]) {
                     options.compartments.push({
                         compartment: spec.compartment,
                         specifier: spec.specifier
@@ -318,7 +318,7 @@ export class ConfigRunnerBuilder {
                     compartment: 'fs.*',
                     actorType: FS_PERSISTENCE_SERVICE
                 };
-                for (const handler of runtime?.persistence?.handlers || [DEFAULT_HANDLER]) {
+                for (const handler of [DEFAULT_HANDLER, ...runtime?.persistence?.handlers ?? []]) {
                     options.handlers.push({
                         compartment: handler.compartment,
                         actorType: handler.actorType
@@ -336,7 +336,7 @@ export class ConfigRunnerBuilder {
                     basePath: './persistence/',
                     shardCount: 1
                 };
-                for (const comp of runtime?.persistence?.fs?.compartments || [DEFAULT_COMPARTMENT]) {
+                for (const comp of [DEFAULT_COMPARTMENT, ...runtime?.persistence?.fs?.compartments ?? []]) {
                     options.compartments.push({
                         compartment: comp.compartment,
                         basePath: comp.basePath,
