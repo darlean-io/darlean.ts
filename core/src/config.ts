@@ -289,72 +289,102 @@ export class ConfigRunnerBuilder {
         if (runtimeEnabled) {
             const runtime = config.runtime;
 
-            if (!(runtime?.actorLock?.enabled === false)) {
-                builder.hostActorLock(runtime?.actorLock?.apps ?? runtimeApps, runtime?.actorLock?.redundancy ?? 3);
-            }
+            this.configureHostActorLock(builder, runtime, runtimeApps);
+            this.configureHostActorRegistry(builder, runtime, runtimeApps);
+            this.configurePersistence(builder, runtime);
+            this.configureFsPersistence(builder, runtime);
+        }            
 
-            if (!(runtime?.actorRegistry?.enabled === false)) {
-                builder.hostActorRegistry(runtime?.actorRegistry?.apps ?? runtimeApps);
-            }
+        this.configureActors(builder);
+        this.configureTransports(builder, config, allInOne, runtimeApps, appId);
+        
+        const runner = builder.build();
 
-            if (!(runtime?.persistence?.enabled === false)) {
-                const options: IPersistenceServiceOptions = {
-                    compartments: [],
-                    handlers: []
-                };
-                
-                const DEFAULT_SPECIFIER: IPersistenceSpecifierCfg = {
-                    specifier: '*',
-                    compartment: 'fs.default'
-                };
-                for (const spec of [DEFAULT_SPECIFIER, ...runtime?.persistence?.specifiers ?? []]) {
-                    options.compartments.push({
-                        compartment: spec.compartment,
-                        specifier: spec.specifier
-                    });
-                }
-
-                const DEFAULT_HANDLER: IPersistenceHandlerCfg = {
-                    compartment: 'fs.*',
-                    actorType: FS_PERSISTENCE_SERVICE
-                };
-                for (const handler of [DEFAULT_HANDLER, ...runtime?.persistence?.handlers ?? []]) {
-                    options.handlers.push({
-                        compartment: handler.compartment,
-                        actorType: handler.actorType
-                    });
-                }
-                builder.hostPersistence(options);
-            }
-
-            if (!(runtime?.persistence?.fs?.enabled === false)) {
-                const options: IFsPersistenceOptions = {
-                    compartments: []
-                };
-                const DEFAULT_COMPARTMENT: IFsPersistenceCompartment = {
-                    compartment: 'fs.*',
-                    basePath: './persistence/',
-                    shardCount: 1
-                };
-                for (const comp of [DEFAULT_COMPARTMENT, ...runtime?.persistence?.fs?.compartments ?? []]) {
-                    options.compartments.push({
-                        compartment: comp.compartment,
-                        basePath: comp.basePath,
-                        subPath: comp.subPath,
-                        nodes: comp.nodes,
-                        partitionKeyLen: comp.partitionKeyLen,
-                        sortKeyLen: comp.sortKeyLen,
-                        shardCount: comp.shardCount
-                    });
-                }
-                builder.hostFsPersistence(options);
-            }
+        if (runtimeEnabled && (!allInOne)) {
+            this.configureDmbServer(runner, config, runtimeApps, appId);
         }
 
+        this.configurePidAndRun(appId, runner, config);
+
+        return runner;
+    }
+
+    protected configureHostActorLock(builder: ActorRunnerBuilder, runtime: IRuntimeCfg | undefined, runtimeApps: string[]) {
+        if (!(runtime?.actorLock?.enabled === false)) {
+            builder.hostActorLock(runtime?.actorLock?.apps ?? runtimeApps, runtime?.actorLock?.redundancy ?? 3);
+        }
+    }
+
+    protected configureHostActorRegistry(builder: ActorRunnerBuilder, runtime: IRuntimeCfg | undefined, runtimeApps: string[]) {
+        if (!(runtime?.actorRegistry?.enabled === false)) {
+            builder.hostActorRegistry(runtime?.actorRegistry?.apps ?? runtimeApps);
+        }
+    }
+
+    protected configurePersistence(builder: ActorRunnerBuilder, runtime: IRuntimeCfg | undefined) {
+        if (!(runtime?.persistence?.enabled === false)) {
+            const options: IPersistenceServiceOptions = {
+                compartments: [],
+                handlers: []
+            };
+            
+            const DEFAULT_SPECIFIER: IPersistenceSpecifierCfg = {
+                specifier: '*',
+                compartment: 'fs.default'
+            };
+            for (const spec of [DEFAULT_SPECIFIER, ...runtime?.persistence?.specifiers ?? []]) {
+                options.compartments.push({
+                    compartment: spec.compartment,
+                    specifier: spec.specifier
+                });
+            }
+
+            const DEFAULT_HANDLER: IPersistenceHandlerCfg = {
+                compartment: 'fs.*',
+                actorType: FS_PERSISTENCE_SERVICE
+            };
+            for (const handler of [DEFAULT_HANDLER, ...runtime?.persistence?.handlers ?? []]) {
+                options.handlers.push({
+                    compartment: handler.compartment,
+                    actorType: handler.actorType
+                });
+            }
+            builder.hostPersistence(options);
+        }
+    }
+
+    protected configureFsPersistence(builder: ActorRunnerBuilder, runtime: IRuntimeCfg | undefined) {
+        if (!(runtime?.persistence?.fs?.enabled === false)) {
+            const options: IFsPersistenceOptions = {
+                compartments: []
+            };
+            const DEFAULT_COMPARTMENT: IFsPersistenceCompartment = {
+                compartment: 'fs.*',
+                basePath: './persistence/',
+                shardCount: 1
+            };
+            for (const comp of [DEFAULT_COMPARTMENT, ...runtime?.persistence?.fs?.compartments ?? []]) {
+                options.compartments.push({
+                    compartment: comp.compartment,
+                    basePath: comp.basePath,
+                    subPath: comp.subPath,
+                    nodes: comp.nodes,
+                    partitionKeyLen: comp.partitionKeyLen,
+                    sortKeyLen: comp.sortKeyLen,
+                    shardCount: comp.shardCount
+                });
+            }
+            builder.hostFsPersistence(options);
+        }
+    }
+
+    protected configureActors(builder: ActorRunnerBuilder) {
         for (const actor of this.actors) {
             builder.registerActor(actor);
         }
+    }
 
+    protected configureTransports(builder: ActorRunnerBuilder, config: IApplicationCfg, allInOne: boolean, runtimeApps: string[], appId: string) {
         const messagingTransportsExplicit = this.fetchString('MESSAGING_TRANSPORTS', 'messaging-transports')
             ?.split(',')
             .map((x) => x.trim()) ??
@@ -382,78 +412,72 @@ export class ConfigRunnerBuilder {
         if (!transportSet) {
             builder.setRemoteAccess(appId, new InProcessTransport(new BsonDeSer()));
         }
+    }
 
-        const app = builder.build();
+    protected configureDmbServer(runner: ActorRunner, config: IApplicationCfg, runtimeApps: string[], appId: string) {
+        const dmb = config.messaging?.dmb;
+        const runtimedmb = config.runtime?.dmb;
+        const enabled = truefalse(this.fetchString('DMB_SERVER_ENABLED', 'dmb-server-enabled')) ?? runtimedmb?.enabled;
+        if ((enabled === undefined) || (enabled === true)) {
+            const appidx = runtimeApps.indexOf(appId);
+            const hosts = this.deriveHosts(dmb, runtimeApps);
+            if (appidx >= 0 && appidx < hosts.length) {
+                const offsets = this.derivePortOffsets(hosts);
+                const basePort = this.fetchNumber('DMB_BASE_PORT', 'dmb-base-port') ?? dmb?.basePort ?? DMB_BASE_PORT;
+                const clusterPortBase =
+                    this.fetchNumber('DMB_CLUSTER_BASE_PORT', 'dmb-cluster-base-port') ??
+                    runtimedmb?.clusterPortBase ??
+                    DMB_CLUSTER_PORT_BASE;
+                const clusterSeeds: string[] = [];
+                for (let idx = 0; idx < hosts.length; idx++) {
+                    clusterSeeds.push('nats://' + hosts[idx] + ':' + (clusterPortBase + offsets[idx]).toString());
+                }
+                const clusterListenUrl = 'nats://' + hosts[appidx] + ':' + (clusterPortBase + offsets[appidx]).toString();
+                const serverListenPort = basePort + offsets[appidx];
 
-        if (runtimeEnabled && (!allInOne)) {
-            const dmb = config.messaging?.dmb;
-            const runtimedmb = config.runtime?.dmb;
-            const enabled = truefalse(this.fetchString('DMB_SERVER_ENABLED', 'dmb-server-enabled')) ?? runtimedmb?.enabled;
-            if ((enabled === undefined) || (enabled === true)) {
-                const appidx = runtimeApps.indexOf(appId);
-                const hosts = this.deriveHosts(dmb, runtimeApps);
-                if (appidx >= 0 && appidx < hosts.length) {
-                    const offsets = this.derivePortOffsets(hosts);
-                    const basePort = this.fetchNumber('DMB_BASE_PORT', 'dmb-base-port') ?? dmb?.basePort ?? DMB_BASE_PORT;
-                    const clusterPortBase =
-                        this.fetchNumber('DMB_CLUSTER_BASE_PORT', 'dmb-cluster-base-port') ??
-                        runtimedmb?.clusterPortBase ??
-                        DMB_CLUSTER_PORT_BASE;
-                    const clusterSeeds: string[] = [];
-                    for (let idx = 0; idx < hosts.length; idx++) {
-                        clusterSeeds.push('nats://' + hosts[idx] + ':' + (clusterPortBase + offsets[idx]).toString());
-                    }
-                    const clusterListenUrl = 'nats://' + hosts[appidx] + ':' + (clusterPortBase + offsets[appidx]).toString();
-                    const serverListenPort = basePort + offsets[appidx];
+                const server = new NatsServer(
+                    (stderr) => {
+                        notifier().error(
+                            'io.darlean.dmbserver.Stopped',
+                            'DMB NATS server[AppId] suddenly stopped: [Error]',
+                            () => ({ AppId: appId, Error: stderr })
+                        );
+                    },
+                    serverListenPort,
+                    clusterSeeds,
+                    clusterListenUrl,
+                    appId
+                );
 
-                    const server = new NatsServer(
-                        (stderr) => {
-                            notifier().error(
-                                'io.darlean.dmbserver.Stopped',
-                                'DMB NATS server[AppId] suddenly stopped: [Error]',
-                                () => ({ AppId: appId, Error: stderr })
-                            );
-                        },
-                        serverListenPort,
-                        clusterSeeds,
-                        clusterListenUrl,
-                        appId
-                    );
+                runner.addStarter(
+                    async () => {
+                        notifier().info('io.darlean.dmbserver.Starting', 'Starting DMB NATS server [AppId]...', () => ({
+                            AppId: appId
+                        }));
+                        server.start();
+                        await sleep(2000);
+                        notifier().info('io.darlean.dmbserver.Running', 'DMB NATS server [AppId] is running.', () => ({
+                            AppId: appId
+                        }));
+                    },
+                    20,
+                    'DMB NATS server'
+                );
 
-                    app.addStarter(
-                        async () => {
-                            notifier().info('io.darlean.dmbserver.Starting', 'Starting DMB NATS server [AppId]...', () => ({
-                                AppId: appId
-                            }));
-                            server.start();
-                            await sleep(2000);
-                            notifier().info('io.darlean.dmbserver.Running', 'DMB NATS server [AppId] is running.', () => ({
-                                AppId: appId
-                            }));
-                        },
-                        20,
-                        'DMB NATS server'
-                    );
-
-                    app.addStopper(
-                        async () => {
-                            server.stop();
-                            await sleep(2000);
-                        },
-                        20,
-                        'DMB NATS server'
-                    );
-                } else {
-                    if (enabled === true) {
-                        throw new Error('DMB-server is set to enabled, but current app-id is not in the list of runtime-apps.');
-                    }
+                runner.addStopper(
+                    async () => {
+                        server.stop();
+                        await sleep(2000);
+                    },
+                    20,
+                    'DMB NATS server'
+                );
+            } else {
+                if (enabled === true) {
+                    throw new Error('DMB-server is set to enabled, but current app-id is not in the list of runtime-apps.');
                 }
             }
         }
-
-        this.configurePidAndRun(appId, app, config);
-
-        return app;
     }
 
     protected configurePidAndRun(appId: string, runner: ActorRunner, config: IApplicationCfg) {
