@@ -274,8 +274,7 @@ export class ConfigRunnerBuilder {
 
         const appId = this.fetchString('APP_ID', 'app-id') ?? config.appId ?? 'app';
         this.appId = appId;
-        const runtimeAppsExplicit =
-            this.fetchArray('RUNTIME_APPS', 'runtime-apps') ?? config.runtimeApps;
+        const runtimeAppsExplicit = this.fetchArray('RUNTIME_APPS', 'runtime-apps') ?? config.runtimeApps;
         const runtimeApps = runtimeAppsExplicit ?? [appId];
         const allInOne = runtimeAppsExplicit === undefined;
         const implicitRuntime = runtimeAppsExplicit?.includes(appId);
@@ -359,11 +358,16 @@ export class ConfigRunnerBuilder {
             const options: IFsPersistenceOptions = {
                 compartments: []
             };
-            const maxShardCount = this.fetchNumber('FS_PERSISTENCE_MAX_SHARD_COUNT', 'fs-persistence-max-shard-count') ?? runtime?.persistence?.fs.maxShardCount;
+            const maxShardCount =
+                this.fetchNumber('FS_PERSISTENCE_MAX_SHARD_COUNT', 'fs-persistence-max-shard-count') ??
+                runtime?.persistence?.fs.maxShardCount;
             const DEFAULT_COMPARTMENT: IFsPersistenceCompartment = {
                 compartment: 'fs.*',
                 basePath: this.fetchString('FS_PERSISTENCE_BASE_PATH', 'fs-persistence-base-path') ?? './persistence/',
-                shardCount: limit(this.fetchNumber('FS_PERSISTENCE_SHARD_COUNT', 'fs-persistence-shard-count') ?? 8, maxShardCount)
+                shardCount: limit(
+                    this.fetchNumber('FS_PERSISTENCE_SHARD_COUNT', 'fs-persistence-shard-count') ?? 8,
+                    maxShardCount
+                )
             };
             for (const comp of [DEFAULT_COMPARTMENT, ...(runtime?.persistence?.fs?.compartments ?? [])]) {
                 options.compartments.push({
@@ -393,7 +397,8 @@ export class ConfigRunnerBuilder {
         runtimeApps: string[],
         appId: string
     ) {
-        const messagingTransportsExplicit = this.fetchArray('MESSAGING_TRANSPORTS', 'messaging-transports') ?? config.messaging?.transports;
+        const messagingTransportsExplicit =
+            this.fetchArray('MESSAGING_TRANSPORTS', 'messaging-transports') ?? config.messaging?.transports;
         const messagingTransports = messagingTransportsExplicit ?? allInOne ? [] : ['dmb'];
         let transportSet = false;
         if (!allInOne || (messagingTransportsExplicit?.length ?? 0 > 0)) {
@@ -577,7 +582,7 @@ export class ConfigRunnerBuilder {
                 return value;
             }
         }
-        
+
         const e = this.envPrefix + envName;
         const v = process.env[e];
         if (v !== undefined) {
@@ -671,9 +676,9 @@ function makeNice(value: string) {
     return value.replace(/(\W+)/gi, '-');
 }
 
-function limit(n: number|undefined, max: number|undefined): number|undefined {
+function limit(n: number | undefined, max: number | undefined): number | undefined {
     if (n === undefined) {
         return undefined;
     }
-    return ((max === undefined) || (n <= max)) ? n : max;
+    return max === undefined || n <= max ? n : max;
 }
