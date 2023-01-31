@@ -273,16 +273,18 @@ export class ConfigRunnerBuilder {
 
         const appId = this.fetchString('APP_ID', 'app-id') ?? config.appId ?? 'app';
         this.appId = appId;
-        const runtimeAppsExplicit = this.fetchString('RUNTIME_APPS', 'runtime-apps')
-            ?.split(',')
-            .map((x) => x.trim()) ??
-            config.runtimeApps;
+        const runtimeAppsExplicit =
+            this.fetchString('RUNTIME_APPS', 'runtime-apps')
+                ?.split(',')
+                .map((x) => x.trim()) ?? config.runtimeApps;
         const runtimeApps = runtimeAppsExplicit ?? [appId];
         const allInOne = runtimeAppsExplicit === undefined;
         const implicitRuntime = runtimeAppsExplicit?.includes(appId);
         const runtimeEnabledString = this.fetchString('RUNTIME_ENABLED', 'runtime-enabled');
         const runtimeEnabled =
-            runtimeEnabledString === undefined ? config.runtime?.enabled ?? (allInOne || implicitRuntime) : runtimeEnabledString.toLowerCase() === 'true';
+            runtimeEnabledString === undefined
+                ? config.runtime?.enabled ?? (allInOne || implicitRuntime)
+                : runtimeEnabledString.toLowerCase() === 'true';
 
         builder.setRuntimeApps(runtimeApps);
 
@@ -293,14 +295,14 @@ export class ConfigRunnerBuilder {
             this.configureHostActorRegistry(builder, runtime, runtimeApps);
             this.configurePersistence(builder, runtime);
             this.configureFsPersistence(builder, runtime);
-        }            
+        }
 
         this.configureActors(builder);
         this.configureTransports(builder, config, allInOne, runtimeApps, appId);
-        
+
         const runner = builder.build();
 
-        if (runtimeEnabled && (!allInOne)) {
+        if (runtimeEnabled && !allInOne) {
             this.configureDmbServer(runner, config, runtimeApps, appId);
         }
 
@@ -327,12 +329,12 @@ export class ConfigRunnerBuilder {
                 compartments: [],
                 handlers: []
             };
-            
+
             const DEFAULT_SPECIFIER: IPersistenceSpecifierCfg = {
                 specifier: '*',
                 compartment: 'fs.default'
             };
-            for (const spec of [DEFAULT_SPECIFIER, ...runtime?.persistence?.specifiers ?? []]) {
+            for (const spec of [DEFAULT_SPECIFIER, ...(runtime?.persistence?.specifiers ?? [])]) {
                 options.compartments.push({
                     compartment: spec.compartment,
                     specifier: spec.specifier
@@ -343,7 +345,7 @@ export class ConfigRunnerBuilder {
                 compartment: 'fs.*',
                 actorType: FS_PERSISTENCE_SERVICE
             };
-            for (const handler of [DEFAULT_HANDLER, ...runtime?.persistence?.handlers ?? []]) {
+            for (const handler of [DEFAULT_HANDLER, ...(runtime?.persistence?.handlers ?? [])]) {
                 options.handlers.push({
                     compartment: handler.compartment,
                     actorType: handler.actorType
@@ -363,7 +365,7 @@ export class ConfigRunnerBuilder {
                 basePath: './persistence/',
                 shardCount: 1
             };
-            for (const comp of [DEFAULT_COMPARTMENT, ...runtime?.persistence?.fs?.compartments ?? []]) {
+            for (const comp of [DEFAULT_COMPARTMENT, ...(runtime?.persistence?.fs?.compartments ?? [])]) {
                 options.compartments.push({
                     compartment: comp.compartment,
                     basePath: comp.basePath,
@@ -384,14 +386,20 @@ export class ConfigRunnerBuilder {
         }
     }
 
-    protected configureTransports(builder: ActorRunnerBuilder, config: IApplicationCfg, allInOne: boolean, runtimeApps: string[], appId: string) {
-        const messagingTransportsExplicit = this.fetchString('MESSAGING_TRANSPORTS', 'messaging-transports')
-            ?.split(',')
-            .map((x) => x.trim()) ??
-            config.messaging?.transports;
+    protected configureTransports(
+        builder: ActorRunnerBuilder,
+        config: IApplicationCfg,
+        allInOne: boolean,
+        runtimeApps: string[],
+        appId: string
+    ) {
+        const messagingTransportsExplicit =
+            this.fetchString('MESSAGING_TRANSPORTS', 'messaging-transports')
+                ?.split(',')
+                .map((x) => x.trim()) ?? config.messaging?.transports;
         const messagingTransports = messagingTransportsExplicit ?? allInOne ? [] : ['dmb'];
         let transportSet = false;
-        if ((!allInOne) || (messagingTransportsExplicit?.length ?? 0 > 0)) {
+        if (!allInOne || (messagingTransportsExplicit?.length ?? 0 > 0)) {
             for (const transport of messagingTransports) {
                 if (transport === 'dmb') {
                     const dmb = config.messaging?.dmb;
@@ -418,7 +426,7 @@ export class ConfigRunnerBuilder {
         const dmb = config.messaging?.dmb;
         const runtimedmb = config.runtime?.dmb;
         const enabled = truefalse(this.fetchString('DMB_SERVER_ENABLED', 'dmb-server-enabled')) ?? runtimedmb?.enabled;
-        if ((enabled === undefined) || (enabled === true)) {
+        if (enabled === undefined || enabled === true) {
             const appidx = runtimeApps.indexOf(appId);
             const hosts = this.deriveHosts(dmb, runtimeApps);
             if (appidx >= 0 && appidx < hosts.length) {
