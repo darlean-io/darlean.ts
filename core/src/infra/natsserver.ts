@@ -75,11 +75,6 @@ export class NatsServer {
         args.push('--cluster_name');
         args.push('darlean');
 
-        if (this.appName) {
-            args.push('--pid');
-            args.push(this.appName + '.pid');
-        }
-
         if (this.serverListenPort !== undefined) {
             args.push('--port');
             args.push(this.serverListenPort.toString());
