@@ -10,7 +10,7 @@ or "How much does a bottle of wine cost?".
 * Part 3: [Do not forget](src/oracle/3_do_not_forget) - Persistence to remember learned facts
 * Part 4: [Scale it up!](src/oracle/4_scale_it_up) - Transform into a client-server setup with multiple server applications for unmatched scalability and availability
 * Part 5: [Follow me](src/oracle/5_follow_me) - What if a single actor is the bottleneck? The multi-follower pattern.
-* Part 6: [Wait a while](src/oracle/6_wait_a_while) - Use of long polling to improve responsiveness **COMING SOON**
+* Part 6: [Wait a while](src/oracle/6_wait_a_while) - Use of long polling to improve responsiveness
 
 Please follow the above links for more information about each of the parts. Or, skip all of that, dive into the code, and directly get going with the following command right from the root of this monorepo after a fresh pull from git:
 ```
