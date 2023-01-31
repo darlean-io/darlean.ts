@@ -64,7 +64,8 @@ export class PersistenceService implements IPersistenceService {
                 if (wildcardMatch(specifier, mapping.specifier, fields)) {
                     let compartment = mapping.compartment;
                     for (let idx = 0; idx < 10; idx++) {
-                        compartment = replaceAll(compartment, '${*' + idx.toString() + '}', fields[idx] ?? '');
+                        const pattern = ''.padEnd(idx, '*');
+                        compartment = replaceAll(compartment, '${' + pattern + '}', fields[idx] ?? '');
                     }
                     return compartment;
                 }

@@ -35,6 +35,7 @@ export interface IFileSystemCompartmentCfg {
 
 export interface IFileSystemPersistenceCfg {
     enabled?: boolean;
+    maxShardCount?: number;
     compartments: IFileSystemCompartmentCfg[];
 }
 
@@ -332,7 +333,7 @@ export class ConfigRunnerBuilder {
                 specifier: '*',
                 compartment: 'fs.default'
             };
-            for (const spec of [DEFAULT_SPECIFIER, ...(runtime?.persistence?.specifiers ?? [])]) {
+            for (const spec of [...(runtime?.persistence?.specifiers ?? []), DEFAULT_SPECIFIER]) {
                 options.compartments.push({
                     compartment: spec.compartment,
                     specifier: spec.specifier
@@ -343,7 +344,7 @@ export class ConfigRunnerBuilder {
                 compartment: 'fs.*',
                 actorType: FS_PERSISTENCE_SERVICE
             };
-            for (const handler of [DEFAULT_HANDLER, ...(runtime?.persistence?.handlers ?? [])]) {
+            for (const handler of [...(runtime?.persistence?.handlers ?? []), DEFAULT_HANDLER]) {
                 options.handlers.push({
                     compartment: handler.compartment,
                     actorType: handler.actorType
@@ -358,10 +359,11 @@ export class ConfigRunnerBuilder {
             const options: IFsPersistenceOptions = {
                 compartments: []
             };
+            const maxShardCount = this.fetchNumber('FS_PERSISTENCE_MAX_SHARD_COUNT', 'fs-persistence-max-shard-count') ?? runtime?.persistence?.fs.maxShardCount;
             const DEFAULT_COMPARTMENT: IFsPersistenceCompartment = {
                 compartment: 'fs.*',
-                basePath: './persistence/',
-                shardCount: 1
+                basePath: this.fetchString('FS_PERSISTENCE_BASE_PATH', 'fs-persistence-base-path') ?? './persistence/',
+                shardCount: limit(this.fetchNumber('FS_PERSISTENCE_SHARD_COUNT', 'fs-persistence-shard-count') ?? 8, maxShardCount)
             };
             for (const comp of [DEFAULT_COMPARTMENT, ...(runtime?.persistence?.fs?.compartments ?? [])]) {
                 options.compartments.push({
@@ -371,7 +373,7 @@ export class ConfigRunnerBuilder {
                     nodes: comp.nodes,
                     partitionKeyLen: comp.partitionKeyLen,
                     sortKeyLen: comp.sortKeyLen,
-                    shardCount: comp.shardCount
+                    shardCount: limit(comp.shardCount, maxShardCount)
                 });
             }
             builder.hostFsPersistence(options);
@@ -667,4 +669,11 @@ function truefalse(value: string | undefined) {
 function makeNice(value: string) {
     // Replaces all characters that are not a-z, A-Z or _ with a -.
     return value.replace(/(\W+)/gi, '-');
+}
+
+function limit(n: number|undefined, max: number|undefined): number|undefined {
+    if (n === undefined) {
+        return undefined;
+    }
+    return ((max === undefined) || (n <= max)) ? n : max;
 }

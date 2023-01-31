@@ -14,6 +14,7 @@ import { FsPersistenceService } from './service.impl';
 
 export const FS_PERSISTENCE_SERVICE = baseService;
 const FS_PERSISTENCE_ACTOR = 'io.darlean.FsPersistenceActor';
+const DEFAULT_SHARD_COUNT = 8;
 
 export interface IFsPersistenceOptions {
     compartments: IFsPersistenceCompartment[];
@@ -29,6 +30,13 @@ export interface IFsPersistenceCompartment {
     subPath?: string;
 }
 
+/**
+ * Iterates through the list of compartments in options and merges all record for which the
+ * compartment mask matches with the provided compartment.
+ * @param options The options object that contains the compartments
+ * @param compartment The name of the compartment to look for
+ * @returns The merged compartment options.
+ */
 function findOptions(options: IFsPersistenceOptions, compartment: string): IFsPersistenceCompartment {
     let result: IFsPersistenceCompartment | undefined;
 
@@ -75,7 +83,7 @@ export default function suite(options: IFsPersistenceOptions) {
                 return new FsPersistenceService(
                     {
                         nodes: opts.nodes ?? [],
-                        shardCount: opts.shardCount ?? 32
+                        shardCount: opts.shardCount ?? DEFAULT_SHARD_COUNT
                     },
                     portal
                 );
