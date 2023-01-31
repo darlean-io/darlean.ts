@@ -361,19 +361,21 @@ export class ConfigRunnerBuilder {
             config.messaging?.transports;
         const messagingTransports = messagingTransportsExplicit ?? allInOne ? [] : ['dmb'];
         let transportSet = false;
-        for (const transport of messagingTransports) {
-            if (transport === 'dmb') {
-                const dmb = config.messaging?.dmb;
-                const seedUrls: string[] = [];
+        if ((!allInOne) || (messagingTransportsExplicit?.length ?? 0 > 0)) {
+            for (const transport of messagingTransports) {
+                if (transport === 'dmb') {
+                    const dmb = config.messaging?.dmb;
+                    const seedUrls: string[] = [];
 
-                const hosts = this.deriveHosts(dmb, runtimeApps);
-                const offsets = this.derivePortOffsets(hosts);
-                const basePort = this.fetchNumber('DMB_BASE_PORT', 'dmb-base-port') ?? dmb?.basePort ?? DMB_BASE_PORT;
-                for (let idx = 0; idx < hosts.length; idx++) {
-                    seedUrls.push(hosts[idx] + ':' + (basePort + offsets[idx]).toString());
+                    const hosts = this.deriveHosts(dmb, runtimeApps);
+                    const offsets = this.derivePortOffsets(hosts);
+                    const basePort = this.fetchNumber('DMB_BASE_PORT', 'dmb-base-port') ?? dmb?.basePort ?? DMB_BASE_PORT;
+                    for (let idx = 0; idx < hosts.length; idx++) {
+                        seedUrls.push(hosts[idx] + ':' + (basePort + offsets[idx]).toString());
+                    }
+                    builder.setRemoteAccess(appId, new NatsTransport(new BsonDeSer(), seedUrls));
+                    transportSet = true;
                 }
-                builder.setRemoteAccess(appId, new NatsTransport(new BsonDeSer(), seedUrls));
-                transportSet = true;
             }
         }
 
@@ -383,7 +385,7 @@ export class ConfigRunnerBuilder {
 
         const app = builder.build();
 
-        if (runtimeEnabled) {
+        if (runtimeEnabled && (!allInOne)) {
             const dmb = config.messaging?.dmb;
             const runtimedmb = config.runtime?.dmb;
             const enabled = truefalse(this.fetchString('DMB_SERVER_ENABLED', 'dmb-server-enabled')) ?? runtimedmb?.enabled;
