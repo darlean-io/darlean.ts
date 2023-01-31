@@ -20,7 +20,7 @@ import {
 } from '@darlean/base';
 import { ACTOR_LOCK_SERVICE, IActorLockService } from '@darlean/actor-lock-suite';
 import actorLockSuite from '@darlean/actor-lock-suite';
-import { DistributedActorLock, IActorLock } from './actorlock';
+import { DistributedActorLock, IActorLock } from './distributedactorlock';
 import { InProcessTransport } from './infra/inprocesstransport';
 import { DistributedActorRegistry } from './distributedactorregistry';
 import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-registry-suite';

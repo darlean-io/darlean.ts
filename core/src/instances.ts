@@ -46,7 +46,7 @@ import {
     InstanceCreator
 } from '@darlean/base';
 import { IVolatileTimer, IVolatileTimerHandle } from '@darlean/base';
-import { IAcquiredActorLock, IActorLock } from './actorlock';
+import { IAcquiredActorLock, IActorLock } from './distributedactorlock';
 
 const ACTIVATOR = 'ACTIVATOR';
 const DEACTIVATOR = 'DEACTIVATOR';
