@@ -212,7 +212,7 @@ export interface IApplicationCfg {
  *
  * **Command-line arguments** must by default be prefixed with `--darlean-`. So, when the documentation
  * mentions a command-line argument `app-id`, it must by default be provided as `--darlean-app-id`.
- * The value must be provided as the next command-line argument: `--darlean-app-id client03`. When
+ * The value must be provided as after the `=` sign: `--darlean-app-id=client03`. When
  * multiple vales are expected, they must be comma-separated.
  *
  * **Environment variables** must by default be prefixed with `DARLEAN_`. So, when the documentation
@@ -274,9 +274,7 @@ export class ConfigRunnerBuilder {
         const appId = this.fetchString('APP_ID', 'app-id') ?? config.appId ?? 'app';
         this.appId = appId;
         const runtimeAppsExplicit =
-            this.fetchString('RUNTIME_APPS', 'runtime-apps')
-                ?.split(',')
-                .map((x) => x.trim()) ?? config.runtimeApps;
+            this.fetchArray('RUNTIME_APPS', 'runtime-apps') ?? config.runtimeApps;
         const runtimeApps = runtimeAppsExplicit ?? [appId];
         const allInOne = runtimeAppsExplicit === undefined;
         const implicitRuntime = runtimeAppsExplicit?.includes(appId);
@@ -393,10 +391,7 @@ export class ConfigRunnerBuilder {
         runtimeApps: string[],
         appId: string
     ) {
-        const messagingTransportsExplicit =
-            this.fetchString('MESSAGING_TRANSPORTS', 'messaging-transports')
-                ?.split(',')
-                .map((x) => x.trim()) ?? config.messaging?.transports;
+        const messagingTransportsExplicit = this.fetchArray('MESSAGING_TRANSPORTS', 'messaging-transports') ?? config.messaging?.transports;
         const messagingTransports = messagingTransportsExplicit ?? allInOne ? [] : ['dmb'];
         let transportSet = false;
         if (!allInOne || (messagingTransportsExplicit?.length ?? 0 > 0)) {
@@ -570,14 +565,17 @@ export class ConfigRunnerBuilder {
 
     protected fetchString(envName: string, argName: string): string | undefined {
         const a = this.argPrefix + argName;
-        const idx = process.argv.indexOf(a);
-        if (idx >= 0) {
-            const value = process.argv[idx + 1];
-            if (value !== undefined) {
+        const aa = a + '=';
+        for (const arg of process.argv) {
+            if (arg === a) {
+                throw new Error(`Invalid command line argument ${a}: argument must be in the form of ${a}=value`);
+            }
+            if (arg.startsWith(aa)) {
+                const value = arg.substring(aa.length).trim();
                 return value;
             }
         }
-
+        
         const e = this.envPrefix + envName;
         const v = process.env[e];
         if (v !== undefined) {
@@ -595,6 +593,17 @@ export class ConfigRunnerBuilder {
         }
     }
 
+    protected fetchArray(envName: string, argName: string): string[] | undefined {
+        const v = this.fetchString(envName, argName);
+        if (v !== undefined) {
+            if (v.trim() === 'none') {
+                return [];
+            }
+            const parts = v.split(',').map((x) => x.trim());
+            return parts;
+        }
+    }
+
     protected derivePortOffsets(hosts: string[]) {
         const result: number[] = [];
         const ports = new Map<string, number>();
@@ -607,7 +616,7 @@ export class ConfigRunnerBuilder {
     }
 
     protected deriveHosts(dmb: IDmbClientCfg | undefined, appIds: string[]) {
-        const hostsExplicit = this.fetchString('DMB_HOSTS', 'dmb-hosts')?.split(',') ?? dmb?.hosts;
+        const hostsExplicit = this.fetchArray('DMB_HOSTS', 'dmb-hosts') ?? dmb?.hosts;
         const hosts = hostsExplicit ?? appIds.map(() => '127.0.0.1');
         return hosts.slice(0, appIds.length);
     }
