@@ -7,7 +7,7 @@
   "scripts": {
     "test": "npm run example:oracle:all && npm run example:performance:all",
     "build": "tsc",
-    "example:kill": "del .\\pid\\*.run",
+    "example:kill": "node lib/kill.js",
     "example:oracle:all": "npm run example:oracle:1 && npm run example:oracle:2 && npm run example:oracle:3 && npm run example:oracle:3:reuse && npm run example:oracle:4:cluster1 && npm run example:oracle:4:cluster1:reuse && npm run example:oracle:4:cluster3 && npm run example:oracle:4:cluster3:reuse",
     "example:oracle:1": "node lib/oracle/1_the_basics/index.js --darlean-config config/oracle/allinone/config.json5",
     "example:oracle:2": "node lib/oracle/2_oracle_as_a_service/index.js --darlean-config config/oracle/allinone/config.json5",
