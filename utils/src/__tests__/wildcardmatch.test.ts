@@ -1,6 +1,11 @@
 import { wildcardMatch } from '../util';
 
 describe('Wildcardmatch', () => {
+    test('a', async () => {
+        const parts: string[] = [];
+        expect(wildcardMatch('a', 'a', parts)).toBeTruthy();
+        expect(parts.length).toBe(0);
+    })
     test('*', async () => {
         const mask = '*';
 
