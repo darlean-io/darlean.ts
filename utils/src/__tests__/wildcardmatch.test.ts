@@ -5,7 +5,7 @@ describe('Wildcardmatch', () => {
         const parts: string[] = [];
         expect(wildcardMatch('a', 'a', parts)).toBeTruthy();
         expect(parts.length).toBe(0);
-    })
+    });
     test('*', async () => {
         const mask = '*';
 
