@@ -64,6 +64,7 @@
     "lib/**/*"
   ],
   "dependencies": {
+    "@darlean/core": "^2.0.0-alpha.0",
     "@darlean/persistence-suite": "^2.0.0-alpha.0",
     "rimraf": "^4.1.0",
     "uuid": "^9.0.0"
