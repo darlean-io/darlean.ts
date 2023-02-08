@@ -1,7 +1,7 @@
 import { FS_PERSISTENCE_SERVICE, IActorRegistrationOptions, IActorSuite } from '@darlean/base';
 import { IFsPersistenceCompartment, IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { IPersistenceServiceOptions } from '@darlean/persistence-suite';
-import { notifier, onApplicationStop, sleep } from '@darlean/utils';
+import { fetchConfigArray, fetchConfigNumber, fetchConfigString, notifier, onApplicationStop, sleep } from '@darlean/utils';
 import { InProcessTransport, NatsTransport } from './infra';
 import { BsonDeSer } from './infra/bsondeser';
 import { NatsServer } from './infra/natsserver';
@@ -225,19 +225,23 @@ export interface IApplicationCfg {
  * @see {@link IApplicationCfg} for an overview of all the available configuration items.
  */
 export class ConfigRunnerBuilder {
-    private config?: IApplicationCfg;
+    private config: IApplicationCfg;
     private actors: IActorRegistrationOptions<object>[];
     private envPrefix: string;
     private argPrefix: string;
     private overrides: Map<string, string>;
-    private appId?: string;
+    private appId: string;
 
     constructor(config?: IApplicationCfg, envPrefix?: string, argPrefix?: string) {
-        this.config = config;
         this.actors = [];
         this.envPrefix = envPrefix ?? 'DARLEAN_';
         this.argPrefix = argPrefix ?? '--darlean-';
         this.overrides = new Map();
+
+        const cfg = this.deriveConfig();
+        this.config = cfg;
+        this.loadOverrides();
+        this.appId = this.fetchString('APP_ID', 'app-id') ?? cfg.appId ?? 'app';
     }
 
     /**
@@ -246,7 +250,7 @@ export class ConfigRunnerBuilder {
      * @returns The builder
      */
     public registerActor<T extends object>(options: IActorRegistrationOptions<T>): ConfigRunnerBuilder {
-        this.actors.push(options);
+        this.actors.push(options as unknown as IActorRegistrationOptions<object>);
         return this;
     }
 
@@ -267,12 +271,10 @@ export class ConfigRunnerBuilder {
     }
 
     public build(): ActorRunner {
-        const config = this.deriveConfig();
-        this.loadOverrides();
-
+        const config = this.config;
+        const appId = this.appId;
         const builder = new ActorRunnerBuilder();
 
-        const appId = this.fetchString('APP_ID', 'app-id') ?? config.appId ?? 'app';
         this.appId = appId;
         const runtimeAppsExplicit = this.fetchArray('RUNTIME_APPS', 'runtime-apps') ?? config.runtimeApps;
         const runtimeApps = runtimeAppsExplicit ?? [appId];
@@ -571,44 +573,15 @@ export class ConfigRunnerBuilder {
     }
 
     protected fetchString(envName: string, argName: string): string | undefined {
-        const a = this.argPrefix + argName;
-        const aa = a + '=';
-        for (const arg of process.argv) {
-            if (arg === a) {
-                throw new Error(`Invalid command line argument ${a}: argument must be in the form of ${a}=value`);
-            }
-            if (arg.startsWith(aa)) {
-                const value = arg.substring(aa.length).trim();
-                return value;
-            }
-        }
-
-        const e = this.envPrefix + envName;
-        const v = process.env[e];
-        if (v !== undefined) {
-            return v;
-        }
-
-        const override = this.overrides.get(argName);
-        return override;
+        return fetchConfigString(this.envPrefix + envName, this.argPrefix + argName);
     }
 
     protected fetchNumber(envName: string, argName: string): number | undefined {
-        const v = this.fetchString(envName, argName);
-        if (v !== undefined) {
-            return parseInt(v);
-        }
+        return fetchConfigNumber(this.envPrefix + envName, this.argPrefix + argName);
     }
 
     protected fetchArray(envName: string, argName: string): string[] | undefined {
-        const v = this.fetchString(envName, argName);
-        if (v !== undefined) {
-            if (v.trim() === 'none') {
-                return [];
-            }
-            const parts = v.split(',').map((x) => x.trim());
-            return parts;
-        }
+        return fetchConfigArray(this.envPrefix + envName, this.argPrefix + argName);
     }
 
     protected derivePortOffsets(hosts: string[]) {

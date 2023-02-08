@@ -1,5 +1,5 @@
 {
-    "entryPoints": ["base", "core", "utils", "suites/actor-lock-suite", "suites/actor-registry-suite", "suites/persistence-suite", "suites/fs-persistence-suite"],
+    "entryPoints": ["base", "core", "utils", "webservice", "suites/actor-lock-suite", "suites/actor-registry-suite", "suites/persistence-suite", "suites/fs-persistence-suite", "suites/webservice-suite"],
     "entryPointStrategy": "packages",
     "excludeExternals": true
 }

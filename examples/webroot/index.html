@@ -1,0 +1,84 @@
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="style.css">
+        <script>
+            async function askQuestion(event, topic, question) {
+                event.preventDefault();
+                const url = `/ask/${encodeURIComponent(topic)}/?question=${encodeURIComponent(question)}`;
+                console.log(url);
+                location.href = url;
+            }
+
+            async function postTeachRequest(event, topic, fact, value) {
+                event.preventDefault();
+                const response = await fetch('/teach', {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    method: 'POST',
+                    body: JSON.stringify({
+                        topic,
+                        fact,
+                        value
+                    })
+                });
+                const json = await response.json();
+                window.alert(json.comment);
+            }
+        </script>
+    </head>
+    <body>
+        <h1><img src="/logo.png" height="26px">DARLEAN &ndash; TUTORIAL</h1>
+        <div class="page">
+            <h1>Ask the Oracle</h1>
+
+            <form id="ask_form">
+                <div class="line">
+                <label for="ask_topic">Topic</label><input type="text" id="ask_topic" value="price"/>
+                </div>
+                <div class="line">
+                    <label for="ask_question">Question</label><input type="text" id="ask_question" value="How much does milk cost?"/>
+                </div>
+                <div class="line">
+                    <input type="submit" value="Ask"/>
+                </div>
+                <div class="note">
+                    Note: Predefined topics are 'price' and 'temperature'.
+                </div>
+                </form>
+        </div>
+        <div class="page">
+            <h1>Teach the Oracle</h1>
+            <form id="teach_form">
+            <div class="line">
+            <label for="teach_topic">Topic</label><input type="text" id="teach_topic" value="price"/>
+            </div>
+            <div class="line">
+                <label for="teach_fact">Fact</label><input type="text" id="teach_fact" value="candy"/>
+            </div>
+            <div class="line">
+            <label for="teach_value">Value</label><input type="text" id="teach_value" value="1.20"/>
+            </div>
+            <div class="line">
+                <input type="submit" value="Teach"/>
+            </div>
+            <div class="note">
+                Note: Existing topics are 'price' and 'temperature', but you can add topics by yourself.
+            </div>
+            </form>
+        </div>
+        <script>
+            const askform = document.getElementById('ask_form');
+            const asktopic = document.getElementById('ask_topic');
+            const askquestion = document.getElementById('ask_question');
+            askform.addEventListener('submit', (event) => askQuestion(event, asktopic.value, askquestion.value));            
+
+            const teachform = document.getElementById('teach_form');
+            const teachtopic = document.getElementById('teach_topic');
+            const teachfact = document.getElementById('teach_fact');
+            const teachvalue = document.getElementById('teach_value');
+            teachform.addEventListener('submit', (event) => postTeachRequest(event, teachtopic.value, teachfact.value, parseFloat(teachvalue.value)));            
+        </script>
+    </body>
+</html>

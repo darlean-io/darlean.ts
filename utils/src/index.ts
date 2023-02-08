@@ -17,3 +17,4 @@ export * from './notifications';
 export * from './util';
 export * from './polling';
 export * from './tracetofile';
+export * from './config';

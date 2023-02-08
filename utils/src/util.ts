@@ -58,7 +58,7 @@ export function replaceAll(input: string, search: string, replace: string): stri
  */
 export function wildcardMatch(input: string, mask: string, partsOut?: string[]): boolean {
     const parts = mask.split('*');
-    
+
     if (parts.length === 1) {
         return input === mask;
     }
