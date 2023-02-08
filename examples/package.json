@@ -66,6 +66,7 @@
     "lib/**/*"
   ],
   "dependencies": {
+    "@darlean/core": "^2.0.0-alpha.0",
     "@darlean/persistence-suite": "^2.0.0-alpha.0",
     "@darlean/webservice": "^2.0.0-alpha.0",
     "@darlean/webservice-suite": "^2.0.0-alpha.0",
