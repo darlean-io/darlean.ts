@@ -512,6 +512,7 @@ export class ActorRunnerBuilder {
                         if (portal && actor.startActions) {
                             for (const a of actor.startActions) {
                                 notifier().info('io.darlean.runner.AutoStarting', `Starting [Name]...`, () => ({ Name: a.name }));
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 await (portal.retrieve(a.id) as any)[a.action](...(a.arguments ?? []));
                                 notifier().info('io.darlean.runner.AutoStarted', `Started [Name]`, () => ({ Name: a.name }));
                             }

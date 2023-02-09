@@ -161,7 +161,7 @@ describe('BsonDeserWithoutCaching', () => {
         // deserialization DOES NOT work.
         serialized[0] = 1;
         expect(() => deser.deserialize(serialized)).toThrow();
-        
+
         // Before corrupting serialized, we made a copy that should not contain
         // the original data object. We expect that the buffer contents is used
         // for deserialization.
@@ -179,7 +179,7 @@ describe('BsonDeserWithoutCaching', () => {
         // buffer and check that deserialization DOES NOT work.
         serialized2[0] = 1;
         expect(() => deser.deserialize(serialized2)).toThrow();
-        
+
         // When serializing our data again, it is expected that the previous serialize
         // result (NOT stored hidden within our data) is NOT used. Which we nulled out later on.
         // So, we first modify the data, and then assert that the serialzed buffer is corrupted.
@@ -201,8 +201,8 @@ describe('BsonDeserWithoutCaching', () => {
         // stored within serialized. So we corrupt it and check that
         // deserialization DOES NOT work.
         serialized[0] = 1;
-        expect( () => deser.deserialize(serialized)).toThrow();
-        
+        expect(() => deser.deserialize(serialized)).toThrow();
+
         // Before corrupting serialized, we made a copy that should not contain
         // the original data value. We expect that the buffer contents is used
         // for deserialization.
@@ -220,7 +220,7 @@ describe('BsonDeserWithoutCaching', () => {
         // buffer and check that deserialization DOES NOT work.
         serialized2[0] = 1;
         expect(() => deser.deserialize(serialized2)).toThrow();
-        
+
         // Unlike is the case with structs, the buffer is not stored within the original
         // value (that is not possible for primitives because they are not objects).
         // So, when we modify data, we should get the modified value after ser/deser.
@@ -244,7 +244,7 @@ describe('BsonDeserWithoutCaching', () => {
         // deserialization DOES NOT work.
         serialized[0] = 1;
         expect(() => deser.deserialize(serialized)).toThrow();
-        
+
         // Before corrupting serialized, we made a copy that should not contain
         // the original data value. We expect that the buffer contents is used
         // for deserialization.
