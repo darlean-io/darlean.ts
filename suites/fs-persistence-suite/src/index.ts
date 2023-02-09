@@ -69,7 +69,8 @@ export default function suite(options: IFsPersistenceOptions) {
                 const opts = findOptions(options, compartment);
                 const boundNode = context.id[context.id.length - 1] || 'unbound';
                 const shard = context.id[context.id.length - 2];
-                const path = [opts.basePath, opts.subPath, compartment, opts.shardCount, shard, boundNode].join('/');
+                const shardCount = opts.shardCount ?? DEFAULT_SHARD_COUNT;
+                const path = [opts.basePath, opts.subPath, compartment, shardCount, shard, boundNode].join('/');
                 return new FsPersistenceActor(path, opts.partitionKeyLen ?? 8, opts.sortKeyLen ?? 8);
             }
         },

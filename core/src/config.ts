@@ -12,6 +12,7 @@ import path from 'path';
 
 const DMB_BASE_PORT = 4500;
 const DMB_CLUSTER_PORT_BASE = 5500;
+const DEFAULT_SHARD_COUNT = 8;
 
 export interface IPersistenceSpecifierCfg {
     specifier: string;
@@ -367,7 +368,7 @@ export class ConfigRunnerBuilder {
                 compartment: 'fs.*',
                 basePath: this.fetchString('FS_PERSISTENCE_BASE_PATH', 'fs-persistence-base-path') ?? './persistence/',
                 shardCount: limit(
-                    this.fetchNumber('FS_PERSISTENCE_SHARD_COUNT', 'fs-persistence-shard-count') ?? 8,
+                    this.fetchNumber('FS_PERSISTENCE_SHARD_COUNT', 'fs-persistence-shard-count') ?? DEFAULT_SHARD_COUNT,
                     maxShardCount
                 )
             };
@@ -379,7 +380,7 @@ export class ConfigRunnerBuilder {
                     nodes: comp.nodes,
                     partitionKeyLen: comp.partitionKeyLen,
                     sortKeyLen: comp.sortKeyLen,
-                    shardCount: limit(comp.shardCount, maxShardCount)
+                    shardCount: limit(comp.shardCount ?? DEFAULT_SHARD_COUNT, maxShardCount)
                 });
             }
             builder.hostFsPersistence(options);
