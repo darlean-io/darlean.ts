@@ -20,16 +20,24 @@ const OPTIONS: bson.DeserializeOptions = {
 };
 
 export class BsonDeSer implements IDeSer {
-    serialize(value: unknown): Buffer {
-        if ((value as IBsonStruct)._DARLEAN_BSON_BUFFER) {
-            return (value as IBsonStruct)._DARLEAN_BSON_BUFFER();
+    private caching = false;
+
+    constructor(caching = false) {
+        this.caching = caching;
+    }
+
+    public serialize(value: unknown): Buffer {
+        if (this.caching) {
+            if ((value as IBsonStruct)._DARLEAN_BSON_BUFFER) {
+                return (value as IBsonStruct)._DARLEAN_BSON_BUFFER();
+            }
         }
         if (isObject(value) && !Buffer.isBuffer(value)) {
             const buffer = bson.serialize(value as bson.Document);
-            Object.defineProperty(value, '_DARLEAN_BSON_BUFFER', { value: () => buffer, enumerable: false, writable: true });
-            // (value as IBsonStruct)._DARLEAN_BSON_BUFFER = () => buffer;
-            Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => value, enumerable: false, writable: true });
-            //(buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => value;
+            if (this.caching) {
+                Object.defineProperty(value, '_DARLEAN_BSON_BUFFER', { value: () => buffer, enumerable: false, writable: true });
+                Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => value, enumerable: false, writable: true });
+            }
             return buffer;
         } else {
             const v: IBsonPrimitive = {
@@ -37,30 +45,35 @@ export class BsonDeSer implements IDeSer {
                 value
             };
             const buffer = bson.serialize(v as bson.Document);
-            Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => value, enumerable: false, writable: true });
-            //(buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => value;  HERE
+            if (this.caching) {
+                Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => value, enumerable: false, writable: true });
+            }
             return buffer;
         }
     }
-    deserialize(buffer: Buffer): unknown {
+
+    public deserialize(buffer: Buffer): unknown {
         if (buffer === undefined) {
             return undefined;
         }
 
-        if ((buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE !== undefined) {
-            return (buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE();
+        if (this.caching) {
+            if ((buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE !== undefined) {
+                return (buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE();
+            }
         }
         const value = bson.deserialize(buffer, OPTIONS);
         if ((value as IBsonPrimitive)._DARLEAN_BSON_PRIMITIVE) {
             const prim = (value as IBsonPrimitive).value;
-            Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => prim, enumerable: false, writable: true });
-            //(buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => prim; HERE
+            if (this.caching) {
+                Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => prim, enumerable: false, writable: true });
+            }
             return prim;
         }
-        Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => value, enumerable: false, writable: true });
-        //(buffer as unknown as IBsonBuffer)._DARLEAN_BSON_VALUE = () => value;
-        Object.defineProperty(value, '_DARLEAN_BSON_BUFFER', { value: () => buffer, enumerable: false, writable: true });
-        //(value as IBsonStruct)._DARLEAN_BSON_BUFFER = () => buffer;
+        if (this.caching) {
+            Object.defineProperty(buffer, '_DARLEAN_BSON_VALUE', { value: () => value, enumerable: false, writable: true });
+            Object.defineProperty(value, '_DARLEAN_BSON_BUFFER', { value: () => buffer, enumerable: false, writable: true });
+        }
         return value;
     }
 }
