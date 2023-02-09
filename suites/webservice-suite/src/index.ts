@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import { ActorSuite, IStartAction, ITypedPortal } from '@darlean/base';
+import { ActorSuite, IStartAction } from '@darlean/base';
 import { fetchConfigNumber } from '@darlean/utils';
 import { IHandler, IHost, WebServiceHostActor } from './actor.impl';
 import { IWebServiceCfg } from './intf';

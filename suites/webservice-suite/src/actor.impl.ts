@@ -78,7 +78,7 @@ export class WebServiceHostActor implements IActivatable, IDeactivatable {
                 }
 
                 const matches: string[] = [];
-                if (!!handler.path) {
+                if (handler.path) {
                     if (!wildcardMatch(pathname, handler.path, matches)) {
                         continue;
                     }
@@ -114,7 +114,7 @@ export class WebServiceHostActor implements IActivatable, IDeactivatable {
                     const qs = querystring.parse(urlobj.search.substring(1));
                     const queryString: { [key: string]: string[] } = {};
                     for (const [key, value] of Object.entries(qs)) {
-                        const v: string[] = typeof value === 'string' ? [value] : !!value ? value : [];
+                        const v: string[] = typeof value === 'string' ? [value] : value ? value : [];
                         queryString[decodeURIComponent(key)] = v.map((x) => decodeURIComponent(x));
                     }
                     request.searchParams = queryString;

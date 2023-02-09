@@ -1,6 +1,6 @@
 import { ITime } from '@darlean/utils';
 import { IInstanceContainer } from './instances';
-import { IActorPlacement, IPortal, ITypedPortal } from './remoteinvocation';
+import { IActorPlacement, IPortal } from './remoteinvocation';
 import { IPersistence, IVolatileTimer } from './various';
 
 export interface IStartAction {
