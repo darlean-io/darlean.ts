@@ -14,9 +14,11 @@
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint",
     "preversion": "npm run format && npm install && npm run lint && npm test",
-    "version": "git add -A src",
-    "postversion": "git push && git push --tags",
+    "version": "git add -A src && git add package.json && git add ../package-lock.json && git -C .. tag utils-%npm_package_version%",
+    "postversion": "git commit -m \"Version upgrade to utils-%npm_package_version%\" && git push && git push --tags",
     "precommit": "npm run format && npm run lint && npm run build",
+    "npm:version:alpha": "npm version prerelease --preid=alpha --git-tag-version=false",
+    "npm:publish": "npm publish --access=public",
     "doc": "npx typedoc --skipErrorChecking --json typedoc-out.json &  npx docgen typedoc-out.json ./docs/"
   },
   "keywords": [
