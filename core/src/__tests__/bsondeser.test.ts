@@ -230,6 +230,13 @@ describe('BsonDeserWithoutCaching', () => {
         expect(deserialized4).toBe(84);
     });
 
+    test('Undefined', () => {
+        const deser = new BsonDeSer(false);
+        expect(deser.deserialize(deser.serialize(undefined))).toBe(undefined);
+        expect((deser.deserialize(deser.serialize({ x: undefined })) as { x?: string }).x).toBe(undefined);
+        expect(deser.deserialize(deser.serialize([5, undefined, 'foo']))).toStrictEqual([5, undefined, 'foo']);
+    });
+
     test('Primitive Buffer', () => {
         const deser = new BsonDeSer(false);
 
