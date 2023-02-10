@@ -88,6 +88,139 @@ export function wildcardMatch(input: string, mask: string, partsOut?: string[]):
     return true;
 }
 
+// Ascii-codes
+const CODE_A = 65;
+const CODE_Z = 90;
+const CODE_a = 97;
+const CODE_z = 122;
+const CODE_0 = 48;
+const CODE_9 = 57;
+
+export function encodeNumber(value: number) {
+    if (value === 0) {
+        return 'a';
+    }
+    if (value >= 0) {
+        const base = value.toString();
+        const prefix = String.fromCharCode(CODE_a + base.length);
+        return prefix + base;
+    } else {
+        const base = (-value).toString();
+        const prefix = String.fromCharCode(CODE_Z - base.length);
+        return prefix + complement(base);
+    }
+}
+
+export function decodeNumber(text: string, index = 0) {
+    const prefixCode = text.charCodeAt(index);
+    if (prefixCode === CODE_a) {
+        return 0;
+    }
+    if (prefixCode === CODE_Z) {
+        return 0;
+    }
+    if (prefixCode >= CODE_A && prefixCode <= CODE_Z) {
+        // Negative number
+        const len = CODE_Z - prefixCode;
+        const base = text.substring(index + 1, index + 1 + len);
+        const compl = complement(base);
+        return -parseInt(compl);
+    } else if (prefixCode >= CODE_a && prefixCode <= CODE_z) {
+        // Positive number or zero
+        const len = prefixCode - CODE_a;
+        const base = text.substring(index + 1, index + 1 + len);
+        return parseInt(base);
+    } else {
+        throw new Error('Not a decoded number');
+    }
+}
+
+export function decodeNumberRtl(text: string, index?: number) {
+    index = index ?? text.length - 1;
+    for (let idx = index; idx >= 0; idx--) {
+        const code = text.charCodeAt(idx);
+        if ((code >= CODE_A && code <= CODE_Z) || (code >= CODE_a && code <= CODE_z)) {
+            return [decodeNumber(text, idx), idx];
+        } else if (code >= CODE_0 && code <= CODE_9) {
+            // continue
+        } else {
+            throw new Error('Not an encoded number');
+        }
+    }
+    throw new Error('Not an encoded number');
+}
+
+function complement(value: string) {
+    let compl = '';
+    for (let i = 0; i < value.length; i++) {
+        compl += String.fromCharCode(CODE_9 - (value.charCodeAt(i) - CODE_0));
+    }
+    return compl;
+}
+
+// Important: For correct sorting, the field separator must have a lower ascii code than char sep.
+const READABLE_FIELD_SEP = '-';
+const READABLE_CHAR_SEP = '.';
+const READABLE_FIELD_SEPS = READABLE_FIELD_SEP + READABLE_FIELD_SEP;
+
+/**
+ * Encodes an actor key into a hum-readable string. Encoding is performed in such a way that later decoding
+ * produces exactly the same key as result, and that lexicographical ordering still preserves the
+ * original order.
+ * @param parts The key parts
+ * @returns The encoded string
+ */
+export function encodeKeyReadable(parts: string[]): string {
+    return parts
+        .map((v) => {
+            return ['', ...v].join(READABLE_CHAR_SEP);
+        })
+        .join(READABLE_FIELD_SEPS);
+}
+
+/**
+ * Decodes a key that was previously encoded with [[encodeKeyReadable]].
+ * @param key The key to be decoded
+ * @returns The decoded key parts
+ */
+export function decodeKeyReadable(key: string): string[] {
+    if (key === '') {
+        return [];
+    }
+
+    const parts = key.split(READABLE_FIELD_SEPS);
+    return parts.map((v) => v.split(READABLE_CHAR_SEP).join(''));
+}
+
+/**
+ * Encodes an actor key into a string in a fast way. Does NOT preserve sorting order.
+ * @param parts The key parts
+ * @returns The encoded string
+ */
+export function encodeKeyFast(parts: string[]): string {
+    const containsZero = !!parts.find((part) => part.includes('\u0000'));
+    if (containsZero) {
+        return 'c' + encodeKeyCompact(parts);
+    } else {
+        return '0' + parts.join('\u0000');
+    }
+}
+
+/**
+ * Decodes a key that was previously encoded with [[encodeKeyFast]].
+ * @param key The key to be decoded
+ * @returns The decoded key parts
+ */
+export function decodeKeyFast(key: string): string[] {
+    if (key[0] === 'c') {
+        return decodeKeyCompact(key.substring(1));
+    } else if (key[0] === '0') {
+        return key.split('\u0000');
+    } else {
+        throw new Error('Illigal key encoding');
+    }
+}
+
 /**
  * Encodes an actor key into a string. Encoding is performed in such a way that later decoding
  * produces exactly the same key as result, and that lexicographical ordering still preserves the
@@ -100,7 +233,7 @@ export function wildcardMatch(input: string, mask: string, partsOut?: string[]):
  * @param parts The key parts
  * @returns The encoded string
  */
-export function encodeKey(parts: string[]): string {
+export function encodeKeyCompact(parts: string[]): string {
     return parts
         .map((v) => {
             let replaced = replaceAll(v, '\u0001', '\u0001\u0002');
@@ -111,11 +244,11 @@ export function encodeKey(parts: string[]): string {
 }
 
 /**
- * Decodes a key that was previously encoded with [[encodeKey]].
+ * Decodes a key that was previously encoded with [[encodeKeyCompact]].
  * @param key The key to be decoded
  * @returns The decoded key parts
  */
-export function decodeKey(key: string): string[] {
+export function decodeKeyCompact(key: string): string[] {
     const parts = key.split('\0');
     return parts.map((v) => {
         let decoded = replaceAll(v, '\u0001\u0003', '\u0000');
