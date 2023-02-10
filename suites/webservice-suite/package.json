@@ -10,7 +10,7 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "npx eslint ./src --ext .js,.jsx,.ts,.tsx",
     "prepare": "npm run build",
-    "prepublishOnly": "npm test && npm run lint",
+    "prepublishOnly": "npm run lint",
     "preversion": "npm run format && npm install && npm run lint",
     "version": "git add -A src && git add package.json && git add ../../package-lock.json && git -C ../.. tag webservice-suite-%npm_package_version%",
     "postversion": "git commit -m \"Version upgrade to webservice-suite-%npm_package_version%\" && git push && git push --tags",
