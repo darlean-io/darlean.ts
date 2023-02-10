@@ -13,6 +13,9 @@
 			"path": "examples"
 		},
 		{
+			"path": "tests"
+		},
+		{
 			"path": "utils"
 		},
 		{
