@@ -1,6 +1,6 @@
 {
   "name": "@darlean/base",
-  "version": "2.0.0-alpha.0",
+  "version": "2.0.0-alpha.1",
   "description": "Darlean base types and definitions for defining actors",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -42,8 +42,7 @@
   "files": [
     "lib/**/*"
   ],
-  "dependencies": {
-  },
+  "dependencies": {},
   "typedoc": {
     "entryPoint": "./src/index.ts",
     "tsconfig": "./tsconfig.json"
