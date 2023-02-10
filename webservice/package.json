@@ -1,6 +1,6 @@
 {
   "name": "@darlean/webservice",
-  "version": "2.0.0-alpha.0",
+  "version": "2.0.0-alpha.1",
   "description": "Webservice library for Darlean",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -18,7 +18,6 @@
     "precommit": "npm run format && npm run lint && npm run build",
     "npm:version:alpha": "npm version prerelease --preid=alpha --git-tag-version=false",
     "npm:publish": "npm publish --access=public",
-    
     "doc": "npx typedoc --skipErrorChecking --json typedoc-out.json &  npx docgen typedoc-out.json ./docs/"
   },
   "keywords": [
