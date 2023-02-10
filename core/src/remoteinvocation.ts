@@ -45,7 +45,7 @@ import {
     FrameworkError,
     IAbortable
 } from '@darlean/base';
-import { Aborter, currentScope, deeper, encodeKey, ITime } from '@darlean/utils';
+import { Aborter, currentScope, deeper, encodeKeyFast, ITime } from '@darlean/utils';
 import { sleep } from '@darlean/utils';
 import { toFrameworkError } from './instances';
 import { normalizeActionName, normalizeActorType } from './shared';
@@ -203,7 +203,7 @@ export class PlacementCache implements IPlacementCache {
     }
 
     public get(actorType: string, id: string[]): string | undefined {
-        const key = encodeKey([normalizeActorType(actorType), ...id]);
+        const key = encodeKeyFast([normalizeActorType(actorType), ...id]);
         const value = this.items.get(key);
         if (value !== undefined) {
             // Move to end of LRU
@@ -214,7 +214,7 @@ export class PlacementCache implements IPlacementCache {
     }
 
     public put(actorType: string, id: string[], receiver: string | undefined): void {
-        const key = encodeKey([normalizeActorType(actorType), ...id]);
+        const key = encodeKeyFast([normalizeActorType(actorType), ...id]);
         this.items.delete(key);
         if (receiver !== undefined) {
             this.items.set(key, receiver);

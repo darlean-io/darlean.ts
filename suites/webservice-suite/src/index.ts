@@ -51,6 +51,7 @@ export default function suite(config: IWebServiceCfg, appId: string) {
                             method: handler.method,
                             path: handler.path,
                             action: async (req) => {
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 const actor = context.portal.retrieve(actorType, actorId) as any;
                                 return await actor[actionName](req);
                             }

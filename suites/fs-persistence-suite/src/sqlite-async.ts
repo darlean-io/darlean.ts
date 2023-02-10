@@ -199,6 +199,28 @@ export class Statement {
         });
     }
 
+    public async each<T>(params: unknown | undefined, handler: (row: T) => void): Promise<number> {
+        return new Promise((resolve, reject) => {
+            this.statement.each(
+                params,
+                (err, row) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        handler(row as T);
+                    }
+                },
+                (err, count) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(count);
+                    }
+                }
+            );
+        });
+    }
+
     protected async reset(): Promise<void> {
         return new Promise((resolve) => {
             this.statement.reset((_) => {

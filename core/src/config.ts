@@ -26,8 +26,6 @@ export interface IPersistenceHandlerCfg {
 
 export interface IFileSystemCompartmentCfg {
     compartment: string;
-    partitionKeyLen?: number;
-    sortKeyLen?: number;
     shardCount?: number;
     nodes?: string[];
     basePath?: string;
@@ -378,8 +376,6 @@ export class ConfigRunnerBuilder {
                     basePath: comp.basePath,
                     subPath: comp.subPath,
                     nodes: comp.nodes,
-                    partitionKeyLen: comp.partitionKeyLen,
-                    sortKeyLen: comp.sortKeyLen,
                     shardCount: limit(comp.shardCount ?? DEFAULT_SHARD_COUNT, maxShardCount)
                 });
             }
