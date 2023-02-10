@@ -22,8 +22,6 @@ export interface IFsPersistenceOptions {
 
 export interface IFsPersistenceCompartment {
     compartment: string;
-    partitionKeyLen?: number;
-    sortKeyLen?: number;
     shardCount?: number;
     nodes?: string[];
     basePath?: string;
@@ -43,7 +41,13 @@ function findOptions(options: IFsPersistenceOptions, compartment: string): IFsPe
     for (const comp of options.compartments) {
         if (wildcardMatch(compartment, comp.compartment)) {
             if (result) {
-                result = { ...result, ...comp };
+                result = {
+                    basePath: comp.basePath ?? result.basePath,
+                    compartment: comp.compartment ?? result.compartment,
+                    nodes: comp.nodes ?? result.nodes,
+                    shardCount: comp.shardCount ?? result.shardCount,
+                    subPath: comp.subPath ?? result.subPath
+                };
             } else {
                 result = comp;
             }
@@ -69,8 +73,9 @@ export default function suite(options: IFsPersistenceOptions) {
                 const opts = findOptions(options, compartment);
                 const boundNode = context.id[context.id.length - 1] || 'unbound';
                 const shard = context.id[context.id.length - 2];
-                const path = [opts.basePath, opts.subPath, compartment, opts.shardCount, shard, boundNode].join('/');
-                return new FsPersistenceActor(path, opts.partitionKeyLen ?? 8, opts.sortKeyLen ?? 8);
+                const shardCount = opts.shardCount ?? DEFAULT_SHARD_COUNT;
+                const path = [opts.basePath, opts.subPath, compartment, shardCount, shard, boundNode].join('/');
+                return new FsPersistenceActor(path);
             }
         },
         {

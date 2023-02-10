@@ -158,7 +158,7 @@ export class ActorRunnerBuilder {
      * @returns The builder
      */
     public registerActor<T extends object>(options: IActorRegistrationOptions<T>): ActorRunnerBuilder {
-        this.actors.push(options);
+        this.actors.push(options as unknown as IActorRegistrationOptions<object>);
         return this;
     }
 
@@ -260,6 +260,8 @@ export class ActorRunnerBuilder {
         }
         const ar = new ActorRunner(portal);
         this.configurePortal(ar);
+
+        this.registerAutoStarts(ar);
         return ar;
     }
 
@@ -498,5 +500,28 @@ export class ActorRunnerBuilder {
                 return timer as IVolatileTimer;
             }
         };
+    }
+
+    private registerAutoStarts(ar: ActorRunner) {
+        const autoStartActors = this.actors.filter((a) => a.startActions);
+        if (autoStartActors.length > 0) {
+            ar.addStarter(
+                async () => {
+                    for (const actor of autoStartActors) {
+                        const portal = this.portal?.typed<object>(actor.type);
+                        if (portal && actor.startActions) {
+                            for (const a of actor.startActions) {
+                                notifier().info('io.darlean.runner.AutoStarting', `Starting [Name]...`, () => ({ Name: a.name }));
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                await (portal.retrieve(a.id) as any)[a.action](...(a.arguments ?? []));
+                                notifier().info('io.darlean.runner.AutoStarted', `Started [Name]`, () => ({ Name: a.name }));
+                            }
+                        }
+                    }
+                },
+                99,
+                'Autostart Actors'
+            );
+        }
     }
 }

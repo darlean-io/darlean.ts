@@ -8,31 +8,33 @@ import type {
 } from '@darlean/persistence-suite';
 import { Database, OPEN_CREATE, OPEN_READWRITE, StatementPool } from './sqlite-async';
 import fs from 'fs';
+import { decodeKeyCompact, encodeKeyCompact } from '@darlean/utils';
+
+const TABLE = 'data';
+const INDEX_SRC = 'srcidx';
+const FIELD_PK = 'pk';
+const FIELD_SK = 'sk';
+const FIELD_VALUE = 'value';
+const FIELD_SOURCE_NAME = 'sourcename';
+const FIELD_SOURCE_SEQ = 'sourceseq';
+
+const SOURCE = 'source';
 
 export class FsPersistenceActor implements IActivatable, IDeactivatable {
     private db?: Database;
     private basePath: string;
-    private partitionKeyLen: number;
-    private sortKeyLen: number;
-    private partitionKeys: string[];
-    private sortKeys: string[];
     private poolLoad?: StatementPool;
     private poolStore?: StatementPool;
+    private poolDelete?: StatementPool;
+    private poolQueryAsc?: StatementPool;
+    private poolQueryDesc?: StatementPool;
+    private keyWhere: string;
+    private lastSeqNr = 0;
 
-    constructor(basePath: string, partitionKeyLen: number, sortKeyLen: number) {
+    constructor(basePath: string) {
         this.basePath = basePath;
-        this.partitionKeyLen = partitionKeyLen;
-        this.sortKeyLen = sortKeyLen;
 
-        this.partitionKeys = [];
-        for (let i = 0; i < partitionKeyLen; i++) {
-            this.partitionKeys.push('pk' + i);
-        }
-
-        this.sortKeys = [];
-        for (let i = 0; i < sortKeyLen; i++) {
-            this.sortKeys.push('sk' + i);
-        }
+        this.keyWhere = this.makeKeyWhere();
     }
 
     public async activate(): Promise<void> {
@@ -50,28 +52,39 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
 
     @action()
     public async store(options: IPersistenceStoreOptions): Promise<void> {
-        const pool = this.poolStore;
-        if (!pool) {
-            throw new Error('No statement pool');
-        }
-
-        const values = new Array(this.partitionKeyLen + this.sortKeyLen + 1).fill(0);
-        for (let i = 0; i < options.partitionKey.length; i++) {
-            values[i] = options.partitionKey[i]?.toString() ?? 0;
-        }
-        const offset = this.partitionKeyLen;
-        if (options.sortKey) {
-            for (let i = 0; i < options.sortKey?.length; i++) {
-                values[offset + i] = options.sortKey[i]?.toString() ?? 0;
+        if (options.value === undefined) {
+            const pool = this.poolDelete;
+            if (!pool) {
+                throw new Error('No statement pool');
             }
-        }
-        values[values.length - 1] = options.value;
 
-        const statement = await pool.obtain();
-        try {
-            await statement.run(values);
-        } finally {
-            await statement.release();
+            const values = this.makeKeyValues(options.partitionKey, options.sortKey);
+
+            const statement = await pool.obtain();
+            try {
+                await statement.run(values);
+            } finally {
+                await statement.release();
+            }
+        } else {
+            const pool = this.poolStore;
+            if (!pool) {
+                throw new Error('No statement pool');
+            }
+
+            const values: Array<string | Buffer | number> = this.makeKeyValues(options.partitionKey, options.sortKey);
+            values.push(options.value);
+            values.push(SOURCE);
+            const seqnr = this.lastSeqNr + 1;
+            this.lastSeqNr = seqnr;
+            values.push(seqnr);
+
+            const statement = await pool.obtain();
+            try {
+                await statement.run(values);
+            } finally {
+                await statement.release();
+            }
         }
     }
 
@@ -82,20 +95,11 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             throw new Error('No statement pool');
         }
 
-        const values = new Array(this.partitionKeyLen + this.sortKeyLen).fill(0);
-        for (let i = 0; i < options.partitionKey.length; i++) {
-            values[i] = options.partitionKey[i]?.toString() ?? 0;
-        }
-        const offset = this.partitionKeyLen;
-        if (options.sortKey) {
-            for (let i = 0; i < options.sortKey?.length; i++) {
-                values[offset + i] = options.sortKey[i]?.toString() ?? 0;
-            }
-        }
+        const values = this.makeKeyValues(options.partitionKey, options.sortKey);
 
         const statement = await pool.obtain();
         try {
-            const result = (await statement.get(values)) as { value: Buffer };
+            const result = (await statement.get(values)) as { [FIELD_VALUE]: Buffer };
             if (result) {
                 const buffer = result.value;
                 return {
@@ -109,8 +113,33 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
     }
 
     @action()
-    public async query(_options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult> {
-        throw new Error('Method not implemented.');
+    public async query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult> {
+        const direction = options.sortKeyOrder ?? 'ascending';
+
+        const pool = direction === 'descending' ? this.poolQueryDesc : this.poolQueryAsc;
+        if (!pool) {
+            throw new Error('No statement pool');
+        }
+
+        const values = this.makeKeyValues(options.partitionKey, options.sortKey);
+
+        const result: IPersistenceQueryResult = {
+            items: []
+        };
+
+        const statement = await pool.obtain();
+        try {
+            await statement.each(values, (row) => {
+                const data = row as { [FIELD_PK]?: string; [FIELD_SK]?: string; [FIELD_VALUE]?: Buffer };
+                result.items.push({
+                    sortKey: decodeKeyCompact(data.sk ?? ''),
+                    value: data.value
+                });
+            });
+            return result;
+        } finally {
+            await statement.release();
+        }
     }
 
     protected async openDatabase() {
@@ -119,7 +148,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             fs.mkdirSync(filepath, { recursive: true });
         }
 
-        const filename = [filepath, 'store.sqlite'].join('/');
+        const filename = [filepath, 'store.db'].join('/');
         const db = new Database();
         await db.open(filename, OPEN_CREATE | OPEN_READWRITE);
 
@@ -129,34 +158,66 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         // Enabl;e the (faster) WAL mode
         await db.run('PRAGMA journal_mode=WAL;');
 
-        const partitionKeys = this.partitionKeys.join(', ');
-        const sortKeys = this.sortKeys.join(', ');
-        const allKeys = [partitionKeys, sortKeys].join(', ');
-        await db.run(`CREATE TABLE IF NOT EXISTS data (${allKeys}, value, PRIMARY KEY (${allKeys}))`);
+        const MAX_SEQ = 'MaxSeq';
+
+        await db.run(
+            `CREATE TABLE IF NOT EXISTS ${TABLE} (${FIELD_PK}, ${FIELD_SK}, ${FIELD_VALUE}, ${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ}, PRIMARY KEY (${FIELD_PK}, ${FIELD_SK}))`
+        );
+        await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS ${INDEX_SRC} ON ${TABLE} (${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ})`);
+        const seqnrPool = await db.prepare(
+            `SELECT MAX(${FIELD_SOURCE_SEQ}) AS ${MAX_SEQ} FROM ${TABLE} WHERE ${FIELD_SOURCE_NAME}=?`
+        );
+        const query = await seqnrPool.obtain();
+        try {
+            const result = (await query.get(SOURCE)) as { [MAX_SEQ]: number | null };
+            this.lastSeqNr = result[MAX_SEQ] === null ? 0 : result[MAX_SEQ];
+        } finally {
+            query.release();
+        }
 
         this.poolLoad = await this.makeLoadPool(db);
         this.poolStore = await this.makeStorePool(db);
+        this.poolDelete = await this.makeDeletePool(db);
+        this.poolQueryAsc = await this.makeQueryPoolAsc(db);
+        this.poolQueryDesc = await this.makeQueryPoolDesc(db);
     }
 
     protected async makeLoadPool(db: Database): Promise<StatementPool> {
         // Note: SQLite does not enforce uniqueness of the (compound) primary key when using
         // NULL values for some of the fields. So, we use the number 0 for "not present"
         // (numbers are not used in key fields; the string "0" if different from number 0).
-        const parts: string[] = [];
-        for (let i = 0; i < this.partitionKeyLen; i++) {
-            parts.push(`(${this.partitionKeys[i]}=?)`);
-        }
-        for (let i = 0; i < this.sortKeyLen; i++) {
-            parts.push(`(${this.sortKeys[i]}=?)`);
-        }
-        const keyWhere = parts.join(' AND ');
-        return await db.prepare(`SELECT * FROM data WHERE (${keyWhere})`);
+        return await db.prepare(`SELECT * FROM ${TABLE} WHERE (${this.keyWhere})`);
+    }
+
+    protected async makeQueryPoolAsc(db: Database): Promise<StatementPool> {
+        return await db.prepare(`SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=? AND ${FIELD_SK} >=?)`);
+    }
+
+    protected async makeQueryPoolDesc(db: Database): Promise<StatementPool> {
+        return await db.prepare(`SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=? AND ${FIELD_SK} <=?) ORDER BY SK DESC`);
     }
 
     protected async makeStorePool(db: Database): Promise<StatementPool> {
-        const parts = [...this.partitionKeys, ...this.sortKeys, 'value'];
-        const placeholders = new Array(parts.length).fill('?');
-        return await db.prepare(`INSERT OR REPLACE INTO data (${parts.join(',')}) VALUES (${placeholders.join(',')})`);
+        const placeholders = new Array(5).fill('?');
+        return await db.prepare(
+            `INSERT OR REPLACE INTO ${TABLE} (${FIELD_PK}, ${FIELD_SK}, ${FIELD_VALUE}, ${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ}) VALUES (${placeholders.join(
+                ','
+            )})`
+        );
+    }
+
+    protected async makeDeletePool(db: Database): Promise<StatementPool> {
+        return await db.prepare(`DELETE FROM ${TABLE} WHERE (${this.keyWhere})`);
+    }
+
+    protected makeKeyWhere() {
+        return `${FIELD_PK}=? AND ${FIELD_SK}=?`;
+    }
+
+    protected makeKeyValues(partitionKey: string[], sortKey: string[] | undefined) {
+        const pk = encodeKeyCompact(partitionKey);
+        const sk = encodeKeyCompact(sortKey ?? []);
+        return [pk, sk];
     }
 
     protected async closeDatabase() {

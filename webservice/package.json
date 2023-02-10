@@ -1,0 +1,54 @@
+{
+  "name": "@darlean/webservice",
+  "version": "2.0.0-alpha.1",
+  "description": "Webservice library for Darlean",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "test:all": "jest --verbose --runInBand --config jestconfig.json",
+    "build": "tsc",
+    "run": "node lib/index.js",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "lint": "npx eslint ./src --ext .js,.jsx,.ts,.tsx",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run lint",
+    "preversion": "npm run format && npm install && npm run lint",
+    "version": "git add -A src && git add package.json && git add ../package-lock.json && git -C .. tag webservice-%npm_package_version%",
+    "postversion": "git commit -m \"Version upgrade to webservice-%npm_package_version%\" && git push && git push --tags",
+    "precommit": "npm run format && npm run lint && npm run build",
+    "npm:version:alpha": "npm version prerelease --preid=alpha --git-tag-version=false",
+    "npm:publish": "npm publish --access=public",
+    "doc": "npx typedoc --skipErrorChecking --json typedoc-out.json &  npx docgen typedoc-out.json ./docs/"
+  },
+  "keywords": [
+    "Darlean",
+    "Webservice"
+  ],
+  "author": "Theo van der Donk",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/jest": "^29.2.4",
+    "@types/mime-types": "^2.1.1",
+    "@types/node": "^18.11.17",
+    "@typescript-eslint/eslint-plugin": "^5.46.1",
+    "@typescript-eslint/parser": "^5.46.1",
+    "eslint": "^8.30.0",
+    "jest": "^29.3.1",
+    "jest-standard-reporter": "^2.0.0",
+    "prettier": "^2.8.1",
+    "ts-jest": "^29.0.3",
+    "typedoc": "^0.23.23",
+    "typescript": "^4.9.4"
+  },
+  "files": [
+    "lib/**/*"
+  ],
+  "typedoc": {
+    "entryPoint": "./src/index.ts",
+    "tsconfig": "./tsconfig.json"
+  },
+  "dependencies": {
+    "ajv": "^8.12.0",
+    "mime-types": "^2.1.35"
+  }
+}

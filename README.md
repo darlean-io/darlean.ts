@@ -25,6 +25,10 @@ We have also included some working examples:
 * [Tutorial of creating an distributed Oracle using Darlean](examples/src/oracle/1_the_basics)
 * [Performance benchmark](examples/src/performance)
 
+### Testing
+We also have end-to-end (blackbox) tests:
+* [End-to-end tests](tests)
+
 ## Building
 
 Because we use a monorepo (with multiple packages in one git repo), there apply some special rules:

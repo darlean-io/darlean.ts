@@ -1,5 +1,5 @@
 import { action, IDeactivatable } from '@darlean/base';
-import { currentScope, encodeKey, ITime } from '@darlean/utils';
+import { currentScope, encodeKeyFast, ITime } from '@darlean/utils';
 import {
     IActorLockService_Acquire_Response,
     IActorLockService_GetLockHolders_Request,
@@ -59,7 +59,7 @@ export class ActorLockActor implements IDeactivatable {
         const scope = currentScope();
 
         scope.deep('Try to acquire lock for [Id] by [Requester]', () => ({ Id: request.id, Requester: request.requester }));
-        const idAsString = encodeKey(request.id);
+        const idAsString = encodeKeyFast(request.id);
         const current = this.locks.get(idAsString);
         const now = this.time.machineTicks();
         if (current) {
@@ -100,7 +100,7 @@ export class ActorLockActor implements IDeactivatable {
 
     @action()
     public async release(request: IActorLockService_Release_Request): Promise<void> {
-        const idAsString = encodeKey(request.id);
+        const idAsString = encodeKeyFast(request.id);
         const current = this.locks.get(idAsString);
         if (current) {
             if (current.holder === request.requester) {
@@ -116,7 +116,7 @@ export class ActorLockActor implements IDeactivatable {
     public async getLockHolder(
         request: IActorLockService_GetLockHolders_Request
     ): Promise<IActorLockActor_GetLockHolder_Response> {
-        const idAsString = encodeKey(request.id);
+        const idAsString = encodeKeyFast(request.id);
         const current = this.locks.get(idAsString);
         const now = this.time.machineTicks();
         if (current) {

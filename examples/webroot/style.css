@@ -1,0 +1,7 @@
+body { font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif }
+.page { border-width: 2px; border-style: ridge; margin: 2rem; padding-left: 2rem; padding-right: 2rem; background-color: #f8f8f8; }
+label { display: inline-block; min-width: 4rem; }
+.line { margin: 0.5rem; }
+input[type=submit] { padding-left: 2rem; padding-right: 2rem; }
+h1 > img { margin-right: 1rem; }
+.note { margin-left: 2rem; margin-top: 1rem; font-size: smaller; color: #888; }

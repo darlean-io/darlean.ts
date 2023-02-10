@@ -3,6 +3,13 @@ import { IInstanceContainer } from './instances';
 import { IActorPlacement, IPortal } from './remoteinvocation';
 import { IPersistence, IVolatileTimer } from './various';
 
+export interface IStartAction {
+    name: string;
+    id: string[];
+    action: string;
+    arguments?: unknown[];
+}
+
 /**
  * Options that specify how an actor type should be registered.
  */
@@ -52,6 +59,11 @@ export interface IActorRegistrationOptions<T extends object> {
      * This is only required when no actor directory is being used.
      */
     apps?: string[];
+
+    /**
+     * When present, invoked when the actor runner has been started.
+     */
+    startActions?: IStartAction[];
 }
 
 /**

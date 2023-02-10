@@ -44,14 +44,12 @@ class DistributedPersistable<T> implements IPersistable<T> {
             }
         }
 
-        if (this._changed) {
-            if (this.version) {
-                const next = parseInt(this.version || '0') + 1;
-                this.version = next.toString().padStart(20, '0');
-            } else {
-                const next = Date.now();
-                this.version = next.toString().padStart(20, '0');
-            }
+        if (this.version) {
+            const next = parseInt(this.version || '0') + 1;
+            this.version = next.toString().padStart(20, '0');
+        } else {
+            const next = Date.now();
+            this.version = next.toString().padStart(20, '0');
         }
         await this.persistence.storeImpl(this.partitionKey, this.sortKey, this.value, this.version);
         this._changed = false;
@@ -122,7 +120,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
         value: T | undefined,
         version: string | undefined
     ): Promise<void> {
-        const v = this.deser.serialize(value);
+        const v = value === undefined ? undefined : this.deser.serialize(value);
         await this.service.store({
             specifiers: this.specifiers,
             partitionKey: partitionKey ?? [],

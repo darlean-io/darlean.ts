@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+      "target": "es2020",
+      "module": "commonjs",
+      "declaration": true,
+      "outDir": "./lib",
+      "strict": true,
+      "experimentalDecorators": true,
+      "esModuleInterop": true
+    },
+    "include": ["src", "../../webservice/src/staticfile.ts"],
+    "exclude": ["node_modules", "**/__tests__/*"],
+    "typedocOptions": {
+      "entryPoints": ["src/"],
+      "entryPointStrategy": "expand",
+    },
+}

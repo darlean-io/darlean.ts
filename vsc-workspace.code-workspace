@@ -13,7 +13,13 @@
 			"path": "examples"
 		},
 		{
+			"path": "tests"
+		},
+		{
 			"path": "utils"
+		},
+		{
+			"path": "webservice"
 		},
 		{
 		    "path": "suites/actor-lock-suite"
@@ -26,6 +32,9 @@
 		},		
 		{
 		    "path": "suites/fs-persistence-suite"
+		},		
+		{
+		    "path": "suites/webservice-suite"
 		},		
 		{
 			"path": "."

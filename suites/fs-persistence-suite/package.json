@@ -1,6 +1,6 @@
 {
   "name": "@darlean/fs-persistence-suite",
-  "version": "2.0.0-alpha.0",
+  "version": "2.0.0-alpha.2",
   "description": "File System Persistence Suite",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -12,9 +12,11 @@
     "prepare": "npm run build",
     "prepublishOnly": "npm run lint",
     "preversion": "npm run format && npm install && npm run lint",
-    "version": "git add -A src",
-    "postversion": "git push && git push --tags",
+    "version": "git add -A src && git add package.json && git add ../../package-lock.json && git -C ../.. tag fs-persistence-suite-%npm_package_version%",
+    "postversion": "git commit -m \"Version upgrade to fs-persistence-suite-%npm_package_version%\" && git push && git push --tags",
     "precommit": "npm run format && npm run lint && npm run build",
+    "npm:version:alpha": "npm version prerelease --preid=alpha --git-tag-version=false",
+    "npm:publish": "npm publish --access=public",
     "doc": "npx typedoc --skipErrorChecking --json typedoc-out.json &  npx docgen typedoc-out.json ./docs/"
   },
   "keywords": [
