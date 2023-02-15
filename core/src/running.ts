@@ -13,6 +13,7 @@ import {
     IBackOff,
     IMultiTypeInstanceContainer,
     IPersistence,
+    IPersistenceService,
     IPortal,
     IRemote,
     IVolatileTimer,
@@ -27,7 +28,7 @@ import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-re
 import actorRegistrySuite from '@darlean/actor-registry-suite';
 import { DistributedPersistence } from './distributedpersistence';
 import { IDeSer } from './infra/deser';
-import persistenceSuite, { IPersistenceService, IPersistenceServiceOptions } from '@darlean/persistence-suite';
+import persistenceSuite, { IPersistenceServiceOptions } from '@darlean/persistence-suite';
 import fsPersistenceSuite, { IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { normalizeActorType } from './shared';
 

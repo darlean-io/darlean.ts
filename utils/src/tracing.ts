@@ -34,7 +34,8 @@ export interface IScope {
     newChildScope(scope: string, id?: string | string[], traceAtts?: TraceAtts, tracing?: ITraceInfo): IScope;
     branch(scope: string, id?: string | string[], traceAtts?: TraceAtts, tracing?: ITraceInfo): IScope;
     finish(): void;
-    perform<Result>(func: () => Result): Promise<Result>;
+    perform<Result>(func: () => Promise<Result>): Promise<Result>;
+    performSync<Result>(func: () => Result): Result;
 
     getUid(): string;
     getCorrelationIds(): string[] | undefined;
@@ -81,8 +82,12 @@ class EmptyScope implements IScope {
         //
     }
 
-    public async perform<Result>(func: () => Result): Promise<Result> {
-        return await func();
+    public perform<Result>(func: () => Promise<Result>): Promise<Result> {
+        return func();
+    }
+
+    public performSync<Result>(func: () => Result): Result {
+        return func();
     }
 
     public getUid(): string {
@@ -99,7 +104,7 @@ interface IMask {
     levels: string[];
 }
 
-const _CURRENT_SCOPE = new AsyncLocalStorage<IScope>();
+const _CURRENT_SCOPE = new AsyncLocalStorage<IScope | undefined>();
 let _ROOT_SCOPE: IScope = new EmptyScope();
 
 export function currentScope() {
@@ -149,11 +154,13 @@ export class Tracer extends ev.EventEmitter {
     public levels?: string[];
     protected _root: Scope;
     protected autoTracers?: ITraceFilter[];
+    protected scopeFlags: Map<string, boolean>;
 
     constructor(scope?: string, id?: string | string[], masks?: IMask[], autoTracers?: ITraceFilter[]) {
         super();
         this.masks = [];
         this.levels = [];
+        this.scopeFlags = new Map();
         if (masks) {
             this.replaceMasks(masks);
         }
@@ -198,13 +205,25 @@ export class Tracer extends ev.EventEmitter {
 
     public doTrace(scope: string | undefined, id: string | string[] | undefined): boolean {
         if (this.autoTracers) {
+            const traceScope = this.scopeFlags.get(scope ?? '');
+            if (traceScope === false) {
+                return false;
+            }
+
             const id2 = typeof id === 'string' ? id : id?.join(':') ?? '';
             for (const filter of this.autoTracers) {
-                if (filter.scope) {
-                    if (!(scope ?? '').startsWith(filter.scope)) {
-                        continue;
+                if (traceScope === undefined) {
+                    if (filter.scope) {
+                        if (!(scope ?? '').startsWith(filter.scope)) {
+                            if (scope !== undefined) {
+                                this.scopeFlags.set(scope, false);
+                            }
+                            continue;
+                        }
                     }
+                    this.scopeFlags.set(scope ?? '', true);
                 }
+
                 if (filter.id) {
                     if (!id2.startsWith(filter.id)) {
                         continue;
@@ -233,6 +252,7 @@ export class Scope implements IScope {
     public readonly startExact?: number;
     public readonly traceInfo?: ITraceInfo;
     public readonly traceAtts: TraceAtts | undefined;
+    public duration?: number;
     public root: Tracer;
     protected tags?: { [key: string]: unknown };
     protected uid?: string;
@@ -284,14 +304,44 @@ export class Scope implements IScope {
         }
     }
 
-    public async perform<Result>(func: () => Result): Promise<Result> {
+    public async perform<Result>(func: () => Promise<Result>): Promise<Result> {
+        if (!this.traceInfo) {
+            return func();
+        }
+        let start: number | undefined;
         try {
+            start = this.traceInfo ? performance.now() : undefined;
             return await _CURRENT_SCOPE.run(this, func);
         } catch (e) {
             this.exception = e;
             throw e;
         } finally {
+            if (start !== undefined) {
+                const stop = performance.now();
+                this.duration = stop - start;
+            }
             this.finish();
+        }
+    }
+
+    public performSync<Result>(func: () => Result): Result {
+        if (this.traceInfo) {
+            let start: number | undefined;
+            try {
+                start = this.traceInfo ? performance.now() : undefined;
+                return _CURRENT_SCOPE.run(this, func);
+            } catch (e) {
+                this.exception = e;
+                throw e;
+            } finally {
+                if (start !== undefined) {
+                    const stop = performance.now();
+                    this.duration = stop - start;
+                }
+                this.finish();
+            }
+        } else {
+            return func();
         }
     }
 

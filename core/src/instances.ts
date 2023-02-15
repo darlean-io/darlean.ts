@@ -308,7 +308,8 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
     public async deactivate(skipMutex = false): Promise<void> {
         await deeper('io.darlean.instances.deactivate').perform(async () => {
             if (!skipMutex) {
-                await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform(() => this.lifecycleMutex.acquire());
+                deeper('io.darlean.instances.try-acquire-lifecycle-mutex').performSync(() => this.lifecycleMutex.tryAcquire()) ||
+                    (await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform(() => this.lifecycleMutex.acquire()));
             }
             try {
                 if (this.state === 'created') {
@@ -388,10 +389,12 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
             this.callCounter++;
 
             if (!shortCircuit) {
-                await deeper('io.darlean.instances.ensure-active').perform(() => this.ensureActive());
+                deeper('io.darlean.instances.try-ensure-active').performSync(() => this.tryEnsureActive()) ||
+                    (await deeper('io.darlean.instances.ensure-active').perform(() => this.ensureActive()));
             }
 
-            await deeper('io.darlean.instances.acquire-local-lock').perform(() => this.acquireLocalLock(locking, callId));
+            deeper('io.darlean.instances.try-acquire-local-lock').performSync(() => this.tryAcquireLocalLock(locking, callId)) ||
+                (await deeper('io.darlean.instances.acquire-local-lock').perform(() => this.acquireLocalLock(locking, callId)));
 
             try {
                 if (method) {
@@ -416,21 +419,42 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         });
     }
 
+    protected tryEnsureActive(): boolean {
+        if (!this.lifecycleMutex.tryAcquire()) {
+            return false;
+        }
+
+        try {
+            if (this.state === 'active') {
+                return true;
+            }
+
+            return false;
+        } finally {
+            this.lifecycleMutex.release();
+        }
+    }
+
     protected async ensureActive(): Promise<void> {
-        await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform(() => this.lifecycleMutex.acquire());
+        deeper('io.darlean.instances.try-acquire-lifecycle-mutex').performSync(() => this.lifecycleMutex.tryAcquire()) ||
+            (await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform(() => this.lifecycleMutex.acquire()));
         try {
             if (this.state === 'created') {
                 this.state = 'activating';
 
                 try {
-                    await deeper('io.darlean.instances.ensure-actor-lock').perform(() => this.ensureActorLock());
+                    deeper('io.darlean.instances.try-ensure-actor-lock').performSync(() => this.tryEnsureActorLock()) ||
+                        (await deeper('io.darlean.instances.ensure-actor-lock').perform(() => this.ensureActorLock()));
 
                     const func = this.methods.get(ACTIVATOR);
 
-                    await this.handleCall(func, ACTIVATOR, [], { locking: 'exclusive' }, undefined, true);
+                    if (func) {
+                        await this.handleCall(func, ACTIVATOR, [], { locking: 'exclusive' }, undefined, true);
+                    }
 
                     this.state = 'active';
                 } catch (e) {
+                    currentScope().error('Error during activate: [Error]', () => ({ Error: e }));
                     await this.deactivate(true);
                     throw e;
                 }
@@ -448,48 +472,57 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 );
             }
         } finally {
-            this.lifecycleMutex.release();
+            deeper('io.darlean.instances.release-lifecycle-mutex').performSync(() => this.lifecycleMutex.release());
         }
     }
 
-    protected async ensureActorLock() {
+    protected tryEnsureActorLock(): boolean {
         // Assume we are already in the lifecycleLock
         const actorLock = this.actorLock;
         if (!actorLock) {
-            return;
+            return true;
         }
 
         if (this.acquiredActorLock) {
-            return;
+            return true;
         }
 
         if (this.acquiredActorLock) {
-            return;
+            return true;
         }
 
         if (!this.actorLock) {
             throw new Error('No actor lock available, instance likely to be deactivated');
         }
 
-        // console.log('Acquiring actor lock', this.actorType);
+        return false;
+    }
 
-        this.acquiredActorLock = await actorLock(() => {
-            this.acquiredActorLock = undefined;
-            this.actorLock = undefined;
-            setImmediate(async () => {
-                try {
-                    await this.deactivate();
-                } catch (e) {
-                    currentScope().info(
-                        'Error during deactivating actor of type [ActorType] because the actor lock was broken: [Error]',
-                        () => ({
-                            Error: e,
-                            ActorType: this.actorType
-                        })
-                    );
-                }
+    protected async ensureActorLock() {
+        if (this.tryEnsureActorLock()) {
+            return;
+        }
+
+        const actorLock = this.actorLock;
+        if (actorLock) {
+            this.acquiredActorLock = await actorLock(() => {
+                this.acquiredActorLock = undefined;
+                this.actorLock = undefined;
+                setImmediate(async () => {
+                    try {
+                        await this.deactivate();
+                    } catch (e) {
+                        currentScope().info(
+                            'Error during deactivating actor of type [ActorType] because the actor lock was broken: [Error]',
+                            () => ({
+                                Error: e,
+                                ActorType: this.actorType
+                            })
+                        );
+                    }
+                });
             });
-        });
+        }
     }
 
     protected async releaseActorLock() {
@@ -507,6 +540,16 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 Error: e,
                 ActorType: this.actorType
             }));
+        }
+    }
+
+    protected tryAcquireLocalLock(locking: 'none' | 'shared' | 'exclusive', callId: string): boolean {
+        if (locking === 'shared') {
+            return this.lock.tryBeginShared(callId);
+        } else if (locking === 'exclusive') {
+            return this.lock.tryBeginExclusive(callId);
+        } else {
+            return true;
         }
     }
 

@@ -1,4 +1,5 @@
 import { performance } from 'perf_hooks';
+import { currentScope } from './tracing';
 
 export function isObject(v: unknown) {
     return !!v && (v as object).constructor === Object;
@@ -270,14 +271,36 @@ export class Mutex<T> {
         }
     }
 
+    public tryAcquire(): boolean {
+        const start = performance.now();
+        try {
+            if (!this.held) {
+                this.held = true;
+                return true;
+            } else {
+                return false;
+            }
+        } finally {
+            const stop = performance.now();
+            currentScope().info('INLINE ACQUIRE TOOK [Duration]', () => ({ Duration: stop - start }));
+        }
+    }
+
     public async acquire(): Promise<T | undefined> {
-        if (this.held) {
-            return new Promise((resolve) => {
+        currentScope().info('ASYNC ACQUIRE [Held]', () => ({ Held: this.held }));
+        if (!this.held) {
+            this.held = true;
+            return;
+        }
+        return new Promise((resolve) => {
+            if (this.held) {
                 pendingMutexes++;
                 this.queue.push(resolve);
-            });
-        }
-        this.held = true;
+            } else {
+                this.held = true;
+                resolve(undefined);
+            }
+        });
     }
 
     public release(value: T | undefined): boolean {

@@ -23,10 +23,12 @@ export class TraceAnalyzer {
     protected roots: INode[];
     protected cids: Map<string, INode>;
     protected epoch?: number;
+    protected epochExact?: number;
 
-    constructor(events: IEventStruct[], epoch?: number) {
+    constructor(events: IEventStruct[], epoch?: number, epochExact?: number) {
         this.events = events;
         this.epoch = epoch;
+        this.epochExact = epochExact;
         this.nodes = new Map();
         this.cids = new Map();
         this.roots = [];
@@ -236,6 +238,7 @@ export class TraceAnalyzer {
         const sortedNodes = Array.from(this.nodes.values()).sort(sortNodes);
 
         const epoch = this.epoch;
+        const epochExact = this.epochExact;
 
         for (const node of sortedNodes) {
             const level = this.determineLevel(node);
@@ -251,6 +254,11 @@ export class TraceAnalyzer {
                 time = (moment - epoch).toFixed(2).padStart(10, ' ');
             }
 
+            let momentExact = node.enter?.momentExact ?? node.leave?.momentExact ?? node.log?.momentExact ?? 0;
+            if (epochExact) {
+                momentExact -= epochExact;
+            }
+
             const appIdx = apps.indexOf(node.application || '');
             const appIndent = ''.padStart(appIdx * 40, '.');
             const levelIndent = ''.padStart(level * 2, ' ');
@@ -259,10 +267,9 @@ export class TraceAnalyzer {
             const branchInfo = branches.length > 0 ? ` See branch(es) ${branches.map((x) => x.substring(0, 8)).join(', ')}` : '';
 
             console.log(
-                `${node.uid.substring(0, 8)} ${(node.leave?.duration?.toFixed(2) ?? '-').padStart(
-                    8,
-                    ' '
-                )}ms ${time} ${node.application?.padEnd(15)} ${appIndent} | ${levelIndent} ${this.extractSectionName(
+                `${node.uid.substring(0, 8)} ${(node.leave?.duration?.toFixed(2) ?? '-').padStart(8, ' ')}ms ${time} ${momentExact
+                    .toFixed(2)
+                    .padStart(7, ' ')} ${node.application?.padEnd(15)} ${appIndent} | ${levelIndent} ${this.extractSectionName(
                     node
                 )}${branchInfo}`
             );
@@ -343,8 +350,8 @@ function sortNodes(a: INode, b: INode) {
     const ma = a.enter?.moment ?? a.leave?.moment ?? a.log?.moment ?? 0;
     const mb = b.enter?.moment ?? b.leave?.moment ?? b.log?.moment ?? 0;
     if (ma === mb) {
-        const mma = a.enter?.momentExact ?? 0;
-        const mmb = b.enter?.momentExact ?? 0;
+        const mma = a.enter?.momentExact ?? a.leave?.momentExact ?? a.log?.momentExact ?? 0;
+        const mmb = b.enter?.momentExact ?? b.leave?.momentExact ?? b.log?.momentExact ?? 0;
         return mma - mmb;
     } else {
         return ma - mb;
@@ -359,24 +366,44 @@ function sortScanItems(a: IScanItem, b: IScanItem) {
     return result;
 }
 
-export function loadEventFiles(cid?: string): [epoch: number | undefined, events: IEventStruct[]] {
+export function loadEventFiles(
+    cid?: string
+): [epoch: number | undefined, epochExact: number | undefined, events: IEventStruct[]] {
     const items: IEventStruct[] = [];
     let epoch: number | undefined;
+    let epochExact: number | undefined;
 
     const path = './trace/';
     const files = fs.readdirSync(path);
     for (const file of files) {
         if (file.endsWith('json.txt')) {
             try {
+                if (cid && !file.startsWith(cid)) {
+                    continue;
+                }
+
                 const raw = fs.readFileSync(path + file, { encoding: 'utf-8' });
                 const lines = raw.split('\n');
+
+                let uid: string | undefined;
+
                 for (const line of lines) {
                     try {
                         const struct = JSON.parse(line) as IEventStruct;
 
+                        if (uid !== undefined && uid !== struct.uid) {
+                            continue;
+                        }
+
                         if (struct.moment) {
                             if (epoch === undefined || struct.moment < epoch) {
                                 epoch = struct.moment;
+                            }
+                        }
+
+                        if (struct.momentExact) {
+                            if (epochExact === undefined || struct.momentExact < epochExact) {
+                                epochExact = struct.momentExact;
                             }
                         }
 
@@ -390,6 +417,10 @@ export function loadEventFiles(cid?: string): [epoch: number | undefined, events
                         } else {
                             items.push(struct);
                         }
+
+                        if (!cid) {
+                            uid = struct.uid;
+                        }
                     } catch (e) {
                         console.log('Ignoring line', line, e);
                     }
@@ -399,15 +430,15 @@ export function loadEventFiles(cid?: string): [epoch: number | undefined, events
             }
         }
     }
-    return [epoch, items];
+    return [epoch, epochExact, items];
 }
 
 if (require.main === module) {
     const app = findArg('app');
     const cid = findArg('cid');
 
-    const [epoch, events] = loadEventFiles(cid);
-    const analyzer = new TraceAnalyzer(events, epoch);
+    const [epoch, epochExact, events] = loadEventFiles(cid);
+    const analyzer = new TraceAnalyzer(events, epoch, epochExact);
 
     if (app) {
         analyzer.dumpCids(app, epoch);

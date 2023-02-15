@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { IInstanceWrapper } from './instances';
+import { IPersistenceQueryOptions, IPersistenceQueryResult } from './persistence';
 
 /**
  * Represents a persistable value.
@@ -58,6 +59,7 @@ export interface IPersistence<T> {
      * *not* perform and {@link load}ing of the data from the persistence store. For that, use {@link load}.
      */
     persistable(partitionKey?: string[], sortKey?: string[], value?: T): IPersistable<T>;
+
     /**
      * Creates a new {@link Ipersistable} instance with the provided partition and sort key, and
      * loads the most recent value from the persistence store.
@@ -65,14 +67,16 @@ export interface IPersistence<T> {
      * @param sortKey The sort key that will be used for this and later load and store actions
      */
     load(partitionKey?: string[], sortKey?: string[]): Promise<IPersistable<T>>;
+
     /**
      * Returns a new sub-persistence interface with the provided partition key and sort key added
      * to the partition and sort key of the current instance.
      * @param partitionKey The partition key fields that will be added to the existing partition key fields.
      * Must be `undefined` or `[]` when the current instance already has a sort key assigned.
-     * @param sortKey The sort key fields that will be added to the existing sort key fields.
      */
-    sub(partitionKey?: string[], sortKey?: string[]): IPersistence<T>;
+    sub(partitionKey?: string[]): IPersistence<T>;
+
+    query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<T>>;
 }
 
 export interface IVolatileTimerHandle {

@@ -5,8 +5,8 @@ describe('Logging', () => {
     test('Basic', async () => {
         const logger = new Tracer();
         expect(currentScope()).toBe(logger.root());
-        const a = logger.newChildScope('A');
-        a.perform(() => {
+        const a = logger.newChildScope('A', undefined, undefined, { correlationIds: ['cid'] });
+        a.performSync(() => {
             expect(currentScope()).toBe(a);
         });
         expect(currentScope()).toBe(logger.root());
@@ -27,7 +27,7 @@ describe('Logging', () => {
     test('Async simple', async () => {
         const logger = new Tracer();
         expect(currentScope()).toBe(logger.root());
-        const a = logger.newChildScope('A');
+        const a = logger.newChildScope('A', undefined, undefined, { correlationIds: ['cid'] });
         await a.perform(async () => {
             expect(currentScope()).toBe(a);
             await sleep(500);
@@ -80,7 +80,7 @@ describe('Logging', () => {
     test('Async complex with all proper callAsyncs', async () => {
         const logger = new Tracer();
         expect(currentScope()).toBe(logger.root());
-        const a = logger.newChildScope('A');
+        const a = logger.newChildScope('A', undefined, undefined, { correlationIds: ['cid'] });
         await a.perform(async () => {
             setTimeout(() => {
                 a.newChildScope('b').perform(async () => {

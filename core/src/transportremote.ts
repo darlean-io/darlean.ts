@@ -65,8 +65,8 @@ export class TransportRemote implements IRemote {
 
         const pending = this.pendingCalls;
         this.pendingCalls = new Map();
-        for (const p of pending.values()) {
-            console.log('PENDING CALL', p);
+        if (pending.size > 0) {
+            console.log('THERE ARE STILL', pending.size, 'PENDING CALLS');
         }
         // The following code cancels aLL pending calls which effectively helps to
         // prevent the application from hanging at exit, but doing so is a sign that
@@ -80,11 +80,11 @@ export class TransportRemote implements IRemote {
         }*/
     }
 
-    public async invoke(options: IInvokeOptions): Promise<IInvokeResult> {
+    public invoke(options: IInvokeOptions): Promise<IInvokeResult> {
         return deeper('io.darlean.remotetransport.invoke', options.destination).perform(() => this.invokeImpl(options));
     }
 
-    protected async invokeImpl(options: IInvokeOptions): Promise<IInvokeResult> {
+    protected invokeImpl(options: IInvokeOptions): Promise<IInvokeResult> {
         const callId = uuid.v4();
 
         const env: ITransportEnvelope = {
@@ -200,7 +200,7 @@ export class TransportRemote implements IRemote {
                 }
             } else {
                 // Handle a new message that is to be sent to a local actor
-                setImmediate(async () => {
+                process.nextTick(async () => {
                     const request = this.fromTransportRequest(contents as ITransportActorCallRequest);
                     await deeper(
                         'io.darlean.remotetransport.incoming-action',

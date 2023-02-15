@@ -39,7 +39,7 @@ export interface ILogStruct extends IEventStruct {
 }
 
 export class FileTracer {
-    protected items: string[];
+    protected items: Map<string, string[]>;
     protected uid: string;
     protected tracer: Tracer;
     protected application: string;
@@ -48,7 +48,7 @@ export class FileTracer {
     constructor(tracer: Tracer, application: string, path?: string) {
         this.tracer = tracer;
         this.application = application;
-        this.items = [];
+        this.items = new Map();
         this.uid = uuid.v4();
         this.path = path ?? './trace';
 
@@ -60,18 +60,21 @@ export class FileTracer {
                 scope: event.scope,
                 id: typeof event.id === 'string' ? event.id : event.id?.join(':'),
                 moment: event.start,
+                momentExact: event.startExact,
                 uid: event.getUid(),
                 parentUid: event.getParentUid(),
                 cids: event.getCorrelationIds(),
                 application: this.application
             };
-            this.items.push(JSON.stringify(struct));
+            this.pushItem(struct);
         });
 
         tracer.on('exit', (event) => {
             let duration: number | undefined;
             const now = performance.now();
-            if (event.startExact) {
+            if (event.duration) {
+                duration = event.duration;
+            } else if (event.startExact) {
                 duration = now - event.startExact;
             }
             const struct: ILeaveStruct = {
@@ -81,6 +84,7 @@ export class FileTracer {
                 scope: event.scope,
                 id: typeof event.id === 'string' ? event.id : event.id?.join(':'),
                 moment: Date.now(),
+                momentExact: now,
                 duration,
                 uid: event.getUid(),
                 parentUid: event.getParentUid(),
@@ -88,22 +92,24 @@ export class FileTracer {
                 application: this.application,
                 exception: event.getException()?.toString()
             };
-            this.items.push(JSON.stringify(struct));
+            this.pushItem(struct);
         });
 
         tracer.on('rawLog', (event) => {
             const args = event.args?.();
+            const now = performance.now();
             const struct: ILogStruct = {
                 level: event.level,
                 _: fillers[event.level.length] ?? '',
                 message: replaceArguments(event.msg, args),
                 moment: Date.now(),
+                momentExact: now,
                 uid: uuid.v4(),
                 parentUid: event.scope.getUid(),
                 cids: event.scope.getCorrelationIds(),
                 application: this.application
             };
-            this.items.push(JSON.stringify(struct));
+            this.pushItem(struct);
         });
 
         onApplicationStop(() => {
@@ -112,10 +118,24 @@ export class FileTracer {
     }
 
     public dump() {
-        const fullName = [this.path, `${this.uid}.json.txt`].join('/');
-        const p = pathlib.dirname(fullName);
-        fs.mkdirSync(p, { recursive: true });
-        const contents = this.items.join('\n');
-        fs.writeFileSync(fullName, contents);
+        for (const [cid, c] of this.items.entries()) {
+            const fullName = [this.path, `${cid}.${this.uid}.json.txt`].join('/');
+            const p = pathlib.dirname(fullName);
+            fs.mkdirSync(p, { recursive: true });
+            const contents = c.join('\n');
+            fs.writeFileSync(fullName, contents);
+        }
+    }
+
+    protected pushItem(struct: IEventStruct) {
+        const str = JSON.stringify(struct);
+        for (const cid of struct.cids ?? []) {
+            let c = this.items.get(cid);
+            if (!c) {
+                c = [];
+                this.items.set(cid, c);
+            }
+            c.push(str);
+        }
     }
 }

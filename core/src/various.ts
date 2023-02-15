@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { IPersistable, IPersistence } from '@darlean/base';
+import { IPersistable, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult } from '@darlean/base';
 import { replaceAll } from '@darlean/utils';
 
 class MemoryPersistable<T> implements IPersistable<T> {
@@ -77,6 +77,10 @@ export class MemoryPersistence<T> implements IPersistence<T> {
         this.values = new Map();
     }
 
+    public async query(_options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<T>> {
+        throw new Error('Method not implemented.');
+    }
+
     public persistable(partitionKey: string[] | undefined, sortKey: string[] | undefined, value: T | undefined): IPersistable<T> {
         return new MemoryPersistable(this, partitionKey, sortKey, value);
     }
@@ -116,8 +120,8 @@ export class MemoryPersistence<T> implements IPersistence<T> {
         p.set(skey, value);
     }
 
-    public sub(partitionKey?: string[], sortKey?: string[]): IPersistence<T> {
-        return new SubPersistence<T>(this, partitionKey, sortKey);
+    public sub(partitionKey?: string[]): IPersistence<T> {
+        return new SubPersistence<T>(this, partitionKey);
     }
 
     public clear() {
@@ -128,17 +132,29 @@ export class MemoryPersistence<T> implements IPersistence<T> {
 export class SubPersistence<T> implements IPersistence<T> {
     protected superPersistence: IPersistence<T>;
     protected basePartitionKey: string[];
-    protected baseSortKey: string[];
 
-    constructor(superPersistence: IPersistence<T>, basePartitionKey?: string[], baseSortKey?: string[]) {
+    constructor(superPersistence: IPersistence<T>, basePartitionKey?: string[]) {
         this.superPersistence = superPersistence;
         this.basePartitionKey = basePartitionKey || [];
-        this.baseSortKey = baseSortKey || [];
+    }
+
+    public query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<T>> {
+        const keys = this.deriveKeys(options.partitionKey);
+        return this.superPersistence.query({
+            partitionKey: keys.pk,
+            sortKeyFrom: options.sortKeyFrom,
+            sortKeyTo: options.sortKeyTo,
+            sortKeyPrefix: options.sortKeyPrefix,
+            continuationToken: options.continuationToken,
+            maxItems: options.maxItems,
+            sortKeyOrder: options.sortKeyOrder,
+            specifiers: options.specifiers
+        });
     }
 
     public persistable(partitionKey: string[] | undefined, sortKey: string[] | undefined, value: T | undefined): IPersistable<T> {
-        const keys = this.deriveKeys(partitionKey, sortKey);
-        return this.superPersistence.persistable(keys.pk, keys.sk, value);
+        const keys = this.deriveKeys(partitionKey);
+        return this.superPersistence.persistable(keys.pk, sortKey, value);
     }
 
     public async load(partitionKey?: string[], sortKey?: string[]): Promise<IPersistable<T>> {
@@ -147,19 +163,16 @@ export class SubPersistence<T> implements IPersistence<T> {
         return p;
     }
 
-    public sub(partitionKey?: string[], sortKey?: string[]): IPersistence<T> {
-        const keys = this.deriveKeys(partitionKey, sortKey);
-        return new SubPersistence<T>(this, keys.pk, keys.sk);
+    public sub(partitionKey?: string[]): IPersistence<T> {
+        const keys = this.deriveKeys(partitionKey);
+        return new SubPersistence<T>(this, keys.pk);
     }
 
-    protected deriveKeys(partitionKey: string[] | undefined, sortKey: string[] | undefined): { pk: string[]; sk: string[] } {
+    protected deriveKeys(partitionKey: string[] | undefined) {
         if (partitionKey?.length ?? 0 > 0) {
-            if (this.baseSortKey.length > 0) {
-                throw new Error(`Sub partition key only allowed when there is no base sort key`);
-            }
-            return { pk: [...this.basePartitionKey, ...(partitionKey ?? [])], sk: sortKey ?? [] };
+            return { pk: [...this.basePartitionKey, ...(partitionKey ?? [])] };
         } else {
-            return { pk: this.basePartitionKey, sk: [...this.baseSortKey, ...(sortKey ?? [])] };
+            return { pk: this.basePartitionKey };
         }
     }
 }

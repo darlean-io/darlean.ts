@@ -1,14 +1,16 @@
-import { action, IActivatable, ITypedPortal } from '@darlean/base';
-import { FsPersistenceActor } from './actor.impl';
-import * as crypto from 'crypto';
-import type {
+import {
+    action,
+    IActivatable,
     IPersistenceLoadOptions,
     IPersistenceLoadResult,
     IPersistenceQueryOptions,
     IPersistenceQueryResult,
     IPersistenceService,
-    IPersistenceStoreOptions
-} from '@darlean/persistence-suite';
+    IPersistenceStoreOptions,
+    ITypedPortal
+} from '@darlean/base';
+import { FsPersistenceActor } from './actor.impl';
+import * as crypto from 'crypto';
 
 export interface IFsPersistenceServiceOptions {
     shardCount: number;
@@ -40,32 +42,33 @@ export class FsPersistenceService implements IPersistenceService, IActivatable {
         }
     }
 
-    @action()
-    public async store(options: IPersistenceStoreOptions): Promise<void> {
+    @action({ locking: 'shared' })
+    public store(options: IPersistenceStoreOptions): Promise<void> {
         const shardIdx = this.deriveShardIdx(options.partitionKey);
         const shard = this.shards[shardIdx];
-        await shard.actor.store(options);
+        return shard.actor.store(options);
     }
 
-    @action()
-    public async load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult> {
+    @action({ locking: 'shared' })
+    public load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult> {
         const shardIdx = this.deriveShardIdx(options.partitionKey);
         const shard = this.shards[shardIdx];
-        return await shard.actor.load(options);
+        return shard.actor.load(options);
     }
 
-    @action()
-    public async query(_options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult> {
-        throw new Error('Method not implemented.');
+    @action({ locking: 'shared' })
+    public query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>> {
+        const shardIdx = this.deriveShardIdx(options.partitionKey);
+        const shard = this.shards[shardIdx];
+        return shard.actor.query(options);
     }
 
     protected deriveShardIdx(partitionKey: string[]): number {
-        let offset = 0;
         const hash = crypto.createHash('sha1');
         for (const part of partitionKey as string[]) {
-            hash.push(part, 'utf8');
+            hash.update(part, 'utf8');
         }
-        offset = hash.digest().readUInt16BE() % this.shards.length;
+        const offset = hash.digest().readUInt16BE() % this.shards.length;
         return offset;
     }
 }

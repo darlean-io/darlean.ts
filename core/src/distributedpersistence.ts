@@ -1,5 +1,11 @@
-import { IPersistable, IPersistence } from '@darlean/base';
-import type { IPersistenceService } from '@darlean/persistence-suite';
+import {
+    IPersistable,
+    IPersistence,
+    IPersistenceQueryOptions,
+    IPersistenceQueryResult,
+    IPersistenceService,
+    IQueryItem
+} from '@darlean/base';
 import { IDeSer } from './infra/deser';
 import { SubPersistence } from './various';
 
@@ -87,6 +93,34 @@ export class DistributedPersistence<T> implements IPersistence<T> {
         this.specifiers = specifiers;
     }
 
+    public async query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<T>> {
+        const intermediate = await this.service.query({
+            specifiers: this.specifiers,
+            partitionKey: options.partitionKey,
+            sortKeyFrom: options.sortKeyFrom,
+            sortKeyTo: options.sortKeyTo,
+            sortKeyPrefix: options.sortKeyPrefix,
+            maxItems: options.maxItems,
+            continuationToken: options.continuationToken,
+            sortKeyOrder: options.sortKeyOrder
+        });
+
+        const results: IPersistenceQueryResult<T> = {
+            continuationToken: intermediate.continuationToken,
+            items: []
+        };
+
+        for (const item of intermediate.items) {
+            const item2: IQueryItem<T> = {
+                sortKey: item.sortKey,
+                value: item.value ? (this.deser.deserialize(item.value) as T) : undefined
+            };
+            results.items.push(item2);
+        }
+
+        return results;
+    }
+
     public persistable(partitionKey: string[] | undefined, sortKey: string[] | undefined, value: T | undefined): IPersistable<T> {
         return new DistributedPersistable(this, partitionKey, sortKey, value);
     }
@@ -130,7 +164,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
         });
     }
 
-    public sub(partitionKey?: string[] | undefined, sortKey?: string[] | undefined): IPersistence<T> {
-        return new SubPersistence(this, partitionKey, sortKey);
+    public sub(partitionKey?: string[] | undefined): IPersistence<T> {
+        return new SubPersistence(this, partitionKey);
     }
 }

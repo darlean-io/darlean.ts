@@ -1,7 +1,8 @@
 /**
  * This module provides a promise interface to the sqlite3 database module.
  *
- * Copied and adjusted to have proper TS bindings
+ * Copied from https://www.npmjs.com/package/sqlite-async and then adjusted to have proper TS bindings
+ * and pooling.
  */
 import * as sqlite from 'sqlite3';
 
@@ -77,7 +78,7 @@ export class Database {
         }
         const pool = new StatementPool(this, sql);
         const s = await pool.obtain();
-        await s.release();
+        s.release();
         return pool;
     }
 
@@ -109,6 +110,10 @@ export class StatementPool {
         this.statements = [];
     }
 
+    public tryObtain(): Statement | undefined {
+        return this.statements.pop();
+    }
+
     public async obtain(): Promise<Statement> {
         if (this.statements.length === 0) {
             const s = await this.db._prepare(this, this.sql);
@@ -119,7 +124,7 @@ export class StatementPool {
         }
     }
 
-    public async release(value: Statement): Promise<void> {
+    public release(value: Statement): void {
         this.statements.push(value);
     }
 
@@ -142,9 +147,8 @@ export class Statement {
         this.statement = statement;
     }
 
-    public async release(): Promise<void> {
-        await this.reset();
-        await this.pool.release(this);
+    public release(): void {
+        this.pool.release(this);
     }
 
     public async _finalize(): Promise<void> {
@@ -218,14 +222,6 @@ export class Statement {
                     }
                 }
             );
-        });
-    }
-
-    protected async reset(): Promise<void> {
-        return new Promise((resolve) => {
-            this.statement.reset((_) => {
-                resolve();
-            });
         });
     }
 }

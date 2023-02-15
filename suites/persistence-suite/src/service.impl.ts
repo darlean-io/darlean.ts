@@ -1,13 +1,15 @@
-import { action, ApplicationError, IPortal } from '@darlean/base';
-import { replaceAll, wildcardMatch } from '@darlean/utils';
 import {
-    IPersistenceService,
-    IPersistenceStoreOptions,
+    action,
+    ApplicationError,
     IPersistenceLoadOptions,
     IPersistenceLoadResult,
     IPersistenceQueryOptions,
-    IPersistenceQueryResult
-} from '.';
+    IPersistenceQueryResult,
+    IPersistenceService,
+    IPersistenceStoreOptions,
+    IPortal
+} from '@darlean/base';
+import { replaceAll, wildcardMatch } from '@darlean/utils';
 
 export interface IPersistenceMapping {
     specifier: string;
@@ -33,28 +35,28 @@ export class PersistenceService implements IPersistenceService {
         this.portal = portal;
     }
 
-    @action()
-    public async store(options: IPersistenceStoreOptions): Promise<void> {
+    @action({ locking: 'shared' })
+    public store(options: IPersistenceStoreOptions): Promise<void> {
         const compartment = this.deriveCompartment(options.specifiers || []);
         const handler = this.deriveHandler(compartment);
         const p = this.portal.retrieve<IPersistenceService>(handler.actorType, [compartment]);
-        await p.store(options);
+        return p.store(options);
     }
 
-    @action()
-    public async load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult> {
+    @action({ locking: 'shared' })
+    public load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult> {
         const compartment = this.deriveCompartment(options.specifiers || []);
         const handler = this.deriveHandler(compartment);
         const p = this.portal.retrieve<IPersistenceService>(handler.actorType, [compartment]);
-        return await p.load(options);
+        return p.load(options);
     }
 
-    @action()
-    public async query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult> {
+    @action({ locking: 'shared' })
+    public query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>> {
         const compartment = this.deriveCompartment(options.specifiers || []);
         const handler = this.deriveHandler(compartment);
         const p = this.portal.retrieve<IPersistenceService>(handler.actorType, [compartment]);
-        return await p.query(options);
+        return p.query(options);
     }
 
     protected deriveCompartment(specifiers: string[]): string {

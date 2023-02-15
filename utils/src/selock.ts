@@ -51,6 +51,25 @@ export class SharedExclusiveLock {
     }
 
     /**
+     * Tries to obtain a shared lock, and return immediately when this is not immediately
+     * possible. See [[beginShared]].
+     * @returns True when the shared lock was granted, False otherwise. Throws `'TAKEN_OVER'` when
+     * the lock has been taken over.
+     */
+    public tryBeginShared(token: string, _reentrancyTokens?: string[]): boolean {
+        if (this.disabled) {
+            throw new Error('TAKEN_OVER');
+        }
+
+        if (this.exclusiveTokens.length === 0 && this.sharedTokens.length === 0) {
+            this.sharedTokens.push(token);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Begin a shared lock, and wait until it is granted. A shared lock is granted
      * when no exclusive lock is active and when the lock is not taken over. It is
      * also granted when an exclusive lock is active, or when the lock is taken over,
@@ -85,6 +104,25 @@ export class SharedExclusiveLock {
     }
 
     /**
+     * Tries to obtain an exclusive lock, and return immediately when this is not immediately
+     * possible. See [[beginExclusive]].
+     * @returns True when the exclusive lock was granted, False otherwise. Throws `'TAKEN_OVER'` when
+     * the lock is taken over.
+     */
+    public tryBeginExclusive(token: string, _reentrancyTokens?: string[]): boolean {
+        if (this.disabled) {
+            throw new Error('TAKEN_OVER');
+        }
+
+        if (this.exclusiveTokens.length === 0 && this.sharedTokens.length === 0) {
+            this.exclusiveTokens.push(token);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Begin an exclusive lock, and wait until it is granted. An exclusive lock is granted
      * when no shared locks are active and when the lock is not taken over. It is
      * also granted when an other exclusive lock is active, or when the lock is taken over,
@@ -106,23 +144,6 @@ export class SharedExclusiveLock {
             this.tryProcessStep();
         });
         return p;
-    }
-
-    /**
-     * Tries to obtain an exclusive lock, and return immediately when this is not immediately
-     * possible. See [[beginExclusive]].
-     * @returns True when the exclusive lock was granted, False otherwise. Throws `'TAKEN_OVER'` when
-     * the lock is taken over or `'NO_UPGRADE'` when the caller tries to upgrade a shared lock to an exclusive lock.
-     */
-    public tryBeginExclusive(token: string, reentrancyTokens?: string[]): boolean {
-        this.pendingExclusives.push({
-            token,
-            tokens: reentrancyTokens ?? [],
-            kind: 'exclusive',
-            resolve: undefined,
-            reject: undefined
-        });
-        return this.tryProcessStep();
     }
 
     public endExclusive(token: string): void {

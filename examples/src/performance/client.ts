@@ -1,5 +1,5 @@
 import { IPerformanceActor, PERFORMANCE_ACTOR_STATIC } from './actor.intf';
-import { FileTracer, parallel, ParallelTask, Time, Tracer } from '@darlean/utils';
+import { FileTracer, parallel, ParallelTask, sleep, Time, Tracer } from '@darlean/utils';
 import { ConfigRunnerBuilder } from '@darlean/core';
 
 async function main(servers: string[]) {
@@ -11,6 +11,8 @@ async function main(servers: string[]) {
     await runner.start();
 
     try {
+        await sleep(5000);
+
         const time = new Time();
         const portal = runner.getPortal().typed<IPerformanceActor>(PERFORMANCE_ACTOR_STATIC);
 
@@ -25,7 +27,7 @@ async function main(servers: string[]) {
         }
 
         const start = time.machineTicks();
-        const results = await parallel(tasks, 120 * 1000, 100);
+        const results = await parallel(tasks, 120 * 1000, 1000);
         if (results.status === 'completed') {
             let success = 0;
             let error = 0;

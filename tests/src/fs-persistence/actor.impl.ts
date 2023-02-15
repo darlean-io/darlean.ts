@@ -1,4 +1,4 @@
-import { action, ActorSuite, IActorSuite, IPersistence } from '@darlean/base';
+import { action, ActorSuite, IActorSuite, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult } from '@darlean/base';
 
 export const STORAGE_TEST_ACTOR = 'StorageTestActor';
 
@@ -9,7 +9,7 @@ export class StorageTestActor {
         this.persistence = persistence;
     }
 
-    @action()
+    @action({ locking: 'shared' })
     public async store(partitionKey: string[], sortKey: string[], value: string | undefined): Promise<void> {
         const p = this.persistence.persistable(partitionKey, sortKey);
         if (value === undefined) {
@@ -20,14 +20,19 @@ export class StorageTestActor {
         await p.store();
     }
 
-    @action()
+    @action({ locking: 'shared' })
     public async get(partitionKey: string[], sortKey: string[]): Promise<string | undefined> {
         const p = this.persistence.persistable(partitionKey, sortKey);
         return await p.load();
     }
+
+    @action({ locking: 'shared' })
+    public async query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<string>> {
+        return this.persistence.query(options);
+    }
 }
 
-export default function suite(): IActorSuite {
+export function testActorSuite(): IActorSuite {
     return new ActorSuite([
         {
             type: STORAGE_TEST_ACTOR,

@@ -1,9 +1,9 @@
 import { ConfigRunnerBuilder } from '@darlean/core';
-import suite from './actor.impl';
+import { testActorSuite } from './actor.impl';
 
 async function main() {
     const builder = new ConfigRunnerBuilder();
-    builder.registerSuite(suite());
+    builder.registerSuite(testActorSuite());
     const runner = builder.build();
     await runner.run();
 }

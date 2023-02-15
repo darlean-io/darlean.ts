@@ -75,7 +75,7 @@ export default function suite(options: IFsPersistenceOptions) {
                 const shard = context.id[context.id.length - 2];
                 const shardCount = opts.shardCount ?? DEFAULT_SHARD_COUNT;
                 const path = [opts.basePath, opts.subPath, compartment, shardCount, shard, boundNode].join('/');
-                return new FsPersistenceActor(path);
+                return new FsPersistenceActor(path, context.time);
             }
         },
         {

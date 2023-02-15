@@ -51,7 +51,7 @@ export class Time implements ITime {
                 await util_sleep(nextDelay, aborter);
                 if (!cancelled) {
                     try {
-                        await scope.branch('io.darlean.timer-callback', name).perform(callback);
+                        await scope.branch('io.darlean.timer-callback', name).perform(callback as () => Promise<unknown>);
                     } catch (e) {
                         scope.error('Error in callback of timer [Name]: [Error]', () => ({
                             Name: name,
