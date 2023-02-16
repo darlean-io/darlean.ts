@@ -21,7 +21,7 @@ export type ParallelTask<TaskResult, FinalResult> = (abort: ParallelAbort<FinalR
  * abort the parallel processing early. They can then also specify a 'final result'
  * value that is then returned as part of the result.
  */
-export async function parallel<TaskResult, FinalResult>(
+export function parallel<TaskResult, FinalResult>(
     tasks: Array<ParallelTask<TaskResult, FinalResult>>,
     timeout: number,
     maxConcurrency?: number
@@ -82,48 +82,38 @@ export async function parallel<TaskResult, FinalResult>(
                 if (maxConcurrency === undefined || nrunning < maxConcurrency) {
                     const task = tasks[idx];
                     const result = results.results[idx];
-                    try {
-                        nrunning++;
-                        const idxString = idx.toString();
-                        process.nextTick(async () => {
-                            await currentScope()
-                                .branch('io.darlean.parallel', idxString)
-                                .perform(async () => {
-                                    try {
-                                        const value = await task(
-                                            /*abort*/ (finalResult) => {
-                                                if (done) {
-                                                    return;
-                                                }
-                                                results.result = finalResult;
-                                                results.status = 'aborted';
-                                                abort = true;
-                                            }
-                                        );
-
+                    nrunning++;
+                    const idxString = idx.toString();
+                    process.nextTick(() => {
+                        return currentScope().branch('io.darlean.parallel', idxString).perform(async () => {
+                            try {
+                                const value = await task(
+                                    /*abort*/ (finalResult) => {
                                         if (done) {
                                             return;
                                         }
-                                        result.result = value;
-                                        result.done = true;
-                                        closeOneTask();
-                                    } catch (e) {
-                                        if (done) {
-                                            return;
-                                        }
-                                        result.error = e;
-                                        result.done = true;
-                                        closeOneTask();
+                                        results.result = finalResult;
+                                        results.status = 'aborted';
+                                        abort = true;
                                     }
-                                });
+                                );
+
+                                if (done) {
+                                    return;
+                                }
+                                result.result = value;
+                                result.done = true;
+                                closeOneTask();
+                            } catch (e) {
+                                if (done) {
+                                    return;
+                                }
+                                result.error = e;
+                                result.done = true;
+                                closeOneTask();
+                            }
                         });
-                    } catch (e) {
-                        if (done) {
-                            return;
-                        }
-                        result.error = e;
-                        closeOneTask();
-                    }
+                    });
                     idx++;
                 } else {
                     break;
