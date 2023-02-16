@@ -188,6 +188,11 @@ export class ActorRunnerBuilder {
     public setRuntimeApps(apps: string[]): ActorRunnerBuilder {
         this.runtimeApps = apps;
 
+        // Always register the actor registry service so that we can find it (chicken-egg problem: without actor
+        // registry service, we cannot find the actor registry service).
+        // Note: We do not RUN the actor registry service (we do not specify a creator); we just make sure that
+        // we can find it.
+
         this.registerActor({
             type: ACTOR_REGISTRY_SERVICE,
             kind: 'singular',

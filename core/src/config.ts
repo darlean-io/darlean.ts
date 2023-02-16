@@ -285,8 +285,8 @@ export class ConfigRunnerBuilder {
                 ? config.runtime?.enabled ?? (allInOne || implicitRuntime)
                 : runtimeEnabledString.toLowerCase() === 'true';
 
-        builder.setRuntimeApps(runtimeApps);
-
+        // Note: We first configure/register the actor lock, before registering the actor registry (and others),
+        // because the deactivate happens in reverse order and actor registry needs actor lock.
         if (runtimeEnabled) {
             const runtime = config.runtime;
 
@@ -295,6 +295,11 @@ export class ConfigRunnerBuilder {
             this.configurePersistence(builder, runtime);
             this.configureFsPersistence(builder, runtime);
         }
+
+        // Note: This call also registers the default appid's of the actor registry. Do this AFTER
+        // the call to configureHostActorRegistry, to ensure that the actor lock is registered with
+        // the builder BEFORE the actor registry. Otherwise, we may have problems during deactivate.
+        builder.setRuntimeApps(runtimeApps);
 
         this.configureActors(builder);
         this.configureTransports(builder, config, allInOne, runtimeApps, appId);
