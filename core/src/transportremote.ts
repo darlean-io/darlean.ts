@@ -22,10 +22,13 @@ export const TRANSPORT_ERROR_TRANSPORT_CALL_INTERRUPTED = 'TRANSPORT_CALL_INTERR
 
 export const TRANSPORT_ERROR_PARAMETER_MESSAGE = 'Message';
 
+const DEBUG_PENDING_CALLS = false;
+
 interface IRemotePendingCall {
     resolve: (value: IInvokeResult) => void;
     reject: (error: unknown) => void;
     timeout: NodeJS.Timeout;
+    options?: IInvokeOptions;
 }
 
 export interface IRemoteCallEnvelope extends IEnvelope {
@@ -67,6 +70,11 @@ export class TransportRemote implements IRemote {
         this.pendingCalls = new Map();
         if (pending.size > 0) {
             console.log('THERE ARE STILL', pending.size, 'PENDING CALLS');
+            for (const p of pending.values()) {
+                if (p.options) {
+                    console.log('PENDING CALL', JSON.stringify(p.options));
+                }
+            }
         }
         // The following code cancels aLL pending calls which effectively helps to
         // prevent the application from hanging at exit, but doing so is a sign that
@@ -105,7 +113,8 @@ export class TransportRemote implements IRemote {
                     resolve({
                         errorCode: TRANSPORT_ERROR_TRANSPORT_CALL_TIMEOUT
                     });
-                }, 60 * 1000)
+                }, 60 * 1000),
+                options: DEBUG_PENDING_CALLS ? options : undefined
             };
             this.pendingCalls.set(callId, call);
 
@@ -200,9 +209,9 @@ export class TransportRemote implements IRemote {
                 }
             } else {
                 // Handle a new message that is to be sent to a local actor
-                process.nextTick(async () => {
+                setImmediate(() => {
                     const request = this.fromTransportRequest(contents as ITransportActorCallRequest);
-                    await deeper(
+                    deeper(
                         'io.darlean.remotetransport.incoming-action',
                         `${request.actorType}::${request.actorId}::${request.actionName}`
                     ).perform(async () => {
