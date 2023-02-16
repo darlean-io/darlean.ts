@@ -114,9 +114,7 @@ export class ActorLockActor implements IDeactivatable {
     }
 
     @action()
-    public getLockHolder(
-        request: IActorLockService_GetLockHolders_Request
-    ): Promise<IActorLockActor_GetLockHolder_Response> {
+    public getLockHolder(request: IActorLockService_GetLockHolders_Request): Promise<IActorLockActor_GetLockHolder_Response> {
         const idAsString = encodeKeyFast(request.id);
         const current = this.locks.get(idAsString);
         const now = this.time.machineTicks();

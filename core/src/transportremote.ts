@@ -79,7 +79,7 @@ export class TransportRemote implements IRemote {
             // The following code cancels aLL pending calls which effectively helps to
             // prevent the application from hanging at exit, but doing so is a sign that
             // somewhere else things are not cleaned up properly.
-            
+
             if (ABORT_PENDING_CALLS) {
                 for (const p of pending.values()) {
                     clearTimeout(p.timeout);
