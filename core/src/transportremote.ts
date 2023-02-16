@@ -22,7 +22,8 @@ export const TRANSPORT_ERROR_TRANSPORT_CALL_INTERRUPTED = 'TRANSPORT_CALL_INTERR
 
 export const TRANSPORT_ERROR_PARAMETER_MESSAGE = 'Message';
 
-const DEBUG_PENDING_CALLS = false;
+const DEBUG_PENDING_CALLS = true;
+const ABORT_PENDING_CALLS = true;
 
 interface IRemotePendingCall {
     resolve: (value: IInvokeResult) => void;
@@ -75,17 +76,17 @@ export class TransportRemote implements IRemote {
                     console.log('PENDING CALL', JSON.stringify(p.options));
                 }
             }
+            // The following code cancels aLL pending calls which effectively helps to
+            // prevent the application from hanging at exit, but doing so is a sign that
+            // somewhere else things are not cleaned up properly.
+            
+            if (ABORT_PENDING_CALLS) {
+                for (const p of pending.values()) {
+                    clearTimeout(p.timeout);
+                    p.reject(TRANSPORT_ERROR_TRANSPORT_CALL_INTERRUPTED);
+                }
+            }
         }
-        // The following code cancels aLL pending calls which effectively helps to
-        // prevent the application from hanging at exit, but doing so is a sign that
-        // somewhere else things are not cleaned up properly.
-        // So let's keep this code commented out for now.
-        /*const pending = this.pendingCalls;
-        this.pendingCalls = new Map();
-        for (const p of pending.values()) {
-            clearTimeout(p.timeout);
-            p.reject(TRANSPORT_ERROR_TRANSPORT_CALL_INTERRUPTED);
-        }*/
     }
 
     public invoke(options: IInvokeOptions): Promise<IInvokeResult> {
