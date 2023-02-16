@@ -11,7 +11,7 @@ async function main(servers: string[]) {
     await runner.start();
 
     try {
-        await sleep(5000);
+        await sleep(10000);
 
         const time = new Time();
         const portal = runner.getPortal().typed<IPerformanceActor>(PERFORMANCE_ACTOR_STATIC);
@@ -42,6 +42,13 @@ async function main(servers: string[]) {
 
             console.log('Errors', error);
             if (error > 0) {
+                let idx = 0;
+                for (const result of results.results) {
+                    if (result.error) {
+                        console.log('ERROR', idx, result.error, JSON.stringify(result.error));
+                    }
+                    idx++;
+                }
                 process.exitCode = 2;
             }
 
