@@ -55,7 +55,7 @@ export class ActorLockActor implements IDeactivatable {
     }
 
     @action()
-    public async acquire(request: IActorLockActor_Acquire_Request): Promise<IActorLockService_Acquire_Response> {
+    public acquire(request: IActorLockActor_Acquire_Request): Promise<IActorLockService_Acquire_Response> {
         const scope = currentScope();
 
         scope.deep('Try to acquire lock for [Id] by [Requester]', () => ({ Id: request.id, Requester: request.requester }));
@@ -66,10 +66,10 @@ export class ActorLockActor implements IDeactivatable {
             if (current.until > now) {
                 if (current.holder !== request.requester) {
                     scope.deep('Rejected');
-                    return {
+                    return Promise.resolve({
                         duration: 0,
                         holders: [current.holder]
-                    };
+                    });
                 }
             }
         }
@@ -92,14 +92,14 @@ export class ActorLockActor implements IDeactivatable {
 
         this.locks.set(idAsString, value);
         scope.deep('Granted');
-        return {
+        return Promise.resolve({
             duration,
             holders: [request.requester]
-        };
+        });
     }
 
     @action()
-    public async release(request: IActorLockService_Release_Request): Promise<void> {
+    public release(request: IActorLockService_Release_Request): Promise<void> {
         const idAsString = encodeKeyFast(request.id);
         const current = this.locks.get(idAsString);
         if (current) {
@@ -110,10 +110,11 @@ export class ActorLockActor implements IDeactivatable {
                 }
             }
         }
+        return Promise.resolve();
     }
 
     @action()
-    public async getLockHolder(
+    public getLockHolder(
         request: IActorLockService_GetLockHolders_Request
     ): Promise<IActorLockActor_GetLockHolder_Response> {
         const idAsString = encodeKeyFast(request.id);
@@ -121,10 +122,10 @@ export class ActorLockActor implements IDeactivatable {
         const now = this.time.machineTicks();
         if (current) {
             if (current.until > now) {
-                return { holder: current.holder };
+                return Promise.resolve({ holder: current.holder });
             }
         }
-        return { holder: undefined };
+        return Promise.resolve({ holder: undefined });
     }
 
     /*

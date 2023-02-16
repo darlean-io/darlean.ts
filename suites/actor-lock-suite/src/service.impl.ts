@@ -91,8 +91,8 @@ export class ActorLockService implements IActorLockService {
 
         const releases: ParallelTask<void, void>[] = [];
         for (const lock of locks) {
-            releases.push(async () => {
-                await lock.actor.release({
+            releases.push(() => {
+                return lock.actor.release({
                     id: request.id,
                     requester: request.requester,
                     acquireId
@@ -111,13 +111,13 @@ export class ActorLockService implements IActorLockService {
     }
 
     @action({ locking: 'shared' })
-    public async release(request: IActorLockService_Release_Request): Promise<void> {
+    public release(request: IActorLockService_Release_Request): Promise<void> {
         const locks = this.findLocks(request.id);
 
         const releases: ParallelTask<void, void>[] = [];
         for (const lock of locks) {
-            releases.push(async () => {
-                await lock.actor.release({
+            releases.push(() => {
+                return lock.actor.release({
                     id: request.id,
                     requester: request.requester,
                     acquireId: request.acquireId
@@ -125,7 +125,7 @@ export class ActorLockService implements IActorLockService {
             });
         }
 
-        await parallel(releases, this.timeout);
+        return parallel(releases, this.timeout) as Promise<unknown> as Promise<void>;
     }
 
     @action({ locking: 'shared' })
