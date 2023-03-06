@@ -4,6 +4,7 @@
  * Copied from https://www.npmjs.com/package/sqlite-async and then adjusted to have proper TS bindings
  * and pooling.
  */
+import { sleep } from '@darlean/utils';
 import * as sqlite from 'sqlite3';
 
 //-----------------------------------------------------------------------------
@@ -103,6 +104,8 @@ export class StatementPool {
     protected statements: Statement[];
     protected sql: string;
     protected db: Database;
+    protected finalizing = false;
+    protected used = 0;
 
     constructor(db: Database, sql: string) {
         this.db = db;
@@ -115,6 +118,7 @@ export class StatementPool {
     }
 
     public async obtain(): Promise<Statement> {
+        this.used++;
         if (this.statements.length === 0) {
             const s = await this.db._prepare(this, this.sql);
             return s;
@@ -128,14 +132,26 @@ export class StatementPool {
         // Without an explicit reset, old statements are keep the (per-connection) cursor locked
         // which means that subsequent select queries do not see newly inserted/updated data.
         process.nextTick(async () => {
-            await value.reset();
-            this.statements.push(value);
+            try {
+                await value.reset();
+                if (this.finalizing) {
+                    await value._finalize();
+                } else {
+                    this.statements.push(value);
+                }
+            } finally {
+                this.used--;
+            }
         });
     }
 
     public async finalize(): Promise<void> {
+        this.finalizing = true;
         for (const s of this.statements) {
             await s._finalize();
+        }
+        while (this.used > 0) {
+            await sleep(1);
         }
     }
 }
