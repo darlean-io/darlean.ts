@@ -1,6 +1,5 @@
 import { ITransport, NatsTransport } from './infra';
-import { BsonDeSer } from './infra/bsondeser';
-import { ApplicationStopHandler, ITime, notifier, offApplicationStop, onApplicationStop } from '@darlean/utils';
+import { ApplicationStopHandler, BsonDeSer, IDeSer, ITime, notifier, offApplicationStop, onApplicationStop } from '@darlean/utils';
 import { Time } from '@darlean/utils';
 import { InstanceContainer, MultiTypeInstanceContainer, VolatileTimer } from './instances';
 import { ActorRegistry, ExponentialBackOff, PlacementCache, RemotePortal } from './remoteinvocation';
@@ -27,7 +26,6 @@ import { DistributedActorRegistry } from './distributedactorregistry';
 import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-registry-suite';
 import actorRegistrySuite from '@darlean/actor-registry-suite';
 import { DistributedPersistence } from './distributedpersistence';
-import { IDeSer } from './infra/deser';
 import persistenceSuite, { IPersistenceServiceOptions } from '@darlean/persistence-suite';
 import fsPersistenceSuite, { IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { normalizeActorType } from './shared';

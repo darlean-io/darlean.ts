@@ -125,7 +125,12 @@ export class StatementPool {
     }
 
     public release(value: Statement): void {
-        this.statements.push(value);
+        // Without an explicit reset, old statements are keep the (per-connection) cursor locked
+        // which means that subsequent select queries do not see newly inserted/updated data.
+        process.nextTick(async () => {
+            await value.reset();
+            this.statements.push(value);
+        });
     }
 
     public async finalize(): Promise<void> {
@@ -149,6 +154,18 @@ export class Statement {
 
     public release(): void {
         this.pool.release(this);
+    }
+
+    public reset(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.statement.reset((err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
     }
 
     public async _finalize(): Promise<void> {

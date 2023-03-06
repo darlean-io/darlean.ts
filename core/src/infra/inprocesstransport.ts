@@ -1,4 +1,4 @@
-import { IDeSer } from './deser';
+import { IDeSer } from '@darlean/utils';
 import {
     ITransportFailure,
     ITransport,

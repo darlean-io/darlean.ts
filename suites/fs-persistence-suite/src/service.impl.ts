@@ -6,8 +6,11 @@ import {
     IPersistenceQueryOptions,
     IPersistenceQueryResult,
     IPersistenceService,
+    IPersistenceStoreBatchOptions,
+    IPersistenceStoreBatchResult,
     IPersistenceStoreOptions,
-    ITypedPortal
+    ITypedPortal,
+    toApplicationError
 } from '@darlean/base';
 import { FsPersistenceActor } from './actor.impl';
 import * as crypto from 'crypto';
@@ -47,6 +50,35 @@ export class FsPersistenceService implements IPersistenceService, IActivatable {
         const shardIdx = this.deriveShardIdx(options.partitionKey);
         const shard = this.shards[shardIdx];
         return shard.actor.store(options);
+    }
+
+    @action({ locking: 'shared' })
+    public async storeBatch(options: IPersistenceStoreBatchOptions): Promise<IPersistenceStoreBatchResult> {
+        const results: IPersistenceStoreBatchResult = { unprocessedItems: [] };
+        const shardBatches: Map<number, IPersistenceStoreBatchOptions> = new Map();
+        for (const item of options.items) {
+            const shardIdx = this.deriveShardIdx(item.partitionKey);
+            let sb = shardBatches.get(shardIdx);
+            if (!sb) {
+                sb = { items: [] };
+                shardBatches.set(shardIdx, sb);
+            }
+            sb.items.push(item);
+        }
+
+        // TODO: In Parallel
+        // TODO: Ensure eventual consistence by putting items in queue first
+        for (const [shardIdx, batch] of shardBatches.entries()) {
+            const shard = this.shards[shardIdx];
+            try {
+                await shard.actor.storeBatch(batch);
+            } catch (e) {
+                for (const item of batch.items) {
+                    results.unprocessedItems.push({ identifier: item.identifier, error: toApplicationError(e) });
+                }
+            }
+        }
+        return results;
     }
 
     @action({ locking: 'shared' })

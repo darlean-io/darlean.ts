@@ -1,4 +1,4 @@
-import { BsonDeSer } from '../infra/bsondeser';
+import { BsonDeSer } from '../bsondeser';
 
 // Originally, caching was enabled by default. But, sometimes when you receive data (like when
 // loading state from persistence), it is natural behaviour of developers to modify the returned

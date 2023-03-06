@@ -1,4 +1,3 @@
-import { IDeSer } from './deser';
 import {
     ITransportFailure,
     ITransport,
@@ -7,8 +6,8 @@ import {
     ITransportSession,
     TRANSPORT_ERROR_UNKNOWN_RECEIVER
 } from './transport';
-import { connect, ErrorCode, NatsConnection, NatsError, Subscription } from 'nats';
-import { currentScope, deeper, ITraceInfo } from '@darlean/utils';
+import { connect, ErrorCode, Msg, NatsConnection, NatsError, Subscription } from 'nats';
+import { currentScope, deeper, IDeSer, ITraceInfo } from '@darlean/utils';
 
 export const NATS_ERROR_NOT_CONNECTED = 'NOT_CONNECTED';
 export const NATS_ERROR_SEND_FAILED = 'SEND_FAILED';
@@ -77,6 +76,7 @@ export class NatsTransportSession implements ITransportSession {
         this.messageHandler = onMessage;
         this.connection = await connect({ waitOnFirstConnect: true, maxReconnectAttempts: -1, servers: this.seedUrls });
         const subscription = this.connection.subscribe(appId);
+        //const subscription = this.connection.subscribe(appId, { callback: (err, msg) => this.handleMessage(err, msg, onMessage) });
         this.subscription = subscription;
         setImmediate(async () => await this.listen(subscription, onMessage));
     }
@@ -208,51 +208,53 @@ export class NatsTransportSession implements ITransportSession {
         }
     }
 
-    protected async listen(sub: Subscription, onMessage: MessageHandler) {
+    protected handleMessage(_err: unknown, m: Msg, onMessage: MessageHandler) {
         try {
-            for await (const m of sub) {
+            const data = m.data;
+
+            const messages = this.deser.deserialize(Buffer.from(data)) as Buffer[];
+            for (const message of messages) {
                 try {
-                    const data = m.data;
+                    const msg = this.deser.deserialize(message) as INatsMessage;
 
-                    const messages = this.deser.deserialize(Buffer.from(data)) as Buffer[];
-                    for (const message of messages) {
-                        try {
-                            const msg = this.deser.deserialize(message) as INatsMessage;
+                    const traceInfo: ITraceInfo | undefined =
+                        msg.cids || msg.parentUid
+                            ? {
+                                  correlationIds: msg.cids || [],
+                                  parentSegmentId: msg.parentUid
+                              }
+                            : undefined;
+                    deeper('io.darlean.nats.received-message', undefined, undefined, traceInfo).performSync(() => {
+                        // We deliberately DID do not send a response ("m.respond()") because the sender does not need this information.
+                        // It would just cost us additional network traffic.
+                        // BUT. It appears that during startup, messages may get lost.
+                        // Performance tests did not show a significant drop.
+                        deeper('io.darlean.nats.send-ack').performSync(() => m.respond());
 
-                            const traceInfo: ITraceInfo | undefined =
-                                msg.cids || msg.parentUid
-                                    ? {
-                                          correlationIds: msg.cids || [],
-                                          parentSegmentId: msg.parentUid
-                                      }
-                                    : undefined;
-                            deeper('io.darlean.nats.received-message', undefined, undefined, traceInfo).performSync(() => {
-                                // We deliberately DID do not send a response ("m.respond()") because the sender does not need this information.
-                                // It would just cost us additional network traffic.
-                                // BUT. It appears that during startup, messages may get lost.
-                                // Performance tests did not show a significant drop.
-                                deeper('io.darlean.nats.send-ack').performSync(() => m.respond());
+                        const contents = msg.contents ? this.deser.deserialize(msg.contents) : undefined;
+                        const failure = msg.failure ? (this.deser.deserialize(msg.failure) as ITransportFailure) : undefined;
 
-                                const contents = msg.contents ? this.deser.deserialize(msg.contents) : undefined;
-                                const failure = msg.failure
-                                    ? (this.deser.deserialize(msg.failure) as ITransportFailure)
-                                    : undefined;
-
-                                deeper('io.darlean.nats.call-message-handler').performSync(() =>
-                                    onMessage(msg.envelope, contents, failure)
-                                );
-                            });
-                        } catch (e) {
-                            currentScope().error('Error during handling of incoming message: [Error]', () => ({
-                                Error: e
-                            }));
-                        }
-                    }
+                        deeper('io.darlean.nats.call-message-handler').performSync(() =>
+                            onMessage(msg.envelope, contents, failure)
+                        );
+                    });
                 } catch (e) {
-                    currentScope().error('Error during handling of incoming message batch: [Error]', () => ({
+                    currentScope().error('Error during handling of incoming message: [Error]', () => ({
                         Error: e
                     }));
                 }
+            }
+        } catch (e) {
+            currentScope().error('Error during handling of incoming message batch: [Error]', () => ({
+                Error: e
+            }));
+        }
+    }
+
+    protected async listen(sub: Subscription, onMessage: MessageHandler) {
+        try {
+            for await (const m of sub) {
+                this.handleMessage(undefined, m, onMessage);
             }
         } catch (e) {
             console.log('Error during listen', e);

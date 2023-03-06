@@ -1,9 +1,10 @@
 import { ConfigRunnerBuilder } from '@darlean/core';
-import { testActorSuite } from './actor.impl';
+import { createTableSuite } from '@darlean/tables-suite';
 
 async function main() {
     const builder = new ConfigRunnerBuilder();
-    builder.registerSuite(testActorSuite());
+    //builder.registerSuite(testActorSuite());
+    builder.registerSuite(createTableSuite());
     const runner = builder.build();
     await runner.run();
 }

@@ -18,3 +18,5 @@ export * from './util';
 export * from './polling';
 export * from './tracetofile';
 export * from './config';
+export * from './deser';
+export * from './bsondeser';

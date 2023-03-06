@@ -1,5 +1,4 @@
-import { sleep, Time } from '@darlean/utils';
-import { BsonDeSer } from '../infra/bsondeser';
+import { BsonDeSer, sleep, Time } from '@darlean/utils';
 import { InProcessTransport } from '../infra/inprocesstransport';
 import { InstanceContainer, MultiTypeInstanceContainer } from '../instances';
 import { ActorRegistry, ExponentialBackOff, RemotePortal } from '../remoteinvocation';

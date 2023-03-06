@@ -6,7 +6,7 @@ import {
     IPersistenceService,
     IQueryItem
 } from '@darlean/base';
-import { IDeSer } from './infra/deser';
+import { IDeSer } from '@darlean/utils';
 import { SubPersistence } from './various';
 
 /**
@@ -141,11 +141,9 @@ export class DistributedPersistence<T> implements IPersistence<T> {
             sortKey: sortKey ?? []
         });
 
-        if (result.value) {
-            const value = this.deser.deserialize(result.value) as T;
-            return [value, result.version];
-        }
-        return [undefined, result.version];
+        const value = result.value ? (this.deser.deserialize(result.value) as T) : undefined;
+        
+        return [value, result.version];
     }
 
     public async storeImpl(

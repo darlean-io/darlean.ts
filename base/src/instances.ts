@@ -1,3 +1,5 @@
+import { ApplicationError, FrameworkError } from './shared';
+
 export interface IActivatable {
     activate(): Promise<void>;
 }
@@ -5,6 +7,9 @@ export interface IActivatable {
 export interface IDeactivatable {
     deactivate(): Promise<void>;
 }
+
+export const APPLICATION_ERROR_FRAMEWORK_ERROR = 'FRAMEWORK_ERROR';
+export const APPLICATION_ERROR_UNEXPECTED_ERROR = 'UNEXPECTED_ERROR';
 
 /**
  * Interface used within the framework to add fields to the prototype ('class') of instances.
@@ -92,4 +97,25 @@ export interface IInstanceWrapper<T extends object> {
     invoke(method: Function | string | undefined, args: unknown): Promise<unknown>;
 
     on(event: 'deactivated', listener: () => void): this;
+}
+
+export function toApplicationError(e: unknown) {
+    if (e instanceof ApplicationError) {
+        return e;
+    }
+    if (e instanceof FrameworkError) {
+        return new ApplicationError(APPLICATION_ERROR_FRAMEWORK_ERROR, e.code, undefined, e.stack, [e], e.message);
+    }
+    if (typeof e === 'object') {
+        const err = e as Error;
+        return new ApplicationError(err.name, undefined, undefined, err.stack, undefined, err.message);
+    } else if (typeof e === 'string') {
+        if (e.includes(' ')) {
+            return new ApplicationError(APPLICATION_ERROR_UNEXPECTED_ERROR, e);
+        } else {
+            return new ApplicationError(e, e);
+        }
+    } else {
+        return new ApplicationError(APPLICATION_ERROR_UNEXPECTED_ERROR, 'Unexpected error');
+    }
 }

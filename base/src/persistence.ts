@@ -1,7 +1,23 @@
+import { IActionError } from './shared';
+
 export interface IPersistenceService {
     store(options: IPersistenceStoreOptions): Promise<void>;
+    storeBatch(options: IPersistenceStoreBatchOptions): Promise<IPersistenceStoreBatchResult>;
     load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult>;
     query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>>;
+}
+
+export interface IPersistenceStoreBatchOptions {
+    items: Array<IPersistenceStoreOptions & { identifier: unknown }>;
+}
+
+export interface IUnprocessedItem {
+    identifier: unknown;
+    error: IActionError;
+}
+
+export interface IPersistenceStoreBatchResult {
+    unprocessedItems: IUnprocessedItem[];
 }
 
 export interface IPersistenceStoreOptions {
@@ -16,6 +32,7 @@ export interface IPersistenceLoadOptions {
     specifiers?: string[];
     partitionKey: string[];
     sortKey?: string[];
+    projectionFilter?: string[];
 }
 
 export interface IPersistenceLoadResult {
@@ -32,6 +49,11 @@ export interface IPersistenceQueryOptions {
     sortKeyPrefix?: string[];
     maxItems?: number;
     continuationToken?: unknown;
+    filterExpression?: unknown[];
+    filterFieldBase?: string;
+    filterPartitionKeyOffset?: number;
+    filterSortKeyOffset?: number;
+    projectionFilter?: string[];
 }
 
 export interface IQueryItem<T> {

@@ -1,4 +1,4 @@
-import { BsonDeSer } from '../infra/bsondeser';
+import { BsonDeSer } from '@darlean/utils';
 import { extractEnvelopeChild, IEnvelope, serializeEnvelope } from '../infra/envelope';
 
 interface IHelloEnvelope extends IEnvelope {

@@ -31,6 +31,7 @@ import { EventEmitter } from 'events';
 import { ITime } from '@darlean/utils';
 import {
     ApplicationError,
+    APPLICATION_ERROR_UNEXPECTED_ERROR,
     FrameworkError,
     FRAMEWORK_ERROR_FINALIZING,
     FRAMEWORK_ERROR_INCORRECT_STATE,
@@ -43,7 +44,8 @@ import {
     IInstancePrototype,
     IInstanceWrapper,
     IMultiTypeInstanceContainer,
-    InstanceCreator
+    InstanceCreator,
+    toApplicationError
 } from '@darlean/base';
 import { IVolatileTimer, IVolatileTimerHandle } from '@darlean/base';
 import { IAcquiredActorLock, IActorLock } from './distributedactorlock';
@@ -53,9 +55,6 @@ const DEACTIVATOR = 'DEACTIVATOR';
 
 const ACTIVATE_METHOD = 'activate';
 const DEACTIVATE_METHOD = 'deactivate';
-
-export const APPLICATION_ERROR_FRAMEWORK_ERROR = 'FRAMEWORK_ERROR';
-export const APPLICATION_ERROR_UNEXPECTED_ERROR = 'UNEXPECTED_ERROR';
 
 export const FRAMEWORK_ERROR_APPLICATION_ERROR = 'APPLICATION_ERROR';
 
@@ -658,27 +657,6 @@ export class VolatileTimer<T extends object> implements IVolatileTimer {
             pause: (duration) => timer.pause(duration),
             resume: (delay) => timer.resume(delay)
         };
-    }
-}
-
-export function toApplicationError(e: unknown) {
-    if (e instanceof ApplicationError) {
-        return e;
-    }
-    if (e instanceof FrameworkError) {
-        return new ApplicationError(APPLICATION_ERROR_FRAMEWORK_ERROR, e.code, undefined, e.stack, [e], e.message);
-    }
-    if (typeof e === 'object') {
-        const err = e as Error;
-        return new ApplicationError(err.name, undefined, undefined, err.stack, undefined, err.message);
-    } else if (typeof e === 'string') {
-        if (e.includes(' ')) {
-            return new ApplicationError(APPLICATION_ERROR_UNEXPECTED_ERROR, e);
-        } else {
-            return new ApplicationError(e, e);
-        }
-    } else {
-        return new ApplicationError(APPLICATION_ERROR_UNEXPECTED_ERROR, 'Unexpected error');
     }
 }
 

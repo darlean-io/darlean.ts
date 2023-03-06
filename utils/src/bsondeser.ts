@@ -1,6 +1,6 @@
 import { IDeSer } from './deser';
 import * as bson from 'bson';
-import { isObject } from '@darlean/utils';
+import { isObject } from './util';
 
 interface IBsonStruct {
     _DARLEAN_BSON_BUFFER: () => Buffer;

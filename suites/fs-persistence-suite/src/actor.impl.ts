@@ -6,12 +6,24 @@ import {
     IPersistenceLoadResult,
     IPersistenceQueryOptions,
     IPersistenceQueryResult,
+    IPersistenceStoreBatchOptions,
     IPersistenceStoreOptions
 } from '@darlean/base';
 import { Database, OPEN_CREATE, OPEN_READWRITE, StatementPool } from './sqlite-async';
 import fs from 'fs';
-import { decodeKeyCompact, encodeKeyCompact, ITime, ITimer, SharedExclusiveLock } from '@darlean/utils';
+import {
+    decodeKeyReadable,
+    encodeKeyReadable,
+    filterStructure,
+    IDeSer,
+    IMultiFilter,
+    ITime,
+    ITimer,
+    parseMultiFilter,
+    SharedExclusiveLock,
+} from '@darlean/utils';
 import { OPEN_READONLY } from 'sqlite3';
+import { Filterer, IFilterContext } from './filtering';
 
 const TABLE = 'data';
 const INDEX_SRC = 'srcidx';
@@ -33,6 +45,16 @@ interface IConnection {
     poolQueryDesc?: StatementPool;
 }
 
+// IMPORTANT: When you change the encoding, also ensure that the maxOutReadableEncodedString function
+// is adjusted accordingly!!!
+const decode = decodeKeyReadable;
+const encode = encodeKeyReadable;
+function maxOutReadableEncodedString(value: string): string {
+    // Because the readable encoding prefixes every character with a '.' or uses '--' for a separator, it
+    // is safe to use 'Z' here at the position of a '.' or '-' for maxing out.
+    return value + 'Z';
+}
+
 export class FsPersistenceActor implements IActivatable, IDeactivatable {
     private connections: IConnection[];
     private basePath: string;
@@ -42,8 +64,10 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
     private commitWaiters: Array<(err: unknown) => void>;
     private time: ITime;
     private commitTimer?: ITimer;
+    private filterer: Filterer;
+    private deser: IDeSer;
 
-    constructor(basePath: string, time: ITime) {
+    constructor(basePath: string, time: ITime, filterer: Filterer, deser: IDeSer) {
         this.basePath = basePath;
 
         this.keyWhere = this.makeKeyWhere();
@@ -52,6 +76,8 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         this.commitWaiters = [];
 
         this.time = time;
+        this.filterer = filterer;
+        this.deser = deser;
     }
 
     public async activate(): Promise<void> {
@@ -80,48 +106,12 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
 
     @action({ locking: 'shared' })
     public async store(options: IPersistenceStoreOptions): Promise<void> {
-        const connection = this.getConnection('writable');
-        const lockId = (this.lockId++).toString();
-        connection.lock?.tryBeginShared(lockId) || (await connection.lock?.beginShared(lockId));
-        try {
-            if (options.value === undefined) {
-                const pool = this.getConnection('writable').poolDelete;
-                if (!pool) {
-                    throw new Error('No statement pool');
-                }
+        return this.storeBatchImpl({ items: [{ ...options, identifier: undefined }] });
+    }
 
-                const values = this.makeKeyValues(options.partitionKey, options.sortKey);
-
-                const statement = pool.tryObtain() ?? (await pool.obtain());
-                try {
-                    await statement.run(values);
-                } finally {
-                    statement.release();
-                }
-            } else {
-                const pool = this.getConnection('writable').poolStore;
-                if (!pool) {
-                    throw new Error('No statement pool');
-                }
-
-                const values: Array<string | Buffer | number> = this.makeKeyValues(options.partitionKey, options.sortKey);
-                values.push(options.value);
-                values.push(SOURCE);
-                const seqnr = this.lastSeqNr + 1;
-                this.lastSeqNr = seqnr;
-                values.push(seqnr);
-
-                const statement = pool.tryObtain() ?? (await pool.obtain());
-                try {
-                    await statement.run(values);
-                } finally {
-                    statement.release();
-                }
-            }
-        } finally {
-            connection.lock?.endShared(lockId);
-        }
-        await this.waitForCommit();
+    @action({ locking: 'shared' })
+    public async storeBatch(options: IPersistenceStoreBatchOptions): Promise<void> {
+        return this.storeBatchImpl(options);
     }
 
     @action({ locking: 'shared' })
@@ -138,8 +128,10 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             const result = (await statement.get(values)) as { [FIELD_VALUE]: Buffer };
             if (result) {
                 const buffer = result.value;
+
+                const projection = options.projectionFilter ? parseMultiFilter(options.projectionFilter) : undefined;
                 return {
-                    value: buffer
+                    value: projection ? this.project(projection, buffer) : buffer
                 };
             }
             return {};
@@ -160,10 +152,10 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             throw new Error('No statement pool');
         }
 
-        const sortKeyFromString = options.sortKeyFrom ? encodeKeyCompact(options.sortKeyFrom) : null;
-        const sortKeyToString = options.sortKeyTo ? encodeKeyCompact(options.sortKeyTo) : null;
-        const sortKeyPrefixString = options.sortKeyPrefix ? encodeKeyCompact(options.sortKeyPrefix) : null;
-        const sortKeyPrefixEndString = sortKeyPrefixString === null ? null : maxOut(sortKeyPrefixString);
+        const sortKeyFromString = options.sortKeyFrom ? encode(options.sortKeyFrom) : null;
+        const sortKeyToString = options.sortKeyTo ? maxOutReadableEncodedString(encode([...options.sortKeyTo, ''])) : null;
+        const sortKeyPrefixString = options.sortKeyPrefix ? encode(options.sortKeyPrefix) : null;
+        const sortKeyPrefixEndString = sortKeyPrefixString === null ? null : maxOutReadableEncodedString(sortKeyPrefixString);
 
         // Yes, we *intentionaly* use determineMax to determine min and vice versa...
         const min = determineMax(sortKeyFromString, sortKeyPrefixString);
@@ -173,21 +165,148 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             items: []
         };
 
-        const values = [encodeKeyCompact(options.partitionKey), min, max];
+        const values = [encode(options.partitionKey), min, max];
 
         const statement = pool.tryObtain() ?? (await pool.obtain());
         try {
+            const projection = options.projectionFilter ? parseMultiFilter(options.projectionFilter) : undefined;
+
             await statement.each(values, (row) => {
                 const data = row as { [FIELD_PK]?: string; [FIELD_SK]?: string; [FIELD_VALUE]?: Buffer };
-                result.items.push({
-                    sortKey: decodeKeyCompact(data.sk ?? ''),
-                    value: data.value
-                });
+                if (
+                    !options.filterExpression ||
+                    this.filter(
+                        data,
+                        options.filterExpression,
+                        options.filterFieldBase,
+                        options.filterPartitionKeyOffset,
+                        options.filterSortKeyOffset
+                    )
+                ) {
+                    result.items.push({
+                        sortKey: decode(data.sk ?? ''),
+                        value: projection ? this.project(projection, data[FIELD_VALUE]) : data[FIELD_VALUE]
+                    });
+                }
             });
             return result;
         } finally {
             statement.release();
         }
+    }
+
+    protected async storeBatchImpl(options: IPersistenceStoreBatchOptions): Promise<void> {
+        const connection = this.getConnection('writable');
+        const lockId = (this.lockId++).toString();
+        connection.lock?.tryBeginShared(lockId) || (await connection.lock?.beginShared(lockId));
+        try {
+            for (const item of options.items) {
+                if (item.value === undefined) {
+                    const pool = this.getConnection('writable').poolDelete;
+                    if (!pool) {
+                        throw new Error('No statement pool');
+                    }
+
+                    const values = this.makeKeyValues(item.partitionKey, item.sortKey);
+
+                    const statement = pool.tryObtain() ?? (await pool.obtain());
+                    try {
+                        await statement.run(values);
+                    } finally {
+                        statement.release();
+                    }
+                } else {
+                    const pool = this.getConnection('writable').poolStore;
+                    if (!pool) {
+                        throw new Error('No statement pool');
+                    }
+
+                    const values: Array<string | Buffer | number> = this.makeKeyValues(item.partitionKey, item.sortKey);
+                    values.push(item.value);
+                    values.push(SOURCE);
+                    const seqnr = this.lastSeqNr + 1;
+                    this.lastSeqNr = seqnr;
+                    values.push(seqnr);
+
+                    const statement = pool.tryObtain() ?? (await pool.obtain());
+                    try {
+                        await statement.run(values);
+                    } finally {
+                        statement.release();
+                    }
+                }
+            }
+        } finally {
+            connection.lock?.endShared(lockId);
+        }
+        await this.waitForCommit();
+    }
+
+    protected project(config: IMultiFilter, data: Buffer | undefined) {
+        if (!data) {
+            return undefined;
+        }
+
+        const parsed = this.deser.deserialize(data) as { [key: string]: unknown };
+        if (!parsed) {
+            return undefined;
+        }
+
+        const filtered = filterStructure(config, parsed, '');
+
+        return this.deser.serialize(filtered);
+    }
+
+    protected filter(
+        data: { [FIELD_PK]?: string; [FIELD_SK]?: string; [FIELD_VALUE]?: Buffer },
+        filter: unknown,
+        base: string | undefined,
+        pkOffset: number | undefined,
+        skOffset: number | undefined
+    ): boolean {
+        let data2: { [key: string]: unknown } | undefined;
+        let pkey2: string[] | undefined;
+        let skey2: string[] | undefined;
+        const context: IFilterContext = {
+            data: () => {
+                if (data2) {
+                    return data2;
+                }
+                if (data[FIELD_VALUE]) {
+                    const d = this.deser.deserialize(data[FIELD_VALUE]) as { [key: string]: unknown };
+                    if (base) {
+                        const d2 = d ? (d[base] as typeof data2) ?? {} : {};
+                        data2 = d2;
+                        return d2;
+                    }
+                    data2 = d;
+                    return d;
+                } else {
+                    data2 = {};
+                    return data2;
+                }
+            },
+            sortKey: (idx) => {
+                const jdx = (skOffset ?? 0) + idx;
+                if (skey2) {
+                    return skey2[jdx];
+                }
+                const k = (data[FIELD_SK] ? decode(data[FIELD_SK]) : []) ?? [];
+                skey2 = k;
+                return k[jdx];
+            },
+            partitionKey: (idx) => {
+                const jdx = (pkOffset ?? 0) + idx;
+                if (pkey2) {
+                    return pkey2[jdx];
+                }
+                const k = (data[FIELD_PK] ? decode(data[FIELD_PK]) : []) ?? [];
+                pkey2 = k;
+                return k[jdx];
+            }
+        };
+        const value = this.filterer.process(context, filter);
+        return this.filterer.isTruthy(value);
     }
 
     protected async openDatabase(mode: 'writable' | 'readonly'): Promise<IConnection> {
@@ -224,7 +343,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             const MAX_SEQ = 'MaxSeq';
 
             await db.run(
-                `CREATE TABLE IF NOT EXISTS ${TABLE} (${FIELD_PK}, ${FIELD_SK}, ${FIELD_VALUE}, ${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ}, PRIMARY KEY (${FIELD_PK}, ${FIELD_SK}))`
+                `CREATE TABLE IF NOT EXISTS ${TABLE} (${FIELD_PK} TEXT, ${FIELD_SK} TEXT, ${FIELD_VALUE} BLOB, ${FIELD_SOURCE_NAME} TEXT, ${FIELD_SOURCE_SEQ} NUMBER, PRIMARY KEY (${FIELD_PK}, ${FIELD_SK}))`
             );
             await db.run(
                 `CREATE UNIQUE INDEX IF NOT EXISTS ${INDEX_SRC} ON ${TABLE} (${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ})`
@@ -254,7 +373,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         connection.poolQueryDesc = await this.makeQueryPoolDesc(db);
 
         if (mode === 'writable') {
-            await db.run('BEGIN TRANSACTION');
+            await db.run('BEGIN DEFERRED TRANSACTION');
         }
 
         return connection;
@@ -269,7 +388,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
 
     protected async makeQueryPoolAsc(db: Database): Promise<StatementPool> {
         return await db.prepare(
-            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?1) AND (?2 IS NULL OR (${FIELD_SK} >=?2)) AND (?3 IS NULL OR (${FIELD_SK} <=?3))`
+            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?1) AND (?2 IS NULL OR (${FIELD_SK} >=?2)) AND (?3 IS NULL OR (${FIELD_SK} <=?3)) ORDER BY ${FIELD_SK} ASC`
         );
     }
 
@@ -297,8 +416,8 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
     }
 
     protected makeKeyValues(partitionKey: string[], sortKey: string[] | undefined) {
-        const pk = encodeKeyCompact(partitionKey);
-        const sk = encodeKeyCompact(sortKey ?? []);
+        const pk = encode(partitionKey);
+        const sk = encode(sortKey ?? []);
         return [pk, sk];
     }
 
@@ -373,12 +492,6 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             this.commitTimer?.resume();
         });
     }
-}
-
-const MAX_UNICODE_CHAR = 1114111;
-
-function maxOut(value: string): string {
-    return value + String.fromCodePoint(MAX_UNICODE_CHAR);
 }
 
 function determineMin(a: string | null, b: string | null) {

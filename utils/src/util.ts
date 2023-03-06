@@ -58,10 +58,25 @@ export function replaceAll(input: string, search: string, replace: string): stri
  * @returns Whether text matches with the mask.
  */
 export function wildcardMatch(input: string, mask: string, partsOut?: string[]): boolean {
-    const parts = mask.split('*');
+    const pattern = parseWildcardPattern(mask);
+    return applyWildcardPattern(pattern, input, partsOut);
+}
+
+export interface IWildcardPattern {
+    parts: string[];
+}
+
+export function parseWildcardPattern(pattern: string): IWildcardPattern {
+    return {
+        parts: pattern.split('*')
+    };
+}
+
+export function applyWildcardPattern(pattern: IWildcardPattern, input: string, partsOut?: string[]): boolean {
+    const parts = pattern.parts;
 
     if (parts.length === 1) {
-        return input === mask;
+        return input === parts[0];
     }
 
     let lastIdx = -1;
@@ -430,5 +445,76 @@ export function offApplicationStop(handler: ApplicationStopHandler) {
     const idx = applicationStopHandlers.indexOf(handler);
     if (idx >= 0) {
         applicationStopHandlers.splice(idx, 1);
+    }
+}
+
+export function resolveDataPath(path: string, data: unknown): [unknown, string[]] {
+    const parts = path.split('.');
+    let value = data;
+    for (const part of parts) {
+        if (value === undefined) {
+            return [undefined, parts];
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        value = (value as any)[part];
+    }
+    return [value, parts];
+}
+
+export interface IMultiFilterExpression {
+    sign: string;
+    pattern: IWildcardPattern;
+}
+
+export interface IMultiFilter {
+    expressions: IMultiFilterExpression[];
+}
+
+export function parseMultiFilter(filter: string | string[]): IMultiFilter {
+    const result: IMultiFilter = { expressions: [] };
+    const parts = Array.isArray(filter) ? filter : filter.split(',').map((x) => x.trim());
+    for (const part of parts) {
+        const sign = part[0];
+        const mask = part.substring(1);
+        result.expressions.push({ sign, pattern: parseWildcardPattern(mask) });
+    }
+    return result;
+}
+
+export function applyMultiFilter(filter: string | IMultiFilter, value: string, defaultValue = ''): string {
+    if (typeof filter === 'string') {
+        filter = parseMultiFilter(filter);
+    }
+
+    for (const expr of filter.expressions) {
+        if (applyWildcardPattern(expr.pattern, value)) {
+            return expr.sign;
+        }
+    }
+
+    return defaultValue;
+}
+
+export function filterStructure(multiFilter: string | IMultiFilter, data: unknown, path: string) {
+    //if ( (path !== '') && (applyMultiFilter(multiFilter, path) !== '+')) {
+    //    return undefined;
+    //}
+
+    if (isObject(data)) {
+        const obj: { [key: string]: unknown } = {};
+        let haveEntries = false;
+        for (const [key, value] of Object.entries(data as { [key: string]: unknown })) {
+            const p = path ? [path, key].join('.') : key;
+            const struct = filterStructure(multiFilter, value, p);
+            if (struct !== undefined) {
+                haveEntries = true;
+                obj[key] = struct;
+            }
+        }
+        return haveEntries ? obj : path === '' ? {} : undefined;
+    } else {
+        if (applyMultiFilter(multiFilter, path) === '+') {
+            return data;
+        }
     }
 }

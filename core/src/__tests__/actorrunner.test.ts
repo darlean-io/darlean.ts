@@ -1,10 +1,9 @@
 import { ActorRunnerBuilder, DEFAULT_LOCAL_APP_ID } from '../running';
-import { sleep } from '@darlean/utils';
+import { BsonDeSer, sleep } from '@darlean/utils';
 import { action, IPersistence, ITypedPortal } from '@darlean/base';
 import { MemoryPersistence } from '../various';
 import { EchoActor, IEchoActor } from '../testing';
 import { InProcessTransport } from '../infra/inprocesstransport';
-import { BsonDeSer } from '../infra/bsondeser';
 
 export interface IViaEchoActor {
     echo(id: string, value: string): Promise<string | undefined>;

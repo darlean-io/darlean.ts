@@ -1,4 +1,4 @@
-import { IDeSer } from './deser';
+import { IDeSer } from '@darlean/utils';
 
 /**
  * Defines a generic envelope that can have a child envelope (which can also have a
