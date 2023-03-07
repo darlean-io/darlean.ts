@@ -551,6 +551,16 @@ export class ConfigRunnerBuilder {
                             runner.stop();
                         }
                     });
+
+                    // Some file systems (like the one used for Windows Linux Subsystem) do not properly watch files.
+                    // As a fall back for the fs.watch (which responds quicker), also do a "polling" watch file
+                    // with a larger interval.
+                    fs.watchFile(runFile, { interval: 10014 }, (current) => {
+                        if (current.mtimeMs === 0) {
+                            console.log('Removal of run-file detected, gracefully stopping the application...');
+                            runner.stop();
+                        }
+                    });
                 },
                 11,
                 'Run File Watcher'
@@ -562,6 +572,7 @@ export class ConfigRunnerBuilder {
             // the onApplicationStop from ever being triggered.
             runner.addStopper(
                 async () => {
+                    fs.unwatchFile(runFile);
                     abort.abort();
                 },
                 11,
