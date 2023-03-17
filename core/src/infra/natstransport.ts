@@ -173,17 +173,19 @@ export class NatsTransportSession implements ITransportSession {
                     resolve();
                 }
             };
-            items.messages.push(item);
-            items.len += msg.length;
-
-            if (items.len >= 10000) {
+            if (items.len + msg.length >= 10000) {
                 this.sendQueue.delete(receiver);
+                const items2 = items;
                 process.nextTick(() => {
                     if (items) {
-                        this.doSendBatch(receiver, items);
+                        this.doSendBatch(receiver, items2);
                     }
                 });
+                items = { receiver, messages: [], len: 0 };
+                this.sendQueue.set(receiver, items);    
             }
+            items.messages.push(item);
+            items.len += msg.length;
         });
     }
 
