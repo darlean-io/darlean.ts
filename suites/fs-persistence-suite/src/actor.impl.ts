@@ -35,6 +35,8 @@ const FIELD_SOURCE_SEQ = 'sourceseq';
 
 const SOURCE = 'source';
 
+const MAX_RESPONSE_LENGTH = 500*1000;
+
 interface IConnection {
     db: Database;
     lock?: SharedExclusiveLock;
@@ -153,23 +155,21 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         }
 
         const sortKeyFromString = options.sortKeyFrom ? encode(options.sortKeyFrom) : null;
-        const sortKeyToString = options.sortKeyTo ? maxOutReadableEncodedString(encode([...options.sortKeyTo, ''])) : null;
-        const sortKeyPrefixString = options.sortKeyPrefix ? encode(options.sortKeyPrefix) : null;
-        const sortKeyPrefixEndString = sortKeyPrefixString === null ? null : maxOutReadableEncodedString(sortKeyPrefixString);
-
-        // Yes, we *intentionaly* use determineMax to determine min and vice versa...
-        const min = determineMax(sortKeyFromString, sortKeyPrefixString);
-        const max = determineMin(sortKeyToString, sortKeyPrefixEndString);
-
+        const sortKeyToString = options.sortKeyTo 
+          ? maxOutReadableEncodedString(encode([...options.sortKeyTo, ...(options.sortKeyToMatch === 'loose' ? [] : [''])])) 
+          : null;
+        
         const result: IPersistenceQueryResult<Buffer> = {
             items: []
         };
 
-        const values = [encode(options.partitionKey), min, max];
-
+        const values = [encode(options.partitionKey), sortKeyFromString, sortKeyToString];
+        
         const statement = pool.tryObtain() ?? (await pool.obtain());
         try {
             const projection = options.projectionFilter ? parseMultiFilter(options.projectionFilter) : undefined;
+
+            let length = 0;
 
             await statement.each(values, (row) => {
                 const data = row as { [FIELD_PK]?: string; [FIELD_SK]?: string; [FIELD_VALUE]?: Buffer };
@@ -183,9 +183,15 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
                         options.filterSortKeyOffset
                     )
                 ) {
+                    const value = projection ? this.project(projection, data[FIELD_VALUE]) : data[FIELD_VALUE];
+                    length += value?.length ?? 0;
+                    if (length > MAX_RESPONSE_LENGTH) {
+                        result.continuationToken = 'NOT-YET-IMPLEMENTED';
+                        return result;
+                    }
                     result.items.push({
                         sortKey: decode(data.sk ?? ''),
-                        value: projection ? this.project(projection, data[FIELD_VALUE]) : data[FIELD_VALUE]
+                        value
                     });
                 }
             });
@@ -198,7 +204,8 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
     protected async storeBatchImpl(options: IPersistenceStoreBatchOptions): Promise<void> {
         const connection = this.getConnection('writable');
         const lockId = (this.lockId++).toString();
-        connection.lock?.tryBeginShared(lockId) || (await connection.lock?.beginShared(lockId));
+        //connection.lock?.tryBeginShared(lockId) || (await connection.lock?.beginShared(lockId));
+        connection.lock?.tryBeginExclusive(lockId) || (await connection.lock?.beginExclusive(lockId));
         try {
             for (const item of options.items) {
                 if (item.value === undefined) {
@@ -237,7 +244,8 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
                 }
             }
         } finally {
-            connection.lock?.endShared(lockId);
+            //connection.lock?.endShared(lockId);
+            connection.lock?.endExclusive(lockId);
         }
         await this.waitForCommit();
     }
@@ -321,7 +329,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
 
         const filename = [filepath, 'store.db'].join('/');
         const db = new Database();
-        await db.open(filename, mode === 'writable' ? OPEN_CREATE | OPEN_READWRITE : OPEN_READONLY);
+        await db.open(filename, mode === 'writable' ? OPEN_CREATE | OPEN_READWRITE : OPEN_READONLY );
 
         // Only exclusive mode makes it possible to use the faster WAL without having a shared lock
         // (which we do not have, as the nodes run on different machines).
@@ -492,26 +500,4 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             this.commitTimer?.resume();
         });
     }
-}
-
-function determineMin(a: string | null, b: string | null) {
-    if (a === null) {
-        return b;
-    }
-    if (b === null) {
-        return a;
-    }
-    const v = Buffer.compare(Buffer.from(a), Buffer.from(b));
-    return v <= 0 ? a : b;
-}
-
-function determineMax(a: string | null, b: string | null) {
-    if (a === null) {
-        return b;
-    }
-    if (b === null) {
-        return a;
-    }
-    const v = Buffer.compare(Buffer.from(a), Buffer.from(b));
-    return v >= 0 ? a : b;
 }

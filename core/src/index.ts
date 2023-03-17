@@ -82,3 +82,4 @@ export * from './infra';
 export * from './infra/natsserver';
 export * from './infra/inprocesstransport';
 export * from './config';
+export * from './tablepersistence';

@@ -1,6 +1,9 @@
-import { action, ActorSuite, IActorSuite, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult } from '@darlean/base';
+import { action, ActorSuite, IActorSuite, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult, TABLE_SERVICE } from '@darlean/base';
+import { TablePersistence } from '@darlean/core';
+import { ITableService } from '@darlean/tables-suite';
 
 export const STORAGE_TEST_ACTOR = 'StorageTestActor';
+export const STORAGE_TEST_ACTOR_TABLE = 'StorageTestActorTable';
 
 export class StorageTestActor {
     protected persistence: IPersistence<string>;
@@ -41,6 +44,24 @@ export function testActorSuite(): IActorSuite {
                 const p = context.persistence('storagetest') as IPersistence<string>;
                 return new StorageTestActor(p);
             }
+        },
+        {
+            type: STORAGE_TEST_ACTOR_TABLE,
+            kind: 'singular',
+            creator: (context) => {
+                const ts = context.portal.retrieve<ITableService>(TABLE_SERVICE, ['testtable']);
+                const tp = new TablePersistence<string>(ts, (item) => {
+                    if (item) {
+                        return [
+                            {name: 'byprefix', keys: [item.substring(0, 2), item.substring(1, 3)], data: { value: 'VAL' + item}}
+                        ]
+                    }
+                    return [];
+                }, ['indexstoragetest']);
+                return new StorageTestActor(tp);
+            }
         }
+
     ]);
 }
+

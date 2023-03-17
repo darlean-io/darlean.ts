@@ -99,7 +99,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
             partitionKey: options.partitionKey,
             sortKeyFrom: options.sortKeyFrom,
             sortKeyTo: options.sortKeyTo,
-            sortKeyPrefix: options.sortKeyPrefix,
+            sortKeyToMatch: options.sortKeyToMatch,
             maxItems: options.maxItems,
             continuationToken: options.continuationToken,
             sortKeyOrder: options.sortKeyOrder

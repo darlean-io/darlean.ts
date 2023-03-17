@@ -1,10 +1,10 @@
 import { IPortal, TABLE_SERVICE } from '@darlean/base';
-import { ConfigRunnerBuilder } from '@darlean/core';
-import { IIndexItem, ITableActor, ITableSearchResponse } from '@darlean/tables-suite';
+import { ConfigRunnerBuilder, TablePersistence } from '@darlean/core';
+import { IIndexItem, ITableService, ITableSearchResponse } from '@darlean/tables-suite';
 import { encodeNumber, ITime, parallel, ParallelTask, sleep, Time } from '@darlean/utils';
-import { StorageTestActor, STORAGE_TEST_ACTOR, testActorSuite } from './actor.impl';
+import { StorageTestActor, STORAGE_TEST_ACTOR, STORAGE_TEST_ACTOR_TABLE, testActorSuite } from './actor.impl';
 
-async function get_store(actor: StorageTestActor) {
+async function distributedpersistence_get_store(actor: StorageTestActor) {
     check(undefined, await actor.get(['foo'], []), 'Non existing partition key');
     check(undefined, await actor.get([], ['foo']), 'Non existing sort key');
 
@@ -16,8 +16,20 @@ async function get_store(actor: StorageTestActor) {
     check(undefined, await actor.get(['foo'], []), 'Removed partition key');
 }
 
-async function query(actor: StorageTestActor) {
-    // Add items in random order to test proper sorting of persistence layer
+async function tablepersistence_get_store(actor: StorageTestActor) {
+    check(undefined, await actor.get(['foo'], []), 'TABLE: Non existing partition key');
+    check(undefined, await actor.get([], ['foo']), 'TABLE: Non existing sort key');
+
+    await actor.store(['foo'], [], 'FOO');
+    check('FOO', await actor.get(['foo'], []), 'TABLE: Existing sort key');
+    check(undefined, await actor.get([], ['foo']), 'TABLE: Still unexisting sort key (but partition key exists');
+
+    await actor.store(['foo'], [], undefined);
+    check(undefined, await actor.get(['foo'], []), 'TABLE: Removed partition key');
+}
+
+async function distributedpersistence_query(actor: StorageTestActor) {
+    // Add items in random order to test that persistence layer performs proper sorting
     await actor.store(['bar'], ['a'], 'A');
     await actor.store(['bar'], ['c', 'b'], 'C.B');
     await actor.store(['bar'], ['aa', 'b'], 'AA.B');
@@ -25,77 +37,89 @@ async function query(actor: StorageTestActor) {
     await actor.store(['bar'], ['a', 'c'], 'A.C');
     await actor.store(['bar'], ['a', 'b'], 'A.B');
 
-    // ASCENDING ORDER
-    {
-        const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: [] });
-        check(
-            'A A.B A.C AA.B B C.B',
-            results.items.map((x) => x.value).join(' '),
-            'No constraints should return all items in asc order'
-        );
-    }
+    // The correct sorted order is: A, A.B, A.C, AA.B, B, C.B
 
-    {
-        const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a', 'c'] });
-        check(
-            'A.C AA.B B C.B',
-            results.items.map((x) => x.value).join(' '),
-            'Sort key constraint should return items >= sort key in asc order'
-        );
-    }
+    for (const order of ['ascending', 'descending']) {
+        const transform: ((value: string) => string) = (order === 'ascending') ? (v) => v : (v) => v.split(' ').reverse().join(' ');
+        const sortKeyOrder = (order === 'ascending') ? undefined : 'descending';
 
-    {
-        const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a', 'c'], sortKeyTo: ['b'] });
-        check(
-            'A.C AA.B B',
-            results.items.map((x) => x.value).join(' '),
-            'Sort key from and to should return items in that range'
-        );
-    }
-
-    {
-        const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a', 'c'], sortKeyPrefix: ['a'] });
-        check('A.C AA.B', results.items.map((x) => x.value).join(' '), 'Prefix should restrict result set');
-    }
-
-    {
-        const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a', 'c'], sortKeyPrefix: ['a', ''] });
-        check('A.C', results.items.map((x) => x.value).join(' '), 'Prefix with empty part should restrict result set even more');
-    }
-
-    // DESCENDING ORDER
-    {
-        const results = await actor.query({ partitionKey: ['bar'], sortKeyOrder: 'descending' });
-        check(
-            'C.B B AA.B A.C A.B A',
-            results.items.map((x) => x.value).join(' '),
-            'Descending order constraint should return all items in desc order'
-        );
-    }
-
-    {
-        const results = await actor.query({ partitionKey: ['bar'], sortKeyTo: ['a'], sortKeyOrder: 'descending' });
-        // Note: the key parts must really be seen as a tree of nodes. In lexicalgraphical ordering, A.C and A.B
-        // would not be included. But because we consider A to be a node, is is logical that also the child nodes
-        // of A are returned (A.C and A.B).
-        check(
-            'A.C A.B A',
-            results.items.map((x) => x.value).join(' '),
-            'Descending order constraint should return all items less than provided sort key in desc order'
-        );
-    }
-
-    {
-        const results = await actor.query({ partitionKey: ['bar'], sortKeyTo: ['a', 'b'], sortKeyOrder: 'descending' });
-        check(
-            'A.B A',
-            results.items.map((x) => x.value).join(' '),
-            'Descending order constraint should return all items less than provided sort key in desc order'
-        );
+        await context(order, async () => {
+            {
+                const results = await actor.query({ partitionKey: ['bar'], sortKeyOrder });
+                check(
+                    transform('A A.B A.C AA.B B C.B'),
+                    results.items.map((x) => x.value).join(' '),
+                    'No constraints should return all items'
+                );
+            }
+    
+            {
+                const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: [], sortKeyOrder });
+                check(
+                    transform('A A.B A.C AA.B B C.B'),
+                    results.items.map((x) => x.value).join(' '),
+                    'Empty sort key from array should return all items'
+                );
+            }
+    
+            {
+                const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: [''], sortKeyOrder });
+                check(
+                    transform('A A.B A.C AA.B B C.B'),
+                    results.items.map((x) => x.value).join(' '),
+                    'Empty string in sortKeyFrom array constraints should return all items'
+                );
+            }
+    
+            {
+                const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a'], sortKeyOrder });
+                check(
+                    transform('A A.B A.C AA.B B C.B'),
+                    results.items.map((x) => x.value).join(' '),
+                    'Sort key constraint should return items >= sort key constraint, including items that have a prefix map (like \'AA\')'
+                );
+            }
+    
+            {
+                const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a', 'c'], sortKeyOrder });
+                check(
+                    transform('A.C AA.B B C.B'),
+                    results.items.map((x) => x.value).join(' '),
+                    'Sort key constraint should return items >= sort key'
+                );
+            }
+    
+            {
+                const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a', 'c'], sortKeyTo: ['b'], sortKeyOrder });
+                check(
+                    transform('A.C AA.B B'),
+                    results.items.map((x) => x.value).join(' '),
+                    'Sort key from and to should return items in that range'
+                );
+            }
+    
+            {
+                const results = await actor.query({ partitionKey: ['bar'], sortKeyTo: ['a'], sortKeyOrder });
+                check(
+                    transform('A A.B A.C'),
+                    results.items.map((x) => x.value).join(' '),
+                    'Sort key to should return items <= the constraint including children (like \'A.B\') but not prefix items like \'AA\''
+                );
+            }
+    
+            {
+                const results = await actor.query({ partitionKey: ['bar'], sortKeyTo: ['a'], sortKeyToMatch: 'loose', sortKeyOrder });
+                check(
+                    transform('A A.B A.C AA.B'),
+                    results.items.map((x) => x.value).join(' '),
+                    'Loose sort key to should also return prefix items'
+                );
+            }
+        });
     }
 }
 
-async function parallel_store(actor: StorageTestActor, time: ITime) {
+async function distributedpersistence_parallel_store(actor: StorageTestActor, time: ITime) {
     const tasks: ParallelTask<void, void>[] = [];
     for (let idx = 0; idx < 10000; idx++) {
         tasks.push(async () => {
@@ -109,7 +133,34 @@ async function parallel_store(actor: StorageTestActor, time: ITime) {
     check('completed', results.status, 'Parallel execution should be completed');
 }
 
-async function query_throughput(actor: StorageTestActor, time: ITime) {
+async function tablepersistence_store_search(actor: StorageTestActor, time: ITime, portal: IPortal) {
+    const tasks: ParallelTask<void, void>[] = [];
+    for (let idx = 0; idx < 10000; idx++) {
+        tasks.push(async () => {
+            await actor.store(['idxtest'], [idx.toString()], idx.toString());
+        });
+    }
+    const start = time.machineTicks();
+    const results = await parallel(tasks, 100000, -1000);
+    const stop = time.machineTicks();
+    console.log('DURATION', stop - start, ' | ', (1000 * results.results.length) / (stop - start), 'stores/sec');
+
+    const ts = portal.retrieve<ITableService>(TABLE_SERVICE, ['testtable']);
+    const tp = new TablePersistence<string>(ts, () => [], ['indexstoragetest']);
+    
+    {
+        const results = await tp.search({
+            partitionKey: ['idxtest'],
+            keys: [{operator: 'prefix', value: '12'}],
+        });
+        console.log('PREFIX-12', results.items);
+        check('12', (results.items[0].tableFields as unknown as string ?? '').substring(0, 2), 'Prefix query must return prefix results');
+    }
+
+    check('completed', results.status, 'Parallel execution should be completed');
+}
+
+async function distributedpersistence_query_throughput(actor: StorageTestActor, time: ITime) {
     const tasks: ParallelTask<void, void>[] = [];
     const value = ''.padEnd(1000, '+');
     for (let idx = 0; idx < 10000; idx++) {
@@ -129,18 +180,18 @@ async function query_throughput(actor: StorageTestActor, time: ITime) {
 }
 
 async function table(portal: IPortal) {
-    const service = portal.retrieve<ITableActor>(TABLE_SERVICE, ['MyTable']);
+    const service = portal.retrieve<ITableService>(TABLE_SERVICE, ['MyTable']);
     const item = await service.get({
-        keys: ['123'],
+        keys: ['123', '4'],
         specifiers: ['table']
     });
     const item2 = await service.put({
         specifiers: ['table'],
         baseline: item.baseline,
-        id: ['123'],
+        id: ['123', '4'],
         version: '1000',
         data: { Hello: 'World' },
-        indexes: [{ name: 'a', keys: ['45'], data: { hello: 'world' } }]
+        indexes: [{ name: 'a', keys: ['45'], data: { hello: 'world' } }, { name: 'b', keys: ['ab', 'cd']}]
     });
     console.log('ITEM2', JSON.stringify(item2));
     const items2 = await service.search({
@@ -149,10 +200,22 @@ async function table(portal: IPortal) {
         keys: []
     });
     console.log('ITEMS2', JSON.stringify(items2));
+    const items2a = await service.search({
+        index: 'b',
+        specifiers: ['table'],
+        keys: [{operator: 'eq', value: 'ab'}]
+    });
+    console.log('ITEMS2a', JSON.stringify(items2a));
+    const items2b = await service.search({
+        specifiers: ['table'],
+        keys: [{operator: 'eq', value: '123'}]
+    });
+    console.log('ITEMS2b', JSON.stringify(items2b));
+
     const item3 = await service.put({
         specifiers: ['table'],
         baseline: item2.baseline,
-        id: ['123'],
+        id: ['123', '4'],
         version: '1001',
         data: { Hello: 'Moon' },
         indexes: [{ name: 'a', keys: ['45'], data: { hello: 'moon' } }]
@@ -166,7 +229,7 @@ async function table(portal: IPortal) {
     console.log('ITEMS3', JSON.stringify(items3));
 
     const item4 = await service.get({
-        keys: ['123'],
+        keys: ['123', '4'],
         specifiers: ['table']
     });
     console.log('ITEM4', JSON.stringify(item4));
@@ -186,7 +249,7 @@ async function table2(portal: IPortal) {
         ];
     }
 
-    const service = portal.retrieve<ITableActor>(TABLE_SERVICE, ['SongsTable']);
+    const service = portal.retrieve<ITableService>(TABLE_SERVICE, ['SongsTable']);
     const specifiers = ['table.songs'];
     let version = 0;
 
@@ -455,15 +518,26 @@ async function main() {
     try {
         await sleep(2500);
 
-        const portal = runner.getPortal().typed<StorageTestActor>(STORAGE_TEST_ACTOR);
-        const actor = portal.retrieve([]);
+        await context('distributed-persistence', async () => {
+            const portal = runner.getPortal().typed<StorageTestActor>(STORAGE_TEST_ACTOR);
+            const actor = portal.retrieve([]);
+            await distributedpersistence_get_store(actor);
+            await distributedpersistence_query(actor);
+            await distributedpersistence_parallel_store(actor, new Time());
+            await distributedpersistence_query_throughput(actor, new Time());
+        });
 
-        await get_store(actor);
-        await query(actor);
-        await parallel_store(actor, new Time());
-        await query_throughput(actor, new Time());
-        await table(runner.getPortal());
-        await table2(runner.getPortal());
+        await context('table-persistence', async () => {
+            const portal = runner.getPortal().typed<StorageTestActor>(STORAGE_TEST_ACTOR_TABLE);
+            const actor = portal.retrieve([]);
+            await tablepersistence_get_store(actor);
+            await tablepersistence_store_search(actor, new Time(), runner.getPortal());
+        });
+
+        await context('tables', async () => {
+            await table(runner.getPortal());
+            await table2(runner.getPortal());    
+        });
     } catch (e) {
         console.log('ERROR', e);
         console.log(JSON.stringify(e, undefined, 2));

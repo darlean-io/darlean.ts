@@ -144,7 +144,7 @@ export class SubPersistence<T> implements IPersistence<T> {
             partitionKey: keys.pk,
             sortKeyFrom: options.sortKeyFrom,
             sortKeyTo: options.sortKeyTo,
-            sortKeyPrefix: options.sortKeyPrefix,
+            sortKeyToMatch: options.sortKeyToMatch,
             continuationToken: options.continuationToken,
             maxItems: options.maxItems,
             sortKeyOrder: options.sortKeyOrder,

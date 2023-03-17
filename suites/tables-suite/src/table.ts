@@ -3,6 +3,8 @@ import { IDeSer, parallel, ParallelTask } from '@darlean/utils';
 import * as crypto from 'crypto';
 import { and, contains, eq, Expr, gte, sk, literal, lte, prefix } from './expressions';
 
+const MAX_SEARCH_RESPONSE_LENGTH = 500*1000;
+
 export interface ITablePutRequest {
     id: string[];
     data?: { [key: string]: unknown };
@@ -89,13 +91,15 @@ export interface IKeyConstraint {
 
 export type Indexer = (data?: { [key: string]: unknown }) => IIndexItem[];
 
-export interface ITableActor {
+export interface ITableService {
     put(request: ITablePutRequest): Promise<ITablePutResponse>;
     get(request: ITableGetRequest): Promise<ITableGetResponse>;
     search(request: ITableSearchRequest): Promise<ITableSearchResponse>;
 }
 
-export class TableActor implements ITableActor {
+type Operator = 'none' | 'exact' | 'prefix' | 'lte' | 'gte' | 'between';
+
+export class TableActor implements ITableService {
     private name: string;
     private persistence: IPersistenceService;
     private shard: number;
@@ -199,7 +203,7 @@ export class TableActor implements ITableActor {
 
     @action({ locking: 'shared' })
     public async search(request: ITableSearchRequest): Promise<ITableSearchResponse> {
-        let operator: 'none' | 'exact' | 'prefix' | 'lte' | 'gte' | 'between' = 'none';
+        let operator: Operator = 'none';
         const sortKey: string[] = [];
         let sortKey2: string[] = [];
         const filterParts: Expr[] = [];
@@ -271,17 +275,13 @@ export class TableActor implements ITableActor {
             const filter = filterParts.length > 0 ? and(...filterParts) : undefined;
             const projection = request.indexProjection ? this.enhanceProjection(request.indexProjection) : undefined;
 
+            const [sortKeyFrom, sortKeyTo, sortKeyToMatch] = this.deriveKeyInfo(operator, sortKey, sortKey2);
+            
             const result = await this.persistence.query({
                 partitionKey: ['Table', this.name, this.shard.toString()],
-                sortKeyPrefix: this.prefixSortKey(['index', request.index], operator === 'prefix' ? sortKey : undefined),
-                sortKeyFrom: this.prefixSortKey(
-                    ['index', request.index],
-                    operator === 'gte' ? sortKey : operator === 'between' ? sortKey : operator === 'exact' ? sortKey : undefined
-                ),
-                sortKeyTo: this.prefixSortKey(
-                    ['index', request.index],
-                    operator === 'lte' ? sortKey : operator === 'between' ? sortKey2 : operator === 'exact' ? sortKey : undefined
-                ),
+                sortKeyFrom: this.prefixSortKey(['index', request.index], sortKeyFrom),
+                sortKeyTo: this.prefixSortKey(['index', request.index], sortKeyTo),
+                sortKeyToMatch,
                 sortKeyOrder: request.keysOrder ?? 'ascending',
                 specifiers: request.specifiers,
                 filterExpression: filter,
@@ -336,17 +336,13 @@ export class TableActor implements ITableActor {
             const filter = filterParts.length > 0 ? and(...filterParts) : undefined;
             const projection = request.tableProjection ? this.enhanceProjection(request.tableProjection) : undefined;
 
+            const [sortKeyFrom, sortKeyTo, sortKeyToMatch] = this.deriveKeyInfo(operator, sortKey, sortKey2);
+
             const result = await this.persistence.query({
                 partitionKey: ['Table', this.name, this.shard.toString()],
-                sortKeyPrefix: this.prefixSortKey(['base'], operator === 'prefix' ? sortKey : undefined),
-                sortKeyFrom: this.prefixSortKey(
-                    ['base'],
-                    operator === 'gte' ? sortKey : operator === 'between' ? sortKey : operator === 'exact' ? sortKey : undefined
-                ),
-                sortKeyTo: this.prefixSortKey(
-                    ['base'],
-                    operator === 'lte' ? sortKey : operator === 'between' ? sortKey2 : operator === 'exact' ? sortKey : undefined
-                ),
+                sortKeyFrom: this.prefixSortKey(['base'], sortKeyFrom),
+                sortKeyTo: this.prefixSortKey(['base'], sortKeyTo),
+                sortKeyToMatch,
                 sortKeyOrder: request.keysOrder ?? 'ascending',
                 specifiers: request.specifiers,
                 filterExpression: filter,
@@ -357,8 +353,13 @@ export class TableActor implements ITableActor {
             const response: ITableSearchResponse = {
                 items: []
             };
+            let length = 0;
             for (const item of result.items) {
                 if (item.value) {
+                    length += item.value?.length ?? 0;
+                    if (length > MAX_SEARCH_RESPONSE_LENGTH) {
+                        return response;
+                    }
                     const value = this.deser.deserialize(item.value) as IBaseItem;
 
                     const resultItem: ITableSearchItem = {
@@ -372,6 +373,35 @@ export class TableActor implements ITableActor {
 
             return response;
         }
+    }
+
+    protected deriveKeyInfo(operator: Operator, sortKey: string[] | undefined, sortKey2: string[] | undefined): [string[] | undefined, string[] | undefined, 'strict' | 'loose'] {
+        let sortKeyFrom: string[] | undefined;
+        let sortKeyTo: string[] | undefined;
+        let sortKeyLoose = false;
+
+        switch (operator) {
+            case 'exact':
+                sortKeyFrom = sortKey;
+                sortKeyTo = sortKey;
+                break;
+            case 'between':
+                sortKeyFrom = sortKey;
+                sortKeyTo = sortKey2;
+                break;
+            case 'gte':
+                sortKeyFrom = sortKey;
+                break;
+            case 'lte':
+                sortKeyTo = sortKey;
+                break;
+            case 'prefix':
+                sortKeyFrom = sortKey;
+                sortKeyTo = sortKey;
+                sortKeyLoose = true;
+                break;
+        }
+        return [sortKeyFrom, sortKeyTo, sortKeyLoose ? 'loose' : 'strict'];
     }
 
     protected prefixSortKey(prefix: string[], key: string[] | undefined) {
