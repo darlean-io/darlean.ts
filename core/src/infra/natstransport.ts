@@ -182,7 +182,7 @@ export class NatsTransportSession implements ITransportSession {
                     }
                 });
                 items = { receiver, messages: [], len: 0 };
-                this.sendQueue.set(receiver, items);    
+                this.sendQueue.set(receiver, items);
             }
             items.messages.push(item);
             items.len += msg.length;

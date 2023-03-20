@@ -40,8 +40,8 @@ async function distributedpersistence_query(actor: StorageTestActor) {
     // The correct sorted order is: A, A.B, A.C, AA.B, B, C.B
 
     for (const order of ['ascending', 'descending']) {
-        const transform: ((value: string) => string) = (order === 'ascending') ? (v) => v : (v) => v.split(' ').reverse().join(' ');
-        const sortKeyOrder = (order === 'ascending') ? undefined : 'descending';
+        const transform: (value: string) => string = order === 'ascending' ? (v) => v : (v) => v.split(' ').reverse().join(' ');
+        const sortKeyOrder = order === 'ascending' ? undefined : 'descending';
 
         await context(order, async () => {
             {
@@ -52,7 +52,7 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                     'No constraints should return all items'
                 );
             }
-    
+
             {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: [], sortKeyOrder });
                 check(
@@ -61,7 +61,7 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                     'Empty sort key from array should return all items'
                 );
             }
-    
+
             {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: [''], sortKeyOrder });
                 check(
@@ -70,16 +70,16 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                     'Empty string in sortKeyFrom array constraints should return all items'
                 );
             }
-    
+
             {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a'], sortKeyOrder });
                 check(
                     transform('A A.B A.C AA.B B C.B'),
                     results.items.map((x) => x.value).join(' '),
-                    'Sort key constraint should return items >= sort key constraint, including items that have a prefix map (like \'AA\')'
+                    "Sort key constraint should return items >= sort key constraint, including items that have a prefix map (like 'AA')"
                 );
             }
-    
+
             {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a', 'c'], sortKeyOrder });
                 check(
@@ -88,27 +88,37 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                     'Sort key constraint should return items >= sort key'
                 );
             }
-    
+
             {
-                const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a', 'c'], sortKeyTo: ['b'], sortKeyOrder });
+                const results = await actor.query({
+                    partitionKey: ['bar'],
+                    sortKeyFrom: ['a', 'c'],
+                    sortKeyTo: ['b'],
+                    sortKeyOrder
+                });
                 check(
                     transform('A.C AA.B B'),
                     results.items.map((x) => x.value).join(' '),
                     'Sort key from and to should return items in that range'
                 );
             }
-    
+
             {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyTo: ['a'], sortKeyOrder });
                 check(
                     transform('A A.B A.C'),
                     results.items.map((x) => x.value).join(' '),
-                    'Sort key to should return items <= the constraint including children (like \'A.B\') but not prefix items like \'AA\''
+                    "Sort key to should return items <= the constraint including children (like 'A.B') but not prefix items like 'AA'"
                 );
             }
-    
+
             {
-                const results = await actor.query({ partitionKey: ['bar'], sortKeyTo: ['a'], sortKeyToMatch: 'loose', sortKeyOrder });
+                const results = await actor.query({
+                    partitionKey: ['bar'],
+                    sortKeyTo: ['a'],
+                    sortKeyToMatch: 'loose',
+                    sortKeyOrder
+                });
                 check(
                     transform('A A.B A.C AA.B'),
                     results.items.map((x) => x.value).join(' '),
@@ -147,14 +157,18 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
 
     const ts = portal.retrieve<ITableService>(TABLE_SERVICE, ['testtable']);
     const tp = new TablePersistence<string>(ts, () => [], ['indexstoragetest']);
-    
+
     {
         const results = await tp.search({
             partitionKey: ['idxtest'],
-            keys: [{operator: 'prefix', value: '12'}],
+            keys: [{ operator: 'prefix', value: '12' }]
         });
         console.log('PREFIX-12', results.items);
-        check('12', (results.items[0].tableFields as unknown as string ?? '').substring(0, 2), 'Prefix query must return prefix results');
+        check(
+            '12',
+            ((results.items[0].tableFields as unknown as string) ?? '').substring(0, 2),
+            'Prefix query must return prefix results'
+        );
     }
 
     check('completed', results.status, 'Parallel execution should be completed');
@@ -191,7 +205,10 @@ async function table(portal: IPortal) {
         id: ['123', '4'],
         version: '1000',
         data: { Hello: 'World' },
-        indexes: [{ name: 'a', keys: ['45'], data: { hello: 'world' } }, { name: 'b', keys: ['ab', 'cd']}]
+        indexes: [
+            { name: 'a', keys: ['45'], data: { hello: 'world' } },
+            { name: 'b', keys: ['ab', 'cd'] }
+        ]
     });
     console.log('ITEM2', JSON.stringify(item2));
     const items2 = await service.search({
@@ -203,12 +220,12 @@ async function table(portal: IPortal) {
     const items2a = await service.search({
         index: 'b',
         specifiers: ['table'],
-        keys: [{operator: 'eq', value: 'ab'}]
+        keys: [{ operator: 'eq', value: 'ab' }]
     });
     console.log('ITEMS2a', JSON.stringify(items2a));
     const items2b = await service.search({
         specifiers: ['table'],
-        keys: [{operator: 'eq', value: '123'}]
+        keys: [{ operator: 'eq', value: '123' }]
     });
     console.log('ITEMS2b', JSON.stringify(items2b));
 
@@ -536,7 +553,7 @@ async function main() {
 
         await context('tables', async () => {
             await table(runner.getPortal());
-            await table2(runner.getPortal());    
+            await table2(runner.getPortal());
         });
     } catch (e) {
         console.log('ERROR', e);

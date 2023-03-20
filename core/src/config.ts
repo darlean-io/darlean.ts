@@ -1,7 +1,15 @@
 import { FS_PERSISTENCE_SERVICE, IActorRegistrationOptions, IActorSuite } from '@darlean/base';
 import { IFsPersistenceCompartment, IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { IPersistenceServiceOptions } from '@darlean/persistence-suite';
-import { BsonDeSer, fetchConfigArray, fetchConfigNumber, fetchConfigString, notifier, onApplicationStop, sleep } from '@darlean/utils';
+import {
+    BsonDeSer,
+    fetchConfigArray,
+    fetchConfigNumber,
+    fetchConfigString,
+    notifier,
+    onApplicationStop,
+    sleep
+} from '@darlean/utils';
 import { InProcessTransport, NatsTransport } from './infra';
 import { NatsServer } from './infra/natsserver';
 import { ActorRunner, ActorRunnerBuilder } from './running';

@@ -244,7 +244,13 @@ export class RemotePortal implements IPortal {
     protected placementCache?: IPlacementCache;
     protected defaultDestination?: string;
 
-    constructor(remote: IRemote, backoff: IBackOff, registry: IActorRegistry, placementCache?: IPlacementCache, defaultDestination?: string) {
+    constructor(
+        remote: IRemote,
+        backoff: IBackOff,
+        registry: IActorRegistry,
+        placementCache?: IPlacementCache,
+        defaultDestination?: string
+    ) {
         this.remote = remote;
         this.backoff = backoff;
         this.registry = registry;
@@ -514,8 +520,8 @@ export class RemotePortal implements IPortal {
 
                 const receivers = this.findReceivers(type);
                 if (receivers.length > 0) {
-                    const currentIdx = ((i === 0) && this.defaultDestination) ? receivers.indexOf(this.defaultDestination) : -1;
-                    const idx = (currentIdx >= 0) ? currentIdx : Math.floor(Math.random() * receivers.length);
+                    const currentIdx = i === 0 && this.defaultDestination ? receivers.indexOf(this.defaultDestination) : -1;
+                    const idx = currentIdx >= 0 ? currentIdx : Math.floor(Math.random() * receivers.length);
                     const receiver = receivers[idx];
 
                     // When the receiver was already randomly selected before, first try

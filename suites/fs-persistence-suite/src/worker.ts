@@ -3,7 +3,7 @@ import {
     IPersistenceLoadResult,
     IPersistenceQueryOptions,
     IPersistenceQueryResult,
-    IPersistenceStoreBatchOptions,
+    IPersistenceStoreBatchOptions
 } from '@darlean/base';
 import fs from 'fs';
 import {
@@ -17,10 +17,10 @@ import {
     ITimer,
     parseMultiFilter,
     SharedExclusiveLock,
-    Time,
+    Time
 } from '@darlean/utils';
 import { Filterer, IFilterContext } from './filtering';
-import { expose } from "threads/worker"
+import { expose } from 'threads/worker';
 import { SqliteDatabase, StatementPool } from './sqlite-sync';
 
 const TABLE = 'data';
@@ -33,7 +33,7 @@ const FIELD_SOURCE_SEQ = 'sourceseq';
 
 const SOURCE = 'source';
 
-const MAX_RESPONSE_LENGTH = 500*1000;
+const MAX_RESPONSE_LENGTH = 500 * 1000;
 
 interface IConnection {
     db: SqliteDatabase;
@@ -69,7 +69,7 @@ export class FsPersistenceWorker {
 
     constructor(time: ITime, filterer: Filterer, deser: IDeSer) {
         this.keyWhere = this.makeKeyWhere();
-        
+
         this.commitWaiters = [];
 
         this.time = time;
@@ -87,7 +87,7 @@ export class FsPersistenceWorker {
 
         const statement = pool.obtain();
         try {
-            const result = (statement.get(values)) as { [FIELD_VALUE]: Buffer };
+            const result = statement.get(values) as { [FIELD_VALUE]: Buffer };
             if (result) {
                 const buffer = result.value;
 
@@ -105,25 +105,22 @@ export class FsPersistenceWorker {
     public query(options: IPersistenceQueryOptions): IPersistenceQueryResult<Buffer> {
         const direction = options.sortKeyOrder ?? 'ascending';
 
-        const pool =
-            direction === 'descending'
-                ? this.connection?.poolQueryDesc
-                : this.connection?.poolQueryAsc;
+        const pool = direction === 'descending' ? this.connection?.poolQueryDesc : this.connection?.poolQueryAsc;
         if (!pool) {
             throw new Error('No statement pool');
         }
 
         const sortKeyFromString = options.sortKeyFrom ? encode(options.sortKeyFrom) : null;
-        const sortKeyToString = options.sortKeyTo 
-          ? maxOutReadableEncodedString(encode([...options.sortKeyTo, ...(options.sortKeyToMatch === 'loose' ? [] : [''])])) 
-          : null;
-        
+        const sortKeyToString = options.sortKeyTo
+            ? maxOutReadableEncodedString(encode([...options.sortKeyTo, ...(options.sortKeyToMatch === 'loose' ? [] : [''])]))
+            : null;
+
         const result: IPersistenceQueryResult<Buffer> = {
             items: []
         };
 
         const values = [encode(options.partitionKey), sortKeyFromString, sortKeyFromString, sortKeyToString, sortKeyToString];
-        
+
         const statement = pool.obtain();
         try {
             const projection = options.projectionFilter ? parseMultiFilter(options.projectionFilter) : undefined;
@@ -309,9 +306,7 @@ export class FsPersistenceWorker {
             db.run(
                 `CREATE TABLE IF NOT EXISTS ${TABLE} (${FIELD_PK} TEXT, ${FIELD_SK} TEXT, ${FIELD_VALUE} BLOB, ${FIELD_SOURCE_NAME} TEXT, ${FIELD_SOURCE_SEQ} NUMBER, PRIMARY KEY (${FIELD_PK}, ${FIELD_SK}))`
             );
-            db.run(
-                `CREATE UNIQUE INDEX IF NOT EXISTS ${INDEX_SRC} ON ${TABLE} (${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ})`
-            );
+            db.run(`CREATE UNIQUE INDEX IF NOT EXISTS ${INDEX_SRC} ON ${TABLE} (${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ})`);
 
             const seqnrPool = db.prepare(
                 `SELECT MAX(${FIELD_SOURCE_SEQ}) AS ${MAX_SEQ} FROM ${TABLE} WHERE ${FIELD_SOURCE_NAME}=?`
@@ -319,7 +314,7 @@ export class FsPersistenceWorker {
             try {
                 const query = seqnrPool.obtain();
                 try {
-                    const result = (query.get(SOURCE)) as { [MAX_SEQ]: number | null };
+                    const result = query.get(SOURCE) as { [MAX_SEQ]: number | null };
                     this.lastSeqNr = result[MAX_SEQ] === null ? 0 : result[MAX_SEQ];
                 } finally {
                     query.release();
@@ -389,7 +384,7 @@ export class FsPersistenceWorker {
     }
 }
 
-const worker = new FsPersistenceWorker(new Time(), new Filterer(), new BsonDeSer() );
+const worker = new FsPersistenceWorker(new Time(), new Filterer(), new BsonDeSer());
 
 /*
 export interface IFsPersistenceWorker {
@@ -402,7 +397,7 @@ export interface IFsPersistenceWorker {
 
 const workerdef = {
     open: (basePath: string, mode: 'readonly' | 'writable') => {
-        return worker.openDatabase(basePath, mode)
+        return worker.openDatabase(basePath, mode);
     },
     close: () => {
         return worker.closeDatabase();

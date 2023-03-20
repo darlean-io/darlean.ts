@@ -10,7 +10,7 @@ import {
     IPersistenceStoreOptions
 } from '@darlean/base';
 import { Mutex } from '@darlean/utils';
-import { ModuleThread, spawn, Thread, Worker } from "threads"
+import { ModuleThread, spawn, Thread, Worker } from 'threads';
 import { WorkerDef } from './worker';
 
 interface IConnection {
@@ -25,14 +25,14 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
     private connections: IConnection[];
     private basePath: string;
     private lastConnIdx = 0;
-    
+
     constructor(basePath: string) {
         this.basePath = basePath;
         this.connections = [];
     }
 
     public async activate(): Promise<void> {
-        for (let idx = 0; idx < NR_READERS+1; idx++) {
+        for (let idx = 0; idx < NR_READERS + 1; idx++) {
             this.connections.push(await this.openDatabase(idx === 0 ? 'writable' : 'readonly'));
         }
     }
@@ -62,7 +62,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         if (!conn) {
             throw new Error('No connection');
         }
-        conn.mutex.tryAcquire() || await conn.mutex.acquire();
+        conn.mutex.tryAcquire() || (await conn.mutex.acquire());
         try {
             return await conn.worker.load(options);
         } finally {
@@ -76,7 +76,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         if (!conn) {
             throw new Error('No connection');
         }
-        conn.mutex.tryAcquire() || await conn.mutex.acquire();
+        conn.mutex.tryAcquire() || (await conn.mutex.acquire());
         try {
             return await conn.worker.query(options);
         } finally {
@@ -90,10 +90,10 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         if (!conn) {
             throw new Error('No connection');
         }
-        conn.mutex.tryAcquire() || await conn.mutex.acquire();
+        conn.mutex.tryAcquire() || (await conn.mutex.acquire());
         try {
             // TODO: Check assumption that worker performs internal synchronization (only one task at a time)
-            return await conn.worker.storeBatch(options) as unknown as Promise<void>;
+            return (await conn.worker.storeBatch(options)) as unknown as Promise<void>;
         } finally {
             conn.mutex.release();
         }

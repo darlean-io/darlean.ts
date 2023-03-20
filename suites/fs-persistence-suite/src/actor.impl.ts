@@ -20,7 +20,7 @@ import {
     ITime,
     ITimer,
     parseMultiFilter,
-    SharedExclusiveLock,
+    SharedExclusiveLock
 } from '@darlean/utils';
 import { OPEN_READONLY } from 'sqlite3';
 import { Filterer, IFilterContext } from './filtering';
@@ -35,7 +35,7 @@ const FIELD_SOURCE_SEQ = 'sourceseq';
 
 const SOURCE = 'source';
 
-const MAX_RESPONSE_LENGTH = 500*1000;
+const MAX_RESPONSE_LENGTH = 500 * 1000;
 
 interface IConnection {
     db: Database;
@@ -155,16 +155,16 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         }
 
         const sortKeyFromString = options.sortKeyFrom ? encode(options.sortKeyFrom) : null;
-        const sortKeyToString = options.sortKeyTo 
-          ? maxOutReadableEncodedString(encode([...options.sortKeyTo, ...(options.sortKeyToMatch === 'loose' ? [] : [''])])) 
-          : null;
-        
+        const sortKeyToString = options.sortKeyTo
+            ? maxOutReadableEncodedString(encode([...options.sortKeyTo, ...(options.sortKeyToMatch === 'loose' ? [] : [''])]))
+            : null;
+
         const result: IPersistenceQueryResult<Buffer> = {
             items: []
         };
 
         const values = [encode(options.partitionKey), sortKeyFromString, sortKeyToString];
-        
+
         const statement = pool.tryObtain() ?? (await pool.obtain());
         try {
             const projection = options.projectionFilter ? parseMultiFilter(options.projectionFilter) : undefined;
@@ -329,7 +329,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
 
         const filename = [filepath, 'store.db'].join('/');
         const db = new Database();
-        await db.open(filename, mode === 'writable' ? OPEN_CREATE | OPEN_READWRITE : OPEN_READONLY );
+        await db.open(filename, mode === 'writable' ? OPEN_CREATE | OPEN_READWRITE : OPEN_READONLY);
 
         // Only exclusive mode makes it possible to use the faster WAL without having a shared lock
         // (which we do not have, as the nodes run on different machines).

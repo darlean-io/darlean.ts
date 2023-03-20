@@ -1,10 +1,12 @@
+import { IPersistable, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult } from '@darlean/base';
 import {
-    IPersistable,
-    IPersistence,
-    IPersistenceQueryOptions,
-    IPersistenceQueryResult,
-} from '@darlean/base';
-import { IIndexItem, IKeyConstraint, ITablePutResponse, ITableSearchRequest, ITableSearchResponse, ITableService } from '@darlean/tables-suite';
+    IIndexItem,
+    IKeyConstraint,
+    ITablePutResponse,
+    ITableSearchRequest,
+    ITableSearchResponse,
+    ITableService
+} from '@darlean/tables-suite';
 import { SubPersistence } from './various';
 
 /**
@@ -93,7 +95,7 @@ export class TablePersistence<T> implements IPersistence<T> {
     private specifiers: string[] | undefined;
     private indexer: (item: T | undefined) => IIndexItem[];
 
-    constructor(service: ITableService, indexer:(item: T | undefined) => IIndexItem[], specifiers?: string[]) {
+    constructor(service: ITableService, indexer: (item: T | undefined) => IIndexItem[], specifiers?: string[]) {
         this.service = service;
         this.specifiers = specifiers;
         this.indexer = indexer;
@@ -113,11 +115,11 @@ export class TablePersistence<T> implements IPersistence<T> {
         if (!options.index) {
             const keysPrefix: IKeyConstraint[] = [
                 { operator: 'eq', value: (options.partitionKey?.length ?? 0).toString() },
-                ...options.partitionKey?.map((field) => ({operator: 'eq', value: field} as IKeyConstraint)) ?? []
+                ...(options.partitionKey?.map((field) => ({ operator: 'eq', value: field } as IKeyConstraint)) ?? [])
             ];
 
             const opts2: ITableSearchRequest = {
-                keys: [...keysPrefix, ...options.keys ?? []],
+                keys: [...keysPrefix, ...(options.keys ?? [])],
                 filter: options.filter,
                 keysOrder: options.keysOrder,
                 specifiers: this.specifiers,
@@ -157,7 +159,7 @@ export class TablePersistence<T> implements IPersistence<T> {
     ): Promise<[value: T | undefined, version: string | undefined, baseline: string | undefined]> {
         const result = await this.service.get({
             specifiers: this.specifiers,
-            keys: this.toKey(partitionKey, sortKey),
+            keys: this.toKey(partitionKey, sortKey)
         });
 
         const value = result.data as T;
@@ -176,7 +178,7 @@ export class TablePersistence<T> implements IPersistence<T> {
             indexes: this.indexer(value),
             baseline,
             id: this.toKey(partitionKey, sortKey),
-            data: value as {[key: string]: unknown},
+            data: value as { [key: string]: unknown },
             version
         });
         return result;
@@ -188,6 +190,6 @@ export class TablePersistence<T> implements IPersistence<T> {
 
     protected toKey(pk: string[] | undefined, sk: string[] | undefined): string[] {
         // To discriminate between pk=['A'], sk=[] and 'pk=[], sk=['A'], we add the pk length field.
-        return [(pk?.length ?? 0).toString(), ...pk ?? [], ...sk ?? []]
+        return [(pk?.length ?? 0).toString(), ...(pk ?? []), ...(sk ?? [])];
     }
 }

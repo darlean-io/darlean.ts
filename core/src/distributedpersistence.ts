@@ -142,7 +142,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
         });
 
         const value = result.value ? (this.deser.deserialize(result.value) as T) : undefined;
-        
+
         return [value, result.version];
     }
 

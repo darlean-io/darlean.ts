@@ -3,7 +3,7 @@ import { IDeSer, parallel, ParallelTask } from '@darlean/utils';
 import * as crypto from 'crypto';
 import { and, contains, eq, Expr, gte, sk, literal, lte, prefix } from './expressions';
 
-const MAX_SEARCH_RESPONSE_LENGTH = 500*1000;
+const MAX_SEARCH_RESPONSE_LENGTH = 500 * 1000;
 
 export interface ITablePutRequest {
     id: string[];
@@ -276,7 +276,7 @@ export class TableActor implements ITableService {
             const projection = request.indexProjection ? this.enhanceProjection(request.indexProjection) : undefined;
 
             const [sortKeyFrom, sortKeyTo, sortKeyToMatch] = this.deriveKeyInfo(operator, sortKey, sortKey2);
-            
+
             const result = await this.persistence.query({
                 partitionKey: ['Table', this.name, this.shard.toString()],
                 sortKeyFrom: this.prefixSortKey(['index', request.index], sortKeyFrom),
@@ -375,7 +375,11 @@ export class TableActor implements ITableService {
         }
     }
 
-    protected deriveKeyInfo(operator: Operator, sortKey: string[] | undefined, sortKey2: string[] | undefined): [string[] | undefined, string[] | undefined, 'strict' | 'loose'] {
+    protected deriveKeyInfo(
+        operator: Operator,
+        sortKey: string[] | undefined,
+        sortKey2: string[] | undefined
+    ): [string[] | undefined, string[] | undefined, 'strict' | 'loose'] {
         let sortKeyFrom: string[] | undefined;
         let sortKeyTo: string[] | undefined;
         let sortKeyLoose = false;

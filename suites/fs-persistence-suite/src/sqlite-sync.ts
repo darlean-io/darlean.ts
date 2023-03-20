@@ -5,7 +5,7 @@
  * and pooling.
  */
 import { sleep } from '@darlean/utils';
-import Database, {Database as DB, Statement as DBStatement} from 'better-sqlite3';
+import Database, { Database as DB, Statement as DBStatement } from 'better-sqlite3';
 
 //-----------------------------------------------------------------------------
 // The Database class
@@ -16,7 +16,7 @@ export class SqliteDatabase {
     protected fileName?: string;
 
     public open(filename: string, readonly: boolean): void {
-        const db = new Database(filename, {readonly});
+        const db = new Database(filename, { readonly });
         this.db = db;
     }
 
