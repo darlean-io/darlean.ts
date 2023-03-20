@@ -8,9 +8,8 @@
  */
 
 import { ActorSuite, ApplicationError, FS_PERSISTENCE_SERVICE as baseService } from '@darlean/base';
-import { BsonDeSer, wildcardMatch } from '@darlean/utils';
-import { FsPersistenceActor } from './actor.impl';
-import { Filterer } from './filtering';
+import { wildcardMatch } from '@darlean/utils';
+import { FsPersistenceActor } from './syncactor.impl';
 import { FsPersistenceService } from './service.impl';
 
 export const FS_PERSISTENCE_SERVICE = baseService;
@@ -76,9 +75,7 @@ export default function suite(options: IFsPersistenceOptions) {
                 const shard = context.id[context.id.length - 2];
                 const shardCount = opts.shardCount ?? DEFAULT_SHARD_COUNT;
                 const path = [opts.basePath, opts.subPath, compartment, shardCount, shard, boundNode].join('/');
-                const deser = new BsonDeSer();
-                const filterer = new Filterer();
-                return new FsPersistenceActor(path, context.time, filterer, deser);
+                return new FsPersistenceActor(path);
             }
         },
         {

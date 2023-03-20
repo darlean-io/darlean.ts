@@ -12,7 +12,7 @@ import {
     ITypedPortal,
     toApplicationError
 } from '@darlean/base';
-import { FsPersistenceActor } from './actor.impl';
+import { FsPersistenceActor } from './syncactor.impl';
 import * as crypto from 'crypto';
 
 export interface IFsPersistenceServiceOptions {
