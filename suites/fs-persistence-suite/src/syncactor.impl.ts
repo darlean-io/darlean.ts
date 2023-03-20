@@ -18,6 +18,9 @@ interface IConnection {
     mutex: Mutex<void>;
 }
 
+// For now, a fixed value. We can make this configurable/dynamic later on.
+const NR_READERS = 10;
+
 export class FsPersistenceActor implements IActivatable, IDeactivatable {
     private connections: IConnection[];
     private basePath: string;
@@ -29,7 +32,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
     }
 
     public async activate(): Promise<void> {
-        for (let idx = 0; idx < 10; idx++) {
+        for (let idx = 0; idx < NR_READERS+1; idx++) {
             this.connections.push(await this.openDatabase(idx === 0 ? 'writable' : 'readonly'));
         }
     }
