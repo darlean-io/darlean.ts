@@ -486,10 +486,6 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
             return true;
         }
 
-        if (this.acquiredActorLock) {
-            return true;
-        }
-
         if (!this.actorLock) {
             throw new Error('No actor lock available, instance likely to be deactivated');
         }
@@ -498,6 +494,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
     }
 
     protected async ensureActorLock() {
+        // Assume we are already in the lifecycleLock
         if (this.tryEnsureActorLock()) {
             return;
         }
@@ -505,10 +502,10 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         const actorLock = this.actorLock;
         if (actorLock) {
             this.acquiredActorLock = await actorLock(() => {
-                this.acquiredActorLock = undefined;
                 this.actorLock = undefined;
                 setImmediate(async () => {
                     try {
+                        // Note: Deactivate will release the obtained action lock (we do not have to do that fro here).
                         await this.deactivate();
                     } catch (e) {
                         currentScope().info(
