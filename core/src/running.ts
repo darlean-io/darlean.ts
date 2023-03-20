@@ -408,7 +408,7 @@ export class ActorRunnerBuilder {
         this.remote = remote;
         const registry = new ActorRegistry();
         const placementCache = new PlacementCache(10000);
-        const portal = new RemotePortal(remote, backoff, registry, placementCache);
+        const portal = new RemotePortal(remote, backoff, registry, placementCache, appId);
 
         const registryService = portal.retrieve<IActorRegistryService>(ACTOR_REGISTRY_SERVICE, []);
         const distributedRegistry = new DistributedActorRegistry(registryService, time, appId, registry);
