@@ -187,6 +187,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
                     length += value?.length ?? 0;
                     if (length > MAX_RESPONSE_LENGTH) {
                         result.continuationToken = 'NOT-YET-IMPLEMENTED';
+                        // TODO This does not work, it returns from the current row-handler lambda but not from entire method
                         return result;
                     }
                     result.items.push({

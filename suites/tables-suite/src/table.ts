@@ -299,7 +299,8 @@ export class TableActor implements ITableService {
 
                     const resultItem: ITableSearchItem = {
                         id: value.id,
-                        keys: item.sortKey.slice(0, -2),
+                        // Remove 'index' + name at beginning and itemkey+hash that are added at the end
+                        keys: item.sortKey.slice(2, -2),
                         indexFields: value.data
                     };
 
@@ -363,7 +364,7 @@ export class TableActor implements ITableService {
                     const value = this.deser.deserialize(item.value) as IBaseItem;
 
                     const resultItem: ITableSearchItem = {
-                        id: item.sortKey,
+                        id: item.sortKey.slice(1),
                         tableFields: value.data
                     };
 

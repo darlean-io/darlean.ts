@@ -14,7 +14,6 @@ import {
     IDeSer,
     IMultiFilter,
     ITime,
-    ITimer,
     parseMultiFilter,
     SharedExclusiveLock,
     Time
@@ -30,10 +29,15 @@ const FIELD_SK = 'sk';
 const FIELD_VALUE = 'value';
 const FIELD_SOURCE_NAME = 'sourcename';
 const FIELD_SOURCE_SEQ = 'sourceseq';
+const FIELD_VERSION = 'version';
 
 const SOURCE = 'source';
 
 const MAX_RESPONSE_LENGTH = 500 * 1000;
+
+interface IContinuationToken {
+    sk: string;
+}
 
 interface IConnection {
     db: SqliteDatabase;
@@ -57,22 +61,13 @@ function maxOutReadableEncodedString(value: string): string {
 
 export class FsPersistenceWorker {
     private connection?: IConnection;
-    private basePath?: string;
     private keyWhere: string;
     private lastSeqNr = 0;
-    private lockId = 0;
-    private commitWaiters: Array<(err: unknown) => void>;
-    private time: ITime;
-    private commitTimer?: ITimer;
     private filterer: Filterer;
     private deser: IDeSer;
 
     constructor(time: ITime, filterer: Filterer, deser: IDeSer) {
         this.keyWhere = this.makeKeyWhere();
-
-        this.commitWaiters = [];
-
-        this.time = time;
         this.filterer = filterer;
         this.deser = deser;
     }
@@ -87,13 +82,14 @@ export class FsPersistenceWorker {
 
         const statement = pool.obtain();
         try {
-            const result = statement.get(values) as { [FIELD_VALUE]: Buffer };
+            const result = statement.get(values) as { [FIELD_VALUE]: Buffer, [FIELD_VERSION]: string };
             if (result) {
                 const buffer = result.value;
 
                 const projection = options.projectionFilter ? parseMultiFilter(options.projectionFilter) : undefined;
                 return {
-                    value: projection ? this.project(projection, buffer) : buffer
+                    value: projection ? this.project(projection, buffer) : buffer,
+                    version: result[FIELD_VERSION]
                 };
             }
             return {};
@@ -115,19 +111,27 @@ export class FsPersistenceWorker {
             ? maxOutReadableEncodedString(encode([...options.sortKeyTo, ...(options.sortKeyToMatch === 'loose' ? [] : [''])]))
             : null;
 
+        let limiter = (options.sortKeyOrder === 'descending') ? maxOutReadableEncodedString('') : '';
+
+        if (options.continuationToken) {
+            const ct = JSON.parse(Buffer.from(options.continuationToken as string, 'base64').toString()) as IContinuationToken;
+            limiter = ct.sk;
+        }
+
         const result: IPersistenceQueryResult<Buffer> = {
             items: []
         };
 
-        const values = [encode(options.partitionKey), sortKeyFromString, sortKeyFromString, sortKeyToString, sortKeyToString];
+        const values = [encode(options.partitionKey), sortKeyFromString, sortKeyFromString, sortKeyToString, sortKeyToString, limiter];
 
         const statement = pool.obtain();
         try {
             const projection = options.projectionFilter ? parseMultiFilter(options.projectionFilter) : undefined;
 
             let length = 0;
+            let lastSK: string | undefined;
 
-            statement.each(values, (row) => {
+            for (const row of statement.iterate(values)) {
                 const data = row as { [FIELD_PK]?: string; [FIELD_SK]?: string; [FIELD_VALUE]?: Buffer };
                 if (
                     !options.filterExpression ||
@@ -142,15 +146,21 @@ export class FsPersistenceWorker {
                     const value = projection ? this.project(projection, data[FIELD_VALUE]) : data[FIELD_VALUE];
                     length += value?.length ?? 0;
                     if (length > MAX_RESPONSE_LENGTH) {
-                        result.continuationToken = 'NOT-YET-IMPLEMENTED';
+                        if (result.items.length === 0) {
+                            throw new Error('Data too large');
+                        }
+                        const ct: IContinuationToken = { sk: lastSK ?? '' };
+                        const ctEncoded = Buffer.from(JSON.stringify(ct)).toString('base64');
+                        result.continuationToken = ctEncoded;
                         return result;
                     }
                     result.items.push({
                         sortKey: decode(data.sk ?? ''),
                         value
                     });
+                    lastSK = data.sk;
                 }
-            });
+            }
             return result;
         } finally {
             statement.release();
@@ -161,13 +171,15 @@ export class FsPersistenceWorker {
         this.connection?.db.run('BEGIN TRANSACTION');
         try {
             for (const item of options.items) {
+                const version = item.version;
                 if (item.value === undefined) {
+                    // Delete record
                     const pool = this.connection?.poolDelete;
                     if (!pool) {
                         throw new Error('No statement pool');
                     }
 
-                    const values = this.makeKeyValues(item.partitionKey, item.sortKey);
+                    const values = [...this.makeKeyValues(item.partitionKey, item.sortKey), version];
 
                     const statement = pool.obtain();
                     try {
@@ -176,17 +188,25 @@ export class FsPersistenceWorker {
                         statement.release();
                     }
                 } else {
+                    // Upsert record
                     const pool = this.connection?.poolStore;
                     if (!pool) {
                         throw new Error('No statement pool');
                     }
 
+                    const seqnr = this.lastSeqNr + 1;
+                    this.lastSeqNr = seqnr;
+                    
                     const values: Array<string | Buffer | number> = this.makeKeyValues(item.partitionKey, item.sortKey);
                     values.push(item.value);
                     values.push(SOURCE);
-                    const seqnr = this.lastSeqNr + 1;
-                    this.lastSeqNr = seqnr;
                     values.push(seqnr);
+                    values.push(version);
+                    values.push(item.value);
+                    values.push(SOURCE);
+                    values.push(seqnr);
+                    values.push(version);
+                    values.push(version);
 
                     const statement = pool.obtain();
                     try {
@@ -270,7 +290,6 @@ export class FsPersistenceWorker {
 
     public openDatabase(basePath: string, mode: 'writable' | 'readonly'): void {
         const filepath = basePath;
-        this.basePath = basePath;
         if (!fs.existsSync(filepath)) {
             if (mode === 'writable') {
                 fs.mkdirSync(filepath, { recursive: true });
@@ -304,7 +323,7 @@ export class FsPersistenceWorker {
             const MAX_SEQ = 'MaxSeq';
 
             db.run(
-                `CREATE TABLE IF NOT EXISTS ${TABLE} (${FIELD_PK} TEXT, ${FIELD_SK} TEXT, ${FIELD_VALUE} BLOB, ${FIELD_SOURCE_NAME} TEXT, ${FIELD_SOURCE_SEQ} NUMBER, PRIMARY KEY (${FIELD_PK}, ${FIELD_SK}))`
+                `CREATE TABLE IF NOT EXISTS ${TABLE} (${FIELD_PK} TEXT, ${FIELD_SK} TEXT, ${FIELD_VALUE} BLOB, ${FIELD_SOURCE_NAME} TEXT, ${FIELD_SOURCE_SEQ} NUMBER, ${FIELD_VERSION} TEXT, PRIMARY KEY (${FIELD_PK}, ${FIELD_SK}))`
             );
             db.run(`CREATE UNIQUE INDEX IF NOT EXISTS ${INDEX_SRC} ON ${TABLE} (${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ})`);
 
@@ -340,28 +359,36 @@ export class FsPersistenceWorker {
     }
 
     protected makeQueryPoolAsc(db: SqliteDatabase): StatementPool {
+        // The question marks stand for
+        // - Partition key exact value
+        // - Lower value of sort key
+        // - Same as previous field (must be provided twice because better-sqlite does not support using numeric placeholders to reuse the same value)
+        // - Upper value of sort key
+        // - Same as previous field (must be provided twice because better-sqlite does not support using numeric placeholders to reuse the same value)
+        // - Paging value that is used to continue a previous query
         return db.prepare(
-            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) ORDER BY ${FIELD_SK} ASC`
+            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) AND (${FIELD_SK} > ?) ORDER BY ${FIELD_SK} ASC`
         );
     }
 
     protected makeQueryPoolDesc(db: SqliteDatabase): StatementPool {
         return db.prepare(
-            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) ORDER BY ${FIELD_SK} DESC`
+            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) AND (${FIELD_SK} < ?) ORDER BY ${FIELD_SK} DESC`
         );
     }
 
     protected makeStorePool(db: SqliteDatabase): StatementPool {
-        const placeholders = new Array(5).fill('?');
+        const placeholders = new Array(6).fill('?');
         return db.prepare(
-            `INSERT OR REPLACE INTO ${TABLE} (${FIELD_PK}, ${FIELD_SK}, ${FIELD_VALUE}, ${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ}) VALUES (${placeholders.join(
-                ','
-            )})`
+            `INSERT INTO ${TABLE} (${FIELD_PK}, ${FIELD_SK}, ${FIELD_VALUE}, ${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ}, ${FIELD_VERSION}) ` + 
+            `VALUES (${placeholders.join(',')}) ` +
+            `ON CONFLICT DO UPDATE SET ${FIELD_VALUE}=?, ${FIELD_SOURCE_NAME}=?, ${FIELD_SOURCE_SEQ}=?,${FIELD_VERSION}=? `+
+            `WHERE ${FIELD_VERSION} < ?`
         );
     }
 
     protected makeDeletePool(db: SqliteDatabase): StatementPool {
-        return db.prepare(`DELETE FROM ${TABLE} WHERE (${this.keyWhere})`);
+        return db.prepare(`DELETE FROM ${TABLE} WHERE (${this.keyWhere}) AND ${FIELD_VERSION} < ?`);
     }
 
     protected makeKeyWhere() {

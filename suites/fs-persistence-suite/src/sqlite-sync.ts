@@ -120,12 +120,7 @@ export class Statement {
         return this.statement.all(params ?? []);
     }
 
-    public each<T>(params: unknown | undefined, handler: (row: T) => void): number {
-        let n = 0;
-        for (const row of this.statement.iterate(params ?? [])) {
-            n++;
-            handler(row);
-        }
-        return n;
+    public iterate<T>(params: unknown | undefined): IterableIterator<T> {
+        return this.statement.iterate(params ?? []);
     }
 }

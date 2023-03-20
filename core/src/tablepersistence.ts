@@ -126,8 +126,6 @@ export class TablePersistence<T> implements IPersistence<T> {
                 tableProjection: options.tableProjection
             };
 
-            console.log('OPTS2', opts2, keysPrefix);
-
             const results = await this.service.search(opts2);
             const response: ITableSearchResponse = { items: [] };
 

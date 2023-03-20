@@ -25,7 +25,7 @@ export interface IPersistenceStoreOptions {
     partitionKey: string[];
     sortKey?: string[];
     value?: Buffer;
-    version?: string;
+    version: string;
 }
 
 export interface IPersistenceLoadOptions {

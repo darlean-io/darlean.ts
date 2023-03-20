@@ -19,7 +19,7 @@ class DistributedPersistable<T> implements IPersistable<T> {
     private sortKey: string[] | undefined;
 
     public value?: T | undefined;
-    public version?: string | undefined;
+    public version: string | undefined;
 
     constructor(
         persistence: DistributedPersistence<T>,
@@ -150,7 +150,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
         partitionKey: string[] | undefined,
         sortKey: string[] | undefined,
         value: T | undefined,
-        version: string | undefined
+        version: string
     ): Promise<void> {
         const v = value === undefined ? undefined : this.deser.serialize(value);
         await this.service.store({

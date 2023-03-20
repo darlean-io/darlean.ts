@@ -1,8 +1,8 @@
-import { IPortal, TABLE_SERVICE } from '@darlean/base';
+import { IPersistenceQueryResult, IPortal, IQueryItem, TABLE_SERVICE } from '@darlean/base';
 import { ConfigRunnerBuilder, TablePersistence } from '@darlean/core';
 import { IIndexItem, ITableService, ITableSearchResponse } from '@darlean/tables-suite';
 import { encodeNumber, ITime, parallel, ParallelTask, sleep, Time } from '@darlean/utils';
-import { StorageTestActor, STORAGE_TEST_ACTOR, STORAGE_TEST_ACTOR_TABLE, testActorSuite } from './actor.impl';
+import { ITextState, StorageTestActor, STORAGE_TEST_ACTOR, STORAGE_TEST_ACTOR_TABLE, testActorSuite } from './actor.impl';
 
 async function distributedpersistence_get_store(actor: StorageTestActor) {
     check(undefined, await actor.get(['foo'], []), 'Non existing partition key');
@@ -48,7 +48,7 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyOrder });
                 check(
                     transform('A A.B A.C AA.B B C.B'),
-                    results.items.map((x) => x.value).join(' '),
+                    results.items.map((x) => x.value?.text).join(' '),
                     'No constraints should return all items'
                 );
             }
@@ -57,7 +57,7 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: [], sortKeyOrder });
                 check(
                     transform('A A.B A.C AA.B B C.B'),
-                    results.items.map((x) => x.value).join(' '),
+                    results.items.map((x) => x.value?.text).join(' '),
                     'Empty sort key from array should return all items'
                 );
             }
@@ -66,7 +66,7 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: [''], sortKeyOrder });
                 check(
                     transform('A A.B A.C AA.B B C.B'),
-                    results.items.map((x) => x.value).join(' '),
+                    results.items.map((x) => x.value?.text).join(' '),
                     'Empty string in sortKeyFrom array constraints should return all items'
                 );
             }
@@ -75,7 +75,7 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a'], sortKeyOrder });
                 check(
                     transform('A A.B A.C AA.B B C.B'),
-                    results.items.map((x) => x.value).join(' '),
+                    results.items.map((x) => x.value?.text).join(' '),
                     "Sort key constraint should return items >= sort key constraint, including items that have a prefix map (like 'AA')"
                 );
             }
@@ -84,7 +84,7 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyFrom: ['a', 'c'], sortKeyOrder });
                 check(
                     transform('A.C AA.B B C.B'),
-                    results.items.map((x) => x.value).join(' '),
+                    results.items.map((x) => x.value?.text).join(' '),
                     'Sort key constraint should return items >= sort key'
                 );
             }
@@ -98,7 +98,7 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                 });
                 check(
                     transform('A.C AA.B B'),
-                    results.items.map((x) => x.value).join(' '),
+                    results.items.map((x) => x.value?.text).join(' '),
                     'Sort key from and to should return items in that range'
                 );
             }
@@ -107,7 +107,7 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                 const results = await actor.query({ partitionKey: ['bar'], sortKeyTo: ['a'], sortKeyOrder });
                 check(
                     transform('A A.B A.C'),
-                    results.items.map((x) => x.value).join(' '),
+                    results.items.map((x) => x.value?.text).join(' '),
                     "Sort key to should return items <= the constraint including children (like 'A.B') but not prefix items like 'AA'"
                 );
             }
@@ -121,7 +121,7 @@ async function distributedpersistence_query(actor: StorageTestActor) {
                 });
                 check(
                     transform('A A.B A.C AA.B'),
-                    results.items.map((x) => x.value).join(' '),
+                    results.items.map((x) => x.value?.text).join(' '),
                     'Loose sort key to should also return prefix items'
                 );
             }
@@ -147,7 +147,8 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
     const tasks: ParallelTask<void, void>[] = [];
     for (let idx = 0; idx < 10000; idx++) {
         tasks.push(async () => {
-            await actor.store(['idxtest'], [idx.toString()], idx.toString());
+            const v = idx.toString().padStart(4, '0');
+            await actor.store(['idxtest'], [v], v);
         });
     }
     const start = time.machineTicks();
@@ -163,11 +164,20 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
             partitionKey: ['idxtest'],
             keys: [{ operator: 'prefix', value: '12' }]
         });
-        console.log('PREFIX-12', results.items);
         check(
-            '12',
-            ((results.items[0].tableFields as unknown as string) ?? '').substring(0, 2),
+            '1200',
+            ((results.items[0].tableFields?.text as string) ?? ''),
             'Prefix query must return prefix results'
+        );
+        check(
+            '1299',
+            ((results.items[99].tableFields?.text as string) ?? ''),
+            'Prefix query must return prefix results'
+        );
+        check(
+            100,
+            results.items.length,
+            'Prefix query must return correct amount of items'
         );
     }
 
@@ -177,20 +187,46 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
 async function distributedpersistence_query_throughput(actor: StorageTestActor, time: ITime) {
     const tasks: ParallelTask<void, void>[] = [];
     const value = ''.padEnd(1000, '+');
-    for (let idx = 0; idx < 10000; idx++) {
-        tasks.push(async () => {
-            const nr = (10000 + Math.round(Math.random() * 10000)).toString();
-            await actor.store(['query_throughput'], [nr], value);
+    
+    await context('random-insert', async () => {
+        // Inserts 10.000 records with key and value randomly between 10.000 and 20.000.
+        for (let idx = 0; idx < 10000; idx++) {
+            tasks.push(async () => {
+                const nr = (10000 + Math.round(Math.random() * 10000)).toString();
+                await actor.store(['query_throughput'], [nr], value);
+            });
+        }
+        await parallel(tasks, 100000, -1000);
+    });
+    
+    const ascdescItems: string[][] = [[], []];
+
+    for (const direction of ['ascending', 'descending'] ) {
+        await context(direction, async () => {
+            const start = time.machineTicks();
+            const items: IQueryItem<ITextState>[] = [];
+            let n = 0;
+            let results: IPersistenceQueryResult<ITextState> | undefined;
+            while ((results === undefined) || (results?.continuationToken)) {
+                results = await actor.query({ partitionKey: ['query_throughput'], sortKeyFrom: ['13000'], sortKeyTo: ['16000'], continuationToken: results?.continuationToken, sortKeyOrder: direction as 'ascending' | 'descending' });
+                n++;
+                for (const item of results.items) {
+                    items.push(item);
+                }
+            }
+            const stop = time.machineTicks();
+            check(true, n > 1, 'Result set must have at least one continuation token');
+            check(true, items.length > 1000, 'Result set must return a lot of items');
+            console.log('DURATION', stop - start, 'ms');
+            const idx = (direction === 'ascending') ? 0 : 1;
+            for (const item of items) {
+                ascdescItems[idx].push(item.sortKey[0]);
+            }
         });
     }
-    await parallel(tasks, 100000, -1000);
-    console.log('Filled');
 
-    const start = time.machineTicks();
-    const results = await actor.query({ partitionKey: ['query_throughput'], sortKeyFrom: ['13000'], sortKeyTo: ['13500'] });
-    const stop = time.machineTicks();
-    console.log('DURATION', stop - start, 'ms');
-    console.log(results.items.length);
+    check(JSON.stringify(ascdescItems[0]), JSON.stringify(ascdescItems[0].sort()), 'Items should be properly sorted');
+    check(JSON.stringify(ascdescItems[0]), JSON.stringify(ascdescItems[1].reverse()), 'Asc and desc should return same data, but in reverse order');
 }
 
 async function table(portal: IPortal) {
@@ -210,46 +246,61 @@ async function table(portal: IPortal) {
             { name: 'b', keys: ['ab', 'cd'] }
         ]
     });
-    console.log('ITEM2', JSON.stringify(item2));
-    const items2 = await service.search({
-        index: 'a',
-        specifiers: ['table'],
-        keys: []
-    });
-    console.log('ITEMS2', JSON.stringify(items2));
-    const items2a = await service.search({
-        index: 'b',
-        specifiers: ['table'],
-        keys: [{ operator: 'eq', value: 'ab' }]
-    });
-    console.log('ITEMS2a', JSON.stringify(items2a));
-    const items2b = await service.search({
-        specifiers: ['table'],
-        keys: [{ operator: 'eq', value: '123' }]
-    });
-    console.log('ITEMS2b', JSON.stringify(items2b));
+    check(true, !!item2.baseline, 'Put must return a baseline');
 
-    const item3 = await service.put({
-        specifiers: ['table'],
-        baseline: item2.baseline,
-        id: ['123', '4'],
-        version: '1001',
-        data: { Hello: 'Moon' },
-        indexes: [{ name: 'a', keys: ['45'], data: { hello: 'moon' } }]
+    await context('Table search', async () => {
+        const items = await service.search({ specifiers: ['table'], keys: [{ operator: 'eq', value: '123' }] });
+        check('World', items.items[0]?.tableFields?.Hello, 'Search on table must return proper table value');
+        check(JSON.stringify(['123', '4']), JSON.stringify(items.items[0]?.id), 'Search on table must return proper id');    
     });
-    console.log('ITEM3', JSON.stringify(item3));
-    const items3 = await service.search({
-        index: 'a',
-        specifiers: ['table'],
-        keys: []
+    
+    await context('Index search', async () => {
+        const items = await service.search({ index: 'a', specifiers: ['table'], keys: [] });
+        check('undefined', items.items[0]?.tableFields?.hello ?? 'undefined', 'Search on index must return no table value');
+        check('world', items.items[0]?.indexFields?.hello ?? 'undefined', 'Search on index must return proper index value');
+        check(JSON.stringify(['123', '4']), JSON.stringify(items.items[0]?.id), 'Search on index must return proper id');    
+        check(JSON.stringify(['45']), JSON.stringify(items.items[0]?.keys), 'Search on index must return proper key fields');    
     });
-    console.log('ITEMS3', JSON.stringify(items3));
 
-    const item4 = await service.get({
-        keys: ['123', '4'],
-        specifiers: ['table']
+    await context('Another index search without data', async () => {
+        const items = await service.search({ index: 'b', specifiers: ['table'], keys: [{ operator: 'eq', value: 'ab' }] });
+        check('undefined', items.items[0]?.tableFields?.hello ?? 'undefined', 'Search on index must return no table value');
+        check('undefined', items.items[0]?.indexFields?.hello ?? 'undefined', 'Search on index must not return values of another index');
+        check('undefined', items.items[0]?.indexFields?.hello ?? 'undefined', 'Search on index must not return values of another index');
+        check(JSON.stringify(['123', '4']), JSON.stringify(items.items[0]?.id), 'Search on index must return proper id');    
+        check(JSON.stringify(['ab', 'cd']), JSON.stringify(items.items[0]?.keys), 'Search on index must return proper key fields');    
     });
-    console.log('ITEM4', JSON.stringify(item4));
+
+    await context('Update indexed item', async () => {
+        const item3 = await service.put({
+            specifiers: ['table'],
+            baseline: item2.baseline,
+            id: ['123', '4'],
+            version: '1001',
+            data: { Hello: 'Moon' },
+            indexes: [{ name: 'a', keys: ['45'], data: { hello: 'moon' } }]
+        });
+        
+        // Expect index b te be removed, and index a to be changed.
+
+        const itemGet = await service.get({
+            keys: ['123', '4'],
+            specifiers: ['table']
+        });
+        check('1001', itemGet.version, 'Version should be correct');
+        check(true, !!itemGet.baseline, 'Baseline should be present');
+        check(true, itemGet.baseline !== item2.baseline, 'Baseline should be different than before');
+        check(true, itemGet.baseline === item3.baseline, 'Baseline for get should be same as returned from put')
+        check('Moon', itemGet.data?.Hello, 'Item data must be the new value');
+
+        const itemsSearchA = await service.search({ index: 'a', specifiers: ['table'], keys: [] });
+        check(1, itemsSearchA.items.length, 'Index search should return only 1 record');
+        check(JSON.stringify(['123', '4']), JSON.stringify(itemsSearchA.items[0]?.id), 'Search on index must return proper id');    
+        check(JSON.stringify(['45']), JSON.stringify(itemsSearchA.items[0]?.keys), 'Search on index must return proper key fields');    
+
+        const itemsSearchB = await service.search({ index: 'b', specifiers: ['table'], keys: [] });
+        check(0, itemsSearchB.items.length, 'Index search on removed index should return no records');
+    });
 }
 
 async function table2(portal: IPortal) {
@@ -576,12 +627,17 @@ async function context(name: string, func: () => Promise<void>) {
 }
 
 function c() {
-    return contexts.length > 0 ? contexts.join('->') : '';
+    return contexts.length > 0 ? `[${contexts.join(' -> ')}]` : '';
 }
 
 function check<T>(expected: T, actual: T, descr: string) {
     if (expected === actual) {
-        console.log(`[passed] ${c()} ${descr} (expected = actual = ${actual})`);
+        let value = actual === undefined ? 'undefined' : (actual as string).toString();
+        if (value.length > 100) {
+            value = value.substring(0, 100) + '...';
+        }
+
+        console.log(`[passed] ${c()} ${descr} (expected = actual = ${value})`);
     } else {
         console.log(`[FAILED] ${c()} ${descr} (expected: ${expected}, actual: ${actual})`);
         process.exitCode = 1;
