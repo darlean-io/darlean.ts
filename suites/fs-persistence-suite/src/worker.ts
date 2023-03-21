@@ -82,7 +82,7 @@ export class FsPersistenceWorker {
 
         const statement = pool.obtain();
         try {
-            const result = statement.get(values) as { [FIELD_VALUE]: Buffer, [FIELD_VERSION]: string };
+            const result = statement.get(values) as { [FIELD_VALUE]: Buffer; [FIELD_VERSION]: string };
             if (result) {
                 const buffer = result.value;
 
@@ -111,7 +111,7 @@ export class FsPersistenceWorker {
             ? maxOutReadableEncodedString(encode([...options.sortKeyTo, ...(options.sortKeyToMatch === 'loose' ? [] : [''])]))
             : null;
 
-        let limiter = (options.sortKeyOrder === 'descending') ? maxOutReadableEncodedString('') : '';
+        let limiter = options.sortKeyOrder === 'descending' ? maxOutReadableEncodedString('') : '';
 
         if (options.continuationToken) {
             const ct = JSON.parse(Buffer.from(options.continuationToken as string, 'base64').toString()) as IContinuationToken;
@@ -123,7 +123,15 @@ export class FsPersistenceWorker {
         };
 
         const limit = options.maxItems ?? -1;
-        const values = [encode(options.partitionKey), sortKeyFromString, sortKeyFromString, sortKeyToString, sortKeyToString, limiter, limit];
+        const values = [
+            encode(options.partitionKey),
+            sortKeyFromString,
+            sortKeyFromString,
+            sortKeyToString,
+            sortKeyToString,
+            limiter,
+            limit
+        ];
 
         const statement = pool.obtain();
         try {
@@ -164,11 +172,11 @@ export class FsPersistenceWorker {
                     lastSK = data.sk;
                 }
             }
-            const canHaveMore = (options.maxItems !== undefined) && (nrows >= options.maxItems);
+            const canHaveMore = options.maxItems !== undefined && nrows >= options.maxItems;
             if (canHaveMore) {
                 const ct: IContinuationToken = { sk: lastSK ?? '' };
                 const ctEncoded = Buffer.from(JSON.stringify(ct)).toString('base64');
-                result.continuationToken = ctEncoded;        
+                result.continuationToken = ctEncoded;
             }
             return result;
         } finally {
@@ -205,7 +213,7 @@ export class FsPersistenceWorker {
 
                     const seqnr = this.lastSeqNr + 1;
                     this.lastSeqNr = seqnr;
-                    
+
                     const values: Array<string | Buffer | number> = this.makeKeyValues(item.partitionKey, item.sortKey);
                     values.push(item.value);
                     values.push(SOURCE);
@@ -390,10 +398,10 @@ export class FsPersistenceWorker {
     protected makeStorePool(db: SqliteDatabase): StatementPool {
         const placeholders = new Array(6).fill('?');
         return db.prepare(
-            `INSERT INTO ${TABLE} (${FIELD_PK}, ${FIELD_SK}, ${FIELD_VALUE}, ${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ}, ${FIELD_VERSION}) ` + 
-            `VALUES (${placeholders.join(',')}) ` +
-            `ON CONFLICT DO UPDATE SET ${FIELD_VALUE}=?, ${FIELD_SOURCE_NAME}=?, ${FIELD_SOURCE_SEQ}=?,${FIELD_VERSION}=? `+
-            `WHERE ${FIELD_VERSION} < ?`
+            `INSERT INTO ${TABLE} (${FIELD_PK}, ${FIELD_SK}, ${FIELD_VALUE}, ${FIELD_SOURCE_NAME}, ${FIELD_SOURCE_SEQ}, ${FIELD_VERSION}) ` +
+                `VALUES (${placeholders.join(',')}) ` +
+                `ON CONFLICT DO UPDATE SET ${FIELD_VALUE}=?, ${FIELD_SOURCE_NAME}=?, ${FIELD_SOURCE_SEQ}=?,${FIELD_VERSION}=? ` +
+                `WHERE ${FIELD_VERSION} < ?`
         );
     }
 

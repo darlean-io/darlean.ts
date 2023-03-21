@@ -1,12 +1,4 @@
-import {
-    action,
-    ActorSuite,
-    IActorSuite,
-    IPersistence,
-    IPersistenceQueryOptions,
-    IPersistenceQueryResult,
-    TABLE_SERVICE
-} from '@darlean/base';
+import { action, ActorSuite, IActorSuite, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult, TABLE_SERVICE } from '@darlean/base';
 import { TablePersistence } from '@darlean/core';
 import { ITableService } from '@darlean/tables-suite';
 
@@ -30,7 +22,7 @@ export class StorageTestActor {
         if (value === undefined) {
             p.clear();
         } else {
-            p.change({text: value});
+            p.change({ text: value });
         }
         await p.store();
     }
