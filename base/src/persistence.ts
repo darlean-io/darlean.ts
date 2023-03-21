@@ -170,7 +170,7 @@ export interface IPersistenceQueryOptions {
      */
     // sortKeyPrefix?: string[];
     maxItems?: number;
-    continuationToken?: unknown;
+    continuationToken?: string;
     filterExpression?: unknown[];
     filterFieldBase?: string;
     filterPartitionKeyOffset?: number;
@@ -184,6 +184,6 @@ export interface IQueryItem<T> {
 }
 
 export interface IPersistenceQueryResult<T> {
-    continuationToken?: unknown;
+    continuationToken?: string;
     items: IQueryItem<T>[];
 }

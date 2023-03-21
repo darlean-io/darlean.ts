@@ -122,7 +122,8 @@ export class FsPersistenceWorker {
             items: []
         };
 
-        const values = [encode(options.partitionKey), sortKeyFromString, sortKeyFromString, sortKeyToString, sortKeyToString, limiter];
+        const limit = options.maxItems ?? -1;
+        const values = [encode(options.partitionKey), sortKeyFromString, sortKeyFromString, sortKeyToString, sortKeyToString, limiter, limit];
 
         const statement = pool.obtain();
         try {
@@ -130,8 +131,10 @@ export class FsPersistenceWorker {
 
             let length = 0;
             let lastSK: string | undefined;
+            let nrows = 0;
 
             for (const row of statement.iterate(values)) {
+                nrows++;
                 const data = row as { [FIELD_PK]?: string; [FIELD_SK]?: string; [FIELD_VALUE]?: Buffer };
                 if (
                     !options.filterExpression ||
@@ -160,6 +163,12 @@ export class FsPersistenceWorker {
                     });
                     lastSK = data.sk;
                 }
+            }
+            const canHaveMore = (options.maxItems !== undefined) && (nrows >= options.maxItems);
+            if (canHaveMore) {
+                const ct: IContinuationToken = { sk: lastSK ?? '' };
+                const ctEncoded = Buffer.from(JSON.stringify(ct)).toString('base64');
+                result.continuationToken = ctEncoded;        
             }
             return result;
         } finally {
@@ -366,14 +375,15 @@ export class FsPersistenceWorker {
         // - Upper value of sort key
         // - Same as previous field (must be provided twice because better-sqlite does not support using numeric placeholders to reuse the same value)
         // - Paging value that is used to continue a previous query
+        // - Limit (or negative number to do not use a limit)
         return db.prepare(
-            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) AND (${FIELD_SK} > ?) ORDER BY ${FIELD_SK} ASC`
+            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) AND (${FIELD_SK} > ?) ORDER BY ${FIELD_SK} ASC LIMIT ?`
         );
     }
 
     protected makeQueryPoolDesc(db: SqliteDatabase): StatementPool {
         return db.prepare(
-            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) AND (${FIELD_SK} < ?) ORDER BY ${FIELD_SK} DESC`
+            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) AND (${FIELD_SK} < ?) ORDER BY ${FIELD_SK} DESC LIMIT ?`
         );
     }
 

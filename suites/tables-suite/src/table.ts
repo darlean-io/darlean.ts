@@ -3,8 +3,6 @@ import { IDeSer, parallel, ParallelTask } from '@darlean/utils';
 import * as crypto from 'crypto';
 import { and, contains, eq, Expr, gte, sk, literal, lte, prefix } from './expressions';
 
-const MAX_SEARCH_RESPONSE_LENGTH = 500 * 1000;
-
 export interface ITablePutRequest {
     id: string[];
     data?: { [key: string]: unknown };
@@ -44,6 +42,8 @@ export interface ITableSearchRequest {
     specifiers?: string[];
     tableProjection?: string[];
     indexProjection?: string[];
+    continuationToken?: string;
+    maxItems?: number;
 }
 
 export interface ITableSearchItem {
@@ -55,6 +55,7 @@ export interface ITableSearchItem {
 
 export interface ITableSearchResponse {
     items: ITableSearchItem[];
+    continuationToken?: string;
 }
 
 interface IIndexEntry {
@@ -287,10 +288,13 @@ export class TableActor implements ITableService {
                 filterExpression: filter,
                 filterFieldBase: 'data',
                 filterSortKeyOffset: 2, // 'index' + name
-                projectionFilter: projection
+                projectionFilter: projection,
+                continuationToken: request.continuationToken,
+                maxItems: request.maxItems
             });
             const response: ITableSearchResponse = {
-                items: []
+                items: [],
+                continuationToken: result.continuationToken
             };
 
             for (const item of result.items) {
@@ -349,18 +353,16 @@ export class TableActor implements ITableService {
                 filterExpression: filter,
                 filterFieldBase: 'data',
                 filterSortKeyOffset: 1, // 'base'
-                projectionFilter: projection
+                projectionFilter: projection,
+                continuationToken: request.continuationToken,
+                maxItems: request.maxItems
             });
             const response: ITableSearchResponse = {
-                items: []
+                items: [],
+                continuationToken: result.continuationToken
             };
-            let length = 0;
             for (const item of result.items) {
                 if (item.value) {
-                    length += item.value?.length ?? 0;
-                    if (length > MAX_SEARCH_RESPONSE_LENGTH) {
-                        return response;
-                    }
                     const value = this.deser.deserialize(item.value) as IBaseItem;
 
                     const resultItem: ITableSearchItem = {

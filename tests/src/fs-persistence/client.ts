@@ -1,6 +1,6 @@
 import { IPersistenceQueryResult, IPortal, IQueryItem, TABLE_SERVICE } from '@darlean/base';
 import { ConfigRunnerBuilder, TablePersistence } from '@darlean/core';
-import { IIndexItem, ITableService, ITableSearchResponse } from '@darlean/tables-suite';
+import { IIndexItem, ITableService, ITableSearchResponse, ITableSearchItem } from '@darlean/tables-suite';
 import { encodeNumber, ITime, parallel, ParallelTask, sleep, Time } from '@darlean/utils';
 import { ITextState, StorageTestActor, STORAGE_TEST_ACTOR, STORAGE_TEST_ACTOR_TABLE, testActorSuite } from './actor.impl';
 
@@ -159,7 +159,7 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
     const ts = portal.retrieve<ITableService>(TABLE_SERVICE, ['testtable']);
     const tp = new TablePersistence<string>(ts, () => [], ['indexstoragetest']);
 
-    {
+    await context('Single chunk search', async () => {
         const results = await tp.search({
             partitionKey: ['idxtest'],
             keys: [{ operator: 'prefix', value: '12' }]
@@ -179,7 +179,44 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
             results.items.length,
             'Prefix query must return correct amount of items'
         );
-    }
+    });
+
+    await context('Multi-chunk search', async () => {
+        const items: ITableSearchItem[] = [];
+        let n = 0;
+        let results: ITableSearchResponse | undefined;
+        while (true) {
+            results = await tp.search({
+                partitionKey: ['idxtest'],
+                keys: [{ operator: 'prefix', value: '12' }],
+                maxItems: 10,
+                continuationToken: results?.continuationToken
+            });
+            n++;
+            for (const item of results.items) {
+                items.push(item);
+            }
+            if (!results.continuationToken) {
+                break;
+            }
+        }
+        check(11, n, 'Amount of chunks should be correct');
+        check(
+            '1200',
+            ((items[0].tableFields?.text as string) ?? ''),
+            'Prefix query must return prefix results'
+        );
+        check(
+            '1299',
+            ((items[99].tableFields?.text as string) ?? ''),
+            'Prefix query must return prefix results'
+        );
+        check(
+            100,
+            items.length,
+            'Prefix query must return correct amount of items'
+        );
+    });
 
     check('completed', results.status, 'Parallel execution should be completed');
 }
@@ -227,6 +264,26 @@ async function distributedpersistence_query_throughput(actor: StorageTestActor, 
 
     check(JSON.stringify(ascdescItems[0]), JSON.stringify(ascdescItems[0].sort()), 'Items should be properly sorted');
     check(JSON.stringify(ascdescItems[0]), JSON.stringify(ascdescItems[1].reverse()), 'Asc and desc should return same data, but in reverse order');
+
+    await context('Multi-chunk', async () => {
+        let n = 0;
+        let results: IPersistenceQueryResult<ITextState> | undefined;
+        const items: IQueryItem<ITextState>[] = [];
+        while (true) {
+            results = await actor.query({ partitionKey: ['query_throughput'], sortKeyFrom: ['13000'], sortKeyTo: ['16000'], continuationToken: results?.continuationToken, maxItems: 10 });
+            n++;
+            for (const item of results.items) {
+                items.push(item);
+            }
+            if (!results.continuationToken) {
+                break;
+            }
+        }
+        check(true, n > 10, 'Result set must have quite some continuation tokens');
+        check(true, items.length > 1000, 'Result set must return a lot of items');
+        check(JSON.stringify(ascdescItems[0]), JSON.stringify(items.map((x) => x.sortKey[0])), 'All items should be present in the proper order');
+    });
+
 }
 
 async function table(portal: IPortal) {

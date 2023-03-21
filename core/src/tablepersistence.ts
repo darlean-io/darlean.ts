@@ -113,6 +113,8 @@ export class TablePersistence<T> implements IPersistence<T> {
 
     public async search(options: ITableSearchRequest & ITablePersistenceSearchRequest): Promise<ITableSearchResponse> {
         if (!options.index) {
+            // Search on main table
+
             const keysPrefix: IKeyConstraint[] = [
                 { operator: 'eq', value: (options.partitionKey?.length ?? 0).toString() },
                 ...(options.partitionKey?.map((field) => ({ operator: 'eq', value: field } as IKeyConstraint)) ?? [])
@@ -123,15 +125,17 @@ export class TablePersistence<T> implements IPersistence<T> {
                 filter: options.filter,
                 keysOrder: options.keysOrder,
                 specifiers: this.specifiers,
-                tableProjection: options.tableProjection
+                tableProjection: options.tableProjection,
+                continuationToken: options.continuationToken,
+                maxItems: options.maxItems
             };
 
             const results = await this.service.search(opts2);
-            const response: ITableSearchResponse = { items: [] };
+            const response: ITableSearchResponse = { items: [], continuationToken: results.continuationToken };
 
             for (const item of results.items) {
                 response.items.push({
-                    id: item.id, // item.id.slice(keysPrefix.length),
+                    id: item.id,
                     tableFields: item.tableFields
                 });
             }
