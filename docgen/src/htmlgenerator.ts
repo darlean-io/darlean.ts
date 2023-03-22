@@ -55,7 +55,7 @@ export class Html {
             );
             this.raw('.comment h2 {background: none}');
             // this.raw('.comment {font-family: \'DejaVu Serif\', Georgia, "Times New Roman", Times, serif; font-size: 16px;}');
-            this.raw('.comment {font-size: 86%;}');
+            this.raw('.comment.short {font-size: 86%;}');
             this.raw('a {font-weight: bold; text-decoration: none; }');
             this.raw('a, a:hover, a:visited, a:active { color: #FA0; }');
             this.raw(
@@ -923,7 +923,7 @@ export class Generator {
             }
         });
 
-        html.start('div', 'comment');
+        html.start('div', short ? 'comment short' : 'comment');
         const htmlText = marked.marked.parse(md);
         const htmlParts = htmlText.split(marker);
         for (let idx = 0; idx < htmlParts.length; idx++) {
