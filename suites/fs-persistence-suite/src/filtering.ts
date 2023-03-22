@@ -1,4 +1,4 @@
-import { encodeNumber } from '@darlean/utils';
+import { encodeNumber, wildcardMatch } from '@darlean/utils';
 
 export interface IFilterContext {
     data(): { [key: string]: unknown };
@@ -63,19 +63,35 @@ export class Filterer {
             return command[1];
         });
 
+        this.evaluators.set('wildcardmatch', (context, command) => {
+            const input = this.toString(this.eval(context, command[1]));
+            const mask = this.toString(this.eval(context, command[2]));
+            return wildcardMatch(input, mask);
+        });
+
+        this.evaluators.set('uppercase', (context, command) => {
+            const input = this.toString(this.eval(context, command[1]));
+            return input.toUpperCase();
+        });
+
+        this.evaluators.set('lowercase', (context, command) => {
+            const input = this.toString(this.eval(context, command[1]));
+            return input.toLowerCase();
+        });
+
         this.evaluators.set('not', (context, command) => {
             return this.isFalsy(this.eval(context, command[1]));
         });
 
         this.evaluators.set('prefix', (context, command) => {
-            return this.toCompareString(this.eval(context, command[1])).startsWith(
-                this.toCompareString(this.eval(context, command[2]))
+            return this.toString(this.eval(context, command[1])).startsWith(
+                this.toString(this.eval(context, command[2]))
             );
         });
 
         this.evaluators.set('contains', (context, command) => {
-            return this.toCompareString(this.eval(context, command[1])).includes(
-                this.toCompareString(this.eval(context, command[2]))
+            return this.toString(this.eval(context, command[1])).includes(
+                this.toString(this.eval(context, command[2]))
             );
         });
 
@@ -133,6 +149,18 @@ export class Filterer {
                 return value ? 'true' : 'false';
             case 'number':
                 return encodeNumber(value);
+            case 'string':
+                return value;
+        }
+        return '';
+    }
+
+    private toString(value: unknown): string {
+        switch (typeof value) {
+            case 'boolean':
+                return value ? 'true' : 'false';
+            case 'number':
+                return value.toString();
             case 'string':
                 return value;
         }
