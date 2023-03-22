@@ -63,6 +63,10 @@ export class Filterer {
             return command[1];
         });
 
+        this.evaluators.set('not', (context, command) => {
+            return this.isFalsy(this.eval(context, command[1]));
+        });
+
         this.evaluators.set('prefix', (context, command) => {
             return this.toCompareString(this.eval(context, command[1])).startsWith(
                 this.toCompareString(this.eval(context, command[2]))
