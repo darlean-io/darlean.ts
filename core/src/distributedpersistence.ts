@@ -85,17 +85,17 @@ class DistributedPersistable<T> implements IPersistable<T> {
 export class DistributedPersistence<T> implements IPersistence<T> {
     private service: IPersistenceService;
     private deser: IDeSer;
-    private specifiers: string[] | undefined;
+    private specifier: string | undefined;
 
-    constructor(service: IPersistenceService, deser: IDeSer, specifiers?: string[]) {
+    constructor(service: IPersistenceService, deser: IDeSer, specifier?: string) {
         this.service = service;
         this.deser = deser;
-        this.specifiers = specifiers;
+        this.specifier = specifier;
     }
 
     public async query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<T>> {
         const intermediate = await this.service.query({
-            specifiers: this.specifiers,
+            specifier: this.specifier,
             partitionKey: options.partitionKey,
             sortKeyFrom: options.sortKeyFrom,
             sortKeyTo: options.sortKeyTo,
@@ -136,7 +136,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
         sortKey?: string[] | undefined
     ): Promise<[value: T | undefined, version: string | undefined]> {
         const result = await this.service.load({
-            specifiers: this.specifiers,
+            specifier: this.specifier,
             partitionKey: partitionKey ?? [],
             sortKey: sortKey ?? []
         });
@@ -154,7 +154,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
     ): Promise<void> {
         const v = value === undefined ? undefined : this.deser.serialize(value);
         await this.service.store({
-            specifiers: this.specifiers,
+            specifier: this.specifier,
             partitionKey: partitionKey ?? [],
             sortKey: sortKey ?? [],
             value: v,

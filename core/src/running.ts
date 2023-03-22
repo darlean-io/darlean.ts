@@ -143,7 +143,7 @@ export class ActorRunner {
 export class ActorRunnerBuilder {
     protected actors: IActorRegistrationOptions<object>[];
     protected portal?: IPortal;
-    protected persistenceFactory?: IPersistence<unknown> | ((actorType: string, specifiers?: string[]) => IPersistence<unknown>);
+    protected persistenceFactory?: IPersistence<unknown> | ((actorType: string, specifier?: string) => IPersistence<unknown>);
     protected appId: string;
     protected transport?: ITransport;
     protected remote?: IRemote;
@@ -249,9 +249,7 @@ export class ActorRunnerBuilder {
      * Overrides the default distributed persistence which is automatically enabled when {@link setPersistence} is not invoked.
      * @param persistence
      */
-    public setPersistence(
-        factory: IPersistence<unknown> | ((actorType: string, specifiers?: string[]) => IPersistence<unknown>)
-    ) {
+    public setPersistence(factory: IPersistence<unknown> | ((actorType: string, specifier?: string) => IPersistence<unknown>)) {
         this.persistenceFactory = factory;
     }
 
@@ -464,11 +462,11 @@ export class ActorRunnerBuilder {
         return new TransportRemote(appId, transport, container);
     }
 
-    private createPersistence(portal: IPortal, deser: IDeSer): (type: string, specifiers?: string[]) => IPersistence<unknown> {
-        return (_type, specifiers?) => {
+    private createPersistence(portal: IPortal, deser: IDeSer): (type: string, specifier?: string) => IPersistence<unknown> {
+        return (_type, specifier?) => {
             const servicePortal = portal.typed<IPersistenceService>(PERSISTENCE_SERVICE);
             const service = servicePortal.retrieve([]);
-            return new DistributedPersistence(service, deser, specifiers);
+            return new DistributedPersistence(service, deser, specifier);
         };
     }
 
@@ -492,17 +490,14 @@ export class ActorRunnerBuilder {
         return {
             id,
             portal: this.portal,
-            persistence: <T>(specifiers?: string | string[]) => {
+            persistence: <T>(specifier?: string) => {
                 // The id-length is there to prevent malicious code from accessing persistent data
                 // from other actors.
                 // When actor 1 has id ['a', 'b'] and stores state in ['c];
                 // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
                 // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
-                if (typeof specifiers === 'string') {
-                    specifiers = [specifiers];
-                }
                 const typePersistence =
-                    typeof persistenceFactory === 'function' ? persistenceFactory(type, specifiers) : persistenceFactory;
+                    typeof persistenceFactory === 'function' ? persistenceFactory(type, specifier) : persistenceFactory;
                 return typePersistence.sub([type, id.length.toString(), ...id]) as IPersistence<T>;
             },
             time,

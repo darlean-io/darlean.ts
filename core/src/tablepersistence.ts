@@ -87,17 +87,22 @@ export interface ITablePersistenceSearchRequest {
     partitionKey?: string[];
 }
 
+export interface ITablePersistenceSearchResponse {
+    partitionKey?: string[];
+    sortKey?: string[];
+}
+
 /**
  * Implementation of {@link IPersistence} that uses a table as persistence.
  */
 export class TablePersistence<T> implements IPersistence<T> {
     private service: ITableService;
-    private specifiers: string[] | undefined;
+    private specifier: string | undefined;
     private indexer: (item: T | undefined) => IIndexItem[];
 
-    constructor(service: ITableService, indexer: (item: T | undefined) => IIndexItem[], specifiers?: string[]) {
+    constructor(service: ITableService, indexer: (item: T | undefined) => IIndexItem[], specifier?: string) {
         this.service = service;
-        this.specifiers = specifiers;
+        this.specifier = specifier;
         this.indexer = indexer;
     }
 
@@ -115,6 +120,9 @@ export class TablePersistence<T> implements IPersistence<T> {
         if (!options.index) {
             // Search on main table
 
+            // Any partition keys in options are represented as prefix of the sort key in the table (because all items must be
+            // together in one table partition to allow atomic transactions and efficient queries). So, we add the length of the
+            // pk + the pk fields as additional key constraints here.
             const keysPrefix: IKeyConstraint[] = [
                 { operator: 'eq', value: (options.partitionKey?.length ?? 0).toString() },
                 ...(options.partitionKey?.map((field) => ({ operator: 'eq', value: field } as IKeyConstraint)) ?? [])
@@ -124,7 +132,7 @@ export class TablePersistence<T> implements IPersistence<T> {
                 keys: [...keysPrefix, ...(options.keys ?? [])],
                 filter: options.filter,
                 keysOrder: options.keysOrder,
-                specifiers: this.specifiers,
+                specifier: this.specifier,
                 tableProjection: options.tableProjection,
                 continuationToken: options.continuationToken,
                 maxItems: options.maxItems
@@ -141,7 +149,32 @@ export class TablePersistence<T> implements IPersistence<T> {
             }
             return response;
         } else {
-            throw new Error('Not yet implemented');
+            // Search on index table (not the main table)
+
+            const opts2: ITableSearchRequest = {
+                index: options.index,
+                keys: options.keys,
+                filter: options.filter,
+                keysOrder: options.keysOrder,
+                specifier: this.specifier,
+                tableProjection: options.tableProjection,
+                indexProjection: options.indexProjection,
+                continuationToken: options.continuationToken,
+                maxItems: options.maxItems
+            };
+
+            const results = await this.service.search(opts2);
+            const response: ITableSearchResponse = { items: [], continuationToken: results.continuationToken };
+
+            for (const item of results.items) {
+                response.items.push({
+                    id: item.id,
+                    keys: item.keys,
+                    tableFields: item.tableFields,
+                    indexFields: item.indexFields
+                });
+            }
+            return response;
         }
     }
 
@@ -160,7 +193,7 @@ export class TablePersistence<T> implements IPersistence<T> {
         sortKey?: string[] | undefined
     ): Promise<[value: T | undefined, version: string | undefined, baseline: string | undefined]> {
         const result = await this.service.get({
-            specifiers: this.specifiers,
+            specifier: this.specifier,
             keys: this.toKey(partitionKey, sortKey)
         });
 
@@ -176,7 +209,7 @@ export class TablePersistence<T> implements IPersistence<T> {
         baseline: string | undefined
     ): Promise<ITablePutResponse> {
         const result = await this.service.put({
-            specifiers: this.specifiers,
+            specifier: this.specifier,
             indexes: this.indexer(value),
             baseline,
             id: this.toKey(partitionKey, sortKey),

@@ -6,7 +6,7 @@ import { and, contains, eq, Expr, gte, sk, literal, lte, prefix } from './expres
 export interface ITablePutRequest {
     id: string[];
     data?: { [key: string]: unknown };
-    specifiers?: string[];
+    specifier?: string;
     version: string;
     baseline?: string;
     indexes: IIndexItem[];
@@ -20,7 +20,7 @@ export interface ITablePutResponse {
 
 export interface ITableGetRequest {
     keys: string[];
-    specifiers?: string[];
+    specifier?: string;
     projection?: string[];
 }
 
@@ -39,7 +39,7 @@ export interface ITableSearchRequest {
     keys?: IKeyConstraint[];
     keysOrder?: 'ascending' | 'descending';
     filter?: IFilter;
-    specifiers?: string[];
+    specifier?: string;
     tableProjection?: string[];
     indexProjection?: string[];
     continuationToken?: string;
@@ -142,7 +142,7 @@ export class TableActor implements ITableService {
                 batch.items.push({
                     partitionKey: ['Table', this.name, this.shard.toString()],
                     sortKey: ['index', index.name, ...index.keys, itemKey, hash],
-                    specifiers: request.specifiers,
+                    specifier: request.specifier,
                     value: this.deser.serialize(entry),
                     version: request.version,
                     identifier: ''
@@ -164,7 +164,7 @@ export class TableActor implements ITableService {
         batch.items.push({
             partitionKey: ['Table', this.name, this.shard.toString()],
             sortKey: ['base', ...request.id],
-            specifiers: request.specifiers,
+            specifier: request.specifier,
             value: this.deser.serialize(baseItem),
             version: request.version,
             identifier: ''
@@ -179,7 +179,7 @@ export class TableActor implements ITableService {
                 batch.items.push({
                     partitionKey: ['Table', this.name, this.shard.toString()],
                     sortKey: ['index', bli.name, ...bli.keys, itemKey, bli.hash ?? ''],
-                    specifiers: request.specifiers,
+                    specifier: request.specifier,
                     value: undefined,
                     version: request.version,
                     identifier: ''
@@ -284,7 +284,7 @@ export class TableActor implements ITableService {
                 sortKeyTo: this.prefixSortKey(['index', request.index], sortKeyTo),
                 sortKeyToMatch,
                 sortKeyOrder: request.keysOrder ?? 'ascending',
-                specifiers: request.specifiers,
+                specifier: request.specifier,
                 filterExpression: filter,
                 filterFieldBase: 'data',
                 filterSortKeyOffset: 2, // 'index' + name
@@ -320,7 +320,7 @@ export class TableActor implements ITableService {
                         return this.getImpl({
                             keys: id,
                             projection: request.tableProjection ? this.enhanceProjection(request.tableProjection) : undefined,
-                            specifiers: request.specifiers // TODO: Get rid of this. This is index specifiers, not base table specifiers!
+                            specifier: request.specifier // TODO: Get rid of this. This is index specifiers, not base table specifiers!
                         });
                     });
                 }
@@ -349,7 +349,7 @@ export class TableActor implements ITableService {
                 sortKeyTo: this.prefixSortKey(['base'], sortKeyTo),
                 sortKeyToMatch,
                 sortKeyOrder: request.keysOrder ?? 'ascending',
-                specifiers: request.specifiers,
+                specifier: request.specifier,
                 filterExpression: filter,
                 filterFieldBase: 'data',
                 filterSortKeyOffset: 1, // 'base'
@@ -419,7 +419,7 @@ export class TableActor implements ITableService {
         const result = await this.persistence.load({
             partitionKey: ['Table', this.name, this.shard.toString()],
             sortKey: ['base', ...request.keys],
-            specifiers: request.specifiers,
+            specifier: request.specifier,
             projectionFilter: request.projection
         });
         if (result.value) {

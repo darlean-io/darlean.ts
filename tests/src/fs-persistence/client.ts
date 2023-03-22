@@ -153,9 +153,9 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
     console.log('DURATION', stop - start, ' | ', (1000 * results.results.length) / (stop - start), 'stores/sec');
 
     const ts = portal.retrieve<ITableService>(TABLE_SERVICE, ['testtable']);
-    const tp = new TablePersistence<string>(ts, () => [], ['indexstoragetest']);
+    const tp = new TablePersistence<string>(ts, () => [], 'indexstoragetest');
 
-    await context('Single chunk search', async () => {
+    await context('Single chunk table search', async () => {
         const results = await tp.search({
             partitionKey: ['idxtest'],
             keys: [{ operator: 'prefix', value: '12' }]
@@ -165,7 +165,9 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
         check(100, results.items.length, 'Prefix query must return correct amount of items');
     });
 
-    await context('Multi-chunk search', async () => {
+    check('completed', results.status, 'Parallel execution should be completed');
+
+    await context('Multi-chunk table search', async () => {
         const items: ITableSearchItem[] = [];
         let n = 0;
         let results: ITableSearchResponse | undefined;
@@ -190,7 +192,19 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
         check(100, items.length, 'Prefix query must return correct amount of items');
     });
 
-    check('completed', results.status, 'Parallel execution should be completed');
+    await context('Index search', async () => {
+        const results = await tp.search({
+            index: 'byprefix',
+            partitionKey: ['idxtest'],
+            keys: [
+                { operator: 'eq', value: '12' },
+                { operator: 'eq', value: '23' }
+            ]
+        });
+        check(10, results.items.length, 'Index query must return correct amount of items');
+        check('VAL1230', (results.items[0].indexFields?.value as string) ?? '', 'Index query must return prefix results');
+        check('VAL1239', (results.items[9].indexFields?.value as string) ?? '', 'Index query must return prefix results');
+    });
 }
 
 async function distributedpersistence_query_throughput(actor: StorageTestActor, time: ITime) {
@@ -273,10 +287,10 @@ async function table(portal: IPortal) {
     const service = portal.retrieve<ITableService>(TABLE_SERVICE, ['MyTable']);
     const item = await service.get({
         keys: ['123', '4'],
-        specifiers: ['table']
+        specifier: 'table'
     });
     const item2 = await service.put({
-        specifiers: ['table'],
+        specifier: 'table',
         baseline: item.baseline,
         id: ['123', '4'],
         version: '1000',
@@ -289,13 +303,13 @@ async function table(portal: IPortal) {
     check(true, !!item2.baseline, 'Put must return a baseline');
 
     await context('Table search', async () => {
-        const items = await service.search({ specifiers: ['table'], keys: [{ operator: 'eq', value: '123' }] });
+        const items = await service.search({ specifier: 'table', keys: [{ operator: 'eq', value: '123' }] });
         check('World', items.items[0]?.tableFields?.Hello, 'Search on table must return proper table value');
         check(JSON.stringify(['123', '4']), JSON.stringify(items.items[0]?.id), 'Search on table must return proper id');
     });
 
     await context('Index search', async () => {
-        const items = await service.search({ index: 'a', specifiers: ['table'], keys: [] });
+        const items = await service.search({ index: 'a', specifier: 'table', keys: [] });
         check('undefined', items.items[0]?.tableFields?.hello ?? 'undefined', 'Search on index must return no table value');
         check('world', items.items[0]?.indexFields?.hello ?? 'undefined', 'Search on index must return proper index value');
         check(JSON.stringify(['123', '4']), JSON.stringify(items.items[0]?.id), 'Search on index must return proper id');
@@ -303,7 +317,7 @@ async function table(portal: IPortal) {
     });
 
     await context('Another index search without data', async () => {
-        const items = await service.search({ index: 'b', specifiers: ['table'], keys: [{ operator: 'eq', value: 'ab' }] });
+        const items = await service.search({ index: 'b', specifier: 'table', keys: [{ operator: 'eq', value: 'ab' }] });
         check('undefined', items.items[0]?.tableFields?.hello ?? 'undefined', 'Search on index must return no table value');
         check('undefined', items.items[0]?.indexFields?.hello ?? 'undefined', 'Search on index must not return values of another index');
         check('undefined', items.items[0]?.indexFields?.hello ?? 'undefined', 'Search on index must not return values of another index');
@@ -313,7 +327,7 @@ async function table(portal: IPortal) {
 
     await context('Update indexed item', async () => {
         const item3 = await service.put({
-            specifiers: ['table'],
+            specifier: 'table',
             baseline: item2.baseline,
             id: ['123', '4'],
             version: '1001',
@@ -325,7 +339,7 @@ async function table(portal: IPortal) {
 
         const itemGet = await service.get({
             keys: ['123', '4'],
-            specifiers: ['table']
+            specifier: 'table'
         });
         check('1001', itemGet.version, 'Version should be correct');
         check(true, !!itemGet.baseline, 'Baseline should be present');
@@ -333,12 +347,12 @@ async function table(portal: IPortal) {
         check(true, itemGet.baseline === item3.baseline, 'Baseline for get should be same as returned from put');
         check('Moon', itemGet.data?.Hello, 'Item data must be the new value');
 
-        const itemsSearchA = await service.search({ index: 'a', specifiers: ['table'], keys: [] });
+        const itemsSearchA = await service.search({ index: 'a', specifier: 'table', keys: [] });
         check(1, itemsSearchA.items.length, 'Index search should return only 1 record');
         check(JSON.stringify(['123', '4']), JSON.stringify(itemsSearchA.items[0]?.id), 'Search on index must return proper id');
         check(JSON.stringify(['45']), JSON.stringify(itemsSearchA.items[0]?.keys), 'Search on index must return proper key fields');
 
-        const itemsSearchB = await service.search({ index: 'b', specifiers: ['table'], keys: [] });
+        const itemsSearchB = await service.search({ index: 'b', specifier: 'table', keys: [] });
         check(0, itemsSearchB.items.length, 'Index search on removed index should return no records');
     });
 }
@@ -358,12 +372,12 @@ async function table2(portal: IPortal) {
     }
 
     const service = portal.retrieve<ITableService>(TABLE_SERVICE, ['SongsTable']);
-    const specifiers = ['table.songs'];
+    const specifier = 'table.songs';
     let version = 0;
 
     async function put(song: ISong, baseline: string | undefined) {
         await service.put({
-            specifiers,
+            specifier,
             baseline,
             id: [song.title],
             indexes: indexer(song),
@@ -399,24 +413,24 @@ async function table2(portal: IPortal) {
         }
 
         await context('PointQuery', async () => {
-            const bohemian = await service.get({ keys: ['Bohemian Rhapsody'], specifiers });
+            const bohemian = await service.get({ keys: ['Bohemian Rhapsody'], specifier });
             check('Bohemian Rhapsody', (bohemian.data as ISong | undefined)?.title, 'Fields should be ok');
             check('Queen', (bohemian.data as ISong | undefined)?.artist, 'Fields should be ok');
         });
 
         await context('PointSearch', async () => {
-            const response = await service.search({ keys: [{ operator: 'eq', value: 'Killer Queen' }], specifiers });
+            const response = await service.search({ keys: [{ operator: 'eq', value: 'Killer Queen' }], specifier });
             checkTitles(['Killer Queen'], response, 'Point search should return all fields');
             check('Sheer Heart Attack', (response.items[0].tableFields as ISong | undefined)?.album, 'Point search should fill in all fields');
         });
 
         await context('PointSearchNotPrefix', async () => {
-            const response = await service.search({ keys: [{ operator: 'eq', value: 'Killer' }], specifiers });
+            const response = await service.search({ keys: [{ operator: 'eq', value: 'Killer' }], specifier });
             checkTitles([], response, 'Point search should only return full matches');
         });
 
         await context('GTESearch', async () => {
-            const response = await service.search({ keys: [{ operator: 'gte', value: 'Killer Queen' }], specifiers });
+            const response = await service.search({ keys: [{ operator: 'gte', value: 'Killer Queen' }], specifier });
             checkTitles(['Killer Queen', 'Who are you', "Won't get fooled again", "You're my best friend"], response, 'GTE Search');
         });
 
@@ -424,38 +438,38 @@ async function table2(portal: IPortal) {
             const response = await service.search({
                 keys: [{ operator: 'gte', value: 'Killer Queen' }],
                 keysOrder: 'descending',
-                specifiers
+                specifier
             });
             checkTitles(["You're my best friend", "Won't get fooled again", 'Who are you', 'Killer Queen'], response, 'GTE Search Descending');
         });
 
         await context('LTESearch', async () => {
-            const response = await service.search({ keys: [{ operator: 'lte', value: 'Killer Queen' }], specifiers });
+            const response = await service.search({ keys: [{ operator: 'lte', value: 'Killer Queen' }], specifier });
             checkTitles(['Bohemian Rhapsody', 'Hey Jude', 'Killer Queen'], response, 'LTE Search');
         });
 
         await context('BetweenSearch', async () => {
             const response = await service.search({
                 keys: [{ operator: 'between', value: 'Killer Queen', value2: "Won't get fooled again" }],
-                specifiers
+                specifier
             });
             checkTitles(['Killer Queen', 'Who are you', "Won't get fooled again"], response, 'Between Search');
         });
 
         await context('PrefixSearch', async () => {
-            const response = await service.search({ keys: [{ operator: 'prefix', value: 'W' }], specifiers });
+            const response = await service.search({ keys: [{ operator: 'prefix', value: 'W' }], specifier });
             checkTitles(['Who are you', "Won't get fooled again"], response, 'Prefix Search');
         });
 
         await context('KeyFilterSearch', async () => {
-            const response = await service.search({ keys: [{ operator: 'contains', value: 'fooled' }], specifiers });
+            const response = await service.search({ keys: [{ operator: 'contains', value: 'fooled' }], specifier });
             checkTitles(["Won't get fooled again"], response, 'Key Filter Search');
         });
 
         await context('DataFilterSearch', async () => {
             const response = await service.search({
                 filter: { expression: ['contains', ['field', 'album'], ['literal', 'Opera']] },
-                specifiers
+                specifier
             });
             checkTitles(['Bohemian Rhapsody', "You're my best friend"], response, 'Key Filter Search');
         });
@@ -463,7 +477,7 @@ async function table2(portal: IPortal) {
         await context('DataProjectionInclusive', async () => {
             const response = await service.search({
                 filter: { expression: ['contains', ['field', 'album'], ['literal', 'Opera']] },
-                specifiers,
+                specifier,
                 tableProjection: ['+title']
             });
             checkTitles(['Bohemian Rhapsody', "You're my best friend"], response, 'Data projection inclusive');
@@ -472,7 +486,7 @@ async function table2(portal: IPortal) {
         await context('DataProjectionExclusive', async () => {
             const response = await service.search({
                 filter: { expression: ['contains', ['field', 'album'], ['literal', 'Opera']] },
-                specifiers,
+                specifier,
                 tableProjection: ['-title']
             });
             checkTitles(['undefined', 'undefined'], response, 'Data projection exclusive');
@@ -498,17 +512,17 @@ async function table2(portal: IPortal) {
         }
 
         await context('PointSearch', async () => {
-            const response = await service.search({ index, keys: [{ operator: 'eq', value: 'Queen' }], specifiers });
+            const response = await service.search({ index, keys: [{ operator: 'eq', value: 'Queen' }], specifier });
             checkTitles([queens, queens, queens], response, 'Point search');
         });
 
         await context('PointSearchShouldNotMatchPrefix', async () => {
-            const response = await service.search({ index, keys: [{ operator: 'eq', value: 'Q' }], specifiers });
+            const response = await service.search({ index, keys: [{ operator: 'eq', value: 'Q' }], specifier });
             checkTitles([], response, 'Point search should only return full matches');
         });
 
         await context('GTE', async () => {
-            const response = await service.search({ index, keys: [{ operator: 'gte', value: 'The Beatles' }], specifiers });
+            const response = await service.search({ index, keys: [{ operator: 'gte', value: 'The Beatles' }], specifier });
             checkTitles([thebeatles, thewhos, thewhos], response, 'GTE search');
         });
 
@@ -517,14 +531,14 @@ async function table2(portal: IPortal) {
             const response = await service.search({
                 index,
                 keys: [{ operator: 'gte', value: 'The Beatles' }],
-                specifiers,
+                specifier,
                 keysOrder: 'descending'
             });
             checkTitles([thewhos, thewhos, thebeatles], response, 'GTE search in descending order');
         });
 
         await context('LTE', async () => {
-            const response = await service.search({ index, keys: [{ operator: 'lte', value: 'The Beatles' }], specifiers });
+            const response = await service.search({ index, keys: [{ operator: 'lte', value: 'The Beatles' }], specifier });
             checkTitles([queens, queens, queens, thebeatles], response, 'LTE search');
         });
 
@@ -532,7 +546,7 @@ async function table2(portal: IPortal) {
             const response = await service.search({
                 index,
                 keys: [{ operator: 'between', value: 'The Beatles', value2: 'The Beatles' }],
-                specifiers
+                specifier
             });
             checkTitles([thebeatles], response, 'BETWEEN search one 1 value');
         });
@@ -541,18 +555,18 @@ async function table2(portal: IPortal) {
             const response = await service.search({
                 index,
                 keys: [{ operator: 'between', value: 'The Beatles', value2: 'The Who' }],
-                specifiers
+                specifier
             });
             checkTitles([thebeatles, thewhos, thewhos], response, 'BETWEEN search on multiple values');
         });
 
         await context('Prefix', async () => {
-            const response = await service.search({ index, keys: [{ operator: 'prefix', value: 'The' }], specifiers });
+            const response = await service.search({ index, keys: [{ operator: 'prefix', value: 'The' }], specifier });
             checkTitles([thebeatles, thewhos, thewhos], response, 'PREFIX search');
         });
 
         await context('KeyFilter', async () => {
-            const response = await service.search({ index, keys: [{ operator: 'contains', value: 'Who' }], specifiers });
+            const response = await service.search({ index, keys: [{ operator: 'contains', value: 'Who' }], specifier });
             checkTitles([thewhos, thewhos], response, 'KEY FILTER search');
         });
 
@@ -560,7 +574,7 @@ async function table2(portal: IPortal) {
             const response = await service.search({
                 index,
                 filter: { expression: ['contains', ['field', 'title'], ['literal', 'again']] },
-                specifiers
+                specifier
             });
             checkTitles([["Won't get fooled again"]], response, 'Data Filter Search');
         });
@@ -569,7 +583,7 @@ async function table2(portal: IPortal) {
             const response = await service.search({
                 index,
                 filter: { expression: ['contains', ['field', 'title'], ['literal', 'again']] },
-                specifiers,
+                specifier,
                 indexProjection: ['+title']
             });
             checkTitles([["Won't get fooled again"]], response, 'Data Projection Inclusive');
@@ -579,7 +593,7 @@ async function table2(portal: IPortal) {
             const response = await service.search({
                 index,
                 filter: { expression: ['contains', ['field', 'title'], ['literal', 'again']] },
-                specifiers,
+                specifier,
                 indexProjection: ['-title']
             });
             checkTitles([['undefined']], response, 'Data Projection Exclusive');
@@ -589,7 +603,7 @@ async function table2(portal: IPortal) {
             const response = await service.search({
                 index,
                 filter: { expression: ['contains', ['field', 'title'], ['literal', 'again']] },
-                specifiers,
+                specifier,
                 indexProjection: ['+title'],
                 tableProjection: ['+album']
             });

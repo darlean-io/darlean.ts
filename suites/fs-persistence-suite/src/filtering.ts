@@ -39,6 +39,10 @@ export class Filterer {
             return this.eval(context, command[1]) === this.eval(context, command[2]);
         });
 
+        this.evaluators.set('neq', (context, command) => {
+            return this.eval(context, command[1]) !== this.eval(context, command[2]);
+        });
+
         this.evaluators.set('lte', (context, command) => {
             return this.compare(this.eval(context, command[1]), this.eval(context, command[2])) <= 0;
         });

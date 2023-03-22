@@ -461,15 +461,31 @@ export function resolveDataPath(path: string, data: unknown): [unknown, string[]
     return [value, parts];
 }
 
+/**
+ * Represents a single expression in an {@link IMultiFilter}.
+ */
 export interface IMultiFilterExpression {
     sign: string;
     pattern: IWildcardPattern;
 }
 
+/**
+ * Presents a parsed multi filter.
+ *
+ * @see {@link parseMultiFilter}
+ */
 export interface IMultiFilter {
     expressions: IMultiFilterExpression[];
 }
 
+/**
+ * Parses a multi filter.
+ *
+ * The filter can be a single string or an array of strings. Each of the strings must contain one or more
+ * comma-separated expressions. Each expression must start with a sign character (typically `+` or `-`), followed by
+ * a wildcard pattern (see {@link applyWildcardPattern}).
+ * @returns an {@link IMultiFilter} instance that can be passed to subsequent calls to {@link applyMultiFilter}.
+ */
 export function parseMultiFilter(filter: string | string[]): IMultiFilter {
     const result: IMultiFilter = { expressions: [] };
     const parts = Array.isArray(filter) ? filter : filter.split(',').map((x) => x.trim());
@@ -481,7 +497,13 @@ export function parseMultiFilter(filter: string | string[]): IMultiFilter {
     return result;
 }
 
-export function applyMultiFilter(filter: string | IMultiFilter, value: string, defaultValue = ''): string {
+/**
+ * Applies a multifilter (obtained by {@link parseMultiFilter}) to a value.
+ *
+ * @returns The sign of the first expression in `filter` of which the pattern matches with the
+ * provided `value`, or `defaultSign` when none of the expressions matches.
+ */
+export function applyMultiFilter(filter: string | IMultiFilter, value: string, defaultSign = ''): string {
     if (typeof filter === 'string') {
         filter = parseMultiFilter(filter);
     }
@@ -492,10 +514,20 @@ export function applyMultiFilter(filter: string | IMultiFilter, value: string, d
         }
     }
 
-    return defaultValue;
+    return defaultSign;
 }
 
-export function filterStructure(multiFilter: string | IMultiFilter, data: unknown, path: string) {
+/**
+ * Recursively filters the provided `data` structure by only returning elements that match with the `multiFilter`.
+ * @param multiFilter The multifilter against which the elements within data are matched.
+ * @param data Object (with nested objects and arrays and primitives) that needs to be filtered
+ * @param path Optional path that is prefixed to the name of elements in `data`.
+ * @returns An object with the same structure as `data`, but only containing those elements that match with the multifilter.
+ * @remarks
+ * Only elements of type `object` are processed recursively. Other elements (like arrays and primitive types) are
+ * either ignored or copied over as they are. It is not possible to filter on individual array elements.
+ */
+export function filterStructure(multiFilter: string | IMultiFilter, data: unknown, path?: string) {
     //if ( (path !== '') && (applyMultiFilter(multiFilter, path) !== '+')) {
     //    return undefined;
     //}
@@ -513,7 +545,7 @@ export function filterStructure(multiFilter: string | IMultiFilter, data: unknow
         }
         return haveEntries ? obj : path === '' ? {} : undefined;
     } else {
-        if (applyMultiFilter(multiFilter, path) === '+') {
+        if (applyMultiFilter(multiFilter, path ?? '') === '+') {
             return data;
         }
     }

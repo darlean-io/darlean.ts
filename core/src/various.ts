@@ -148,7 +148,7 @@ export class SubPersistence<T> implements IPersistence<T> {
             continuationToken: options.continuationToken,
             maxItems: options.maxItems,
             sortKeyOrder: options.sortKeyOrder,
-            specifiers: options.specifiers
+            specifier: options.specifier
         });
     }
 

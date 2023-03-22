@@ -78,19 +78,15 @@ export interface IActorCreateContext {
 
     /**
      * Acquire a persistence interface that can be used by the created actor to load and persist its state.
-     * @param specifiers An optional list of specifiers that instruct the persistence service which underlying
-     * persistence compartment to use. When there is only one specifier, it can be provided as a string.
-     * @remarks Normally, only one specifier is present. It should describe the functional role of the data being
+     * @param specifier An optional specifier that instructs the persistence service which underlying
+     * persistence compartment to use.
+     * @remarks A specifier should describe the functional role of the data being
      * persisted, with the convention of using dot-notation with lowercase characters. For example:
      * * `oracle.knowledge.facts` to store the knowledge facts of an all-knowing oracle application
      * * `shoppingcart.current` to store the state of shopping carts on which a user is still working
      * * `shoppingcart.archive` to store the state of shopping carts that have been fully processed
-     *
-     * It is possible to define multiple specifiers. This is intended as a way to migrate from one specifier
-     * to the other. The actors can already include the new and the old specifier (in that order). Details
-     * are still to be worked out.
      */
-    persistence<T>(specifiers?: string | string[]): IPersistence<T>;
+    persistence<T>(specifier?: string): IPersistence<T>;
 
     /**
      * The portal interface that gives the created actor access to other actors within the cluster.

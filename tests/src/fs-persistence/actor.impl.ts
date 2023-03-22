@@ -62,13 +62,13 @@ export function testActorSuite(): IActorSuite {
                                 {
                                     name: 'byprefix',
                                     keys: [item.text.substring(0, 2), item.text.substring(1, 3)],
-                                    data: { value: 'VAL' + item }
+                                    data: { value: 'VAL' + item.text }
                                 }
                             ];
                         }
                         return [];
                     },
-                    ['indexstoragetest']
+                    'indexstoragetest'
                 );
                 return new StorageTestActor(tp);
             }

@@ -1,51 +1,194 @@
 import { IActionError } from './shared';
 
+/**
+ * Represents a service that facilitates persistence in the form of storing data, loading data and querying data.
+ */
 export interface IPersistenceService {
+    /**
+     * Store a piece of data.
+     *
+     * @see
+     * * {@link IPersistenceStoreOptions} for the options.
+     */
     store(options: IPersistenceStoreOptions): Promise<void>;
+
+    /**
+     * Stores a batch of data items.
+     *
+     * When the underlying store supports it, items that have the same partition key are stored atomically (that is, either all of them
+     * are stored, or none of them are stored).
+     *
+     * @returns the list of batch items that were not successfuly processed
+     *
+     * @see
+     * * {@link IPersistenceStoreOptions} for the options.
+     */
     storeBatch(options: IPersistenceStoreBatchOptions): Promise<IPersistenceStoreBatchResult>;
+
+    /**
+     * Loads a piece of data.
+     *
+     * When the item does not exist (anymore), the {@link IPersistenceLoadResult.value} field is `undefined`. Depending on the cleanup policy of
+     * the underlying store, the {@link IPersistenceLoadResult.version} is either `undefined`, or set to the version at which the item was deleted.
+     */
     load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult>;
+
+    /**
+     * Queries for data items given a set of constraints.
+     *
+     * @see
+     * * {@link IPersistenceQueryOptions} for a description of the options.
+     */
     query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>>;
 }
 
+/**
+ * Options for storing a batch of items.
+ */
 export interface IPersistenceStoreBatchOptions {
+    /**
+     * List of items that should be stored.
+     *
+     * Items must include an `identifier` field (which can be undefined, and does not have to be unique) that is returned as
+     * {@link IUnprocessedItem.identifier} in a {@link IPersistenceStoreBatchResult}.
+     */
     items: Array<IPersistenceStoreOptions & { identifier: unknown }>;
 }
 
+/**
+ * Represents an batch item that could not be processed.
+ */
 export interface IUnprocessedItem {
     identifier: unknown;
     error: IActionError;
 }
 
+/**
+ * The result of a store batch operation.
+ */
 export interface IPersistenceStoreBatchResult {
+    /**
+     * List of items that could not be processed (and could be retried by the caller).
+     */
     unprocessedItems: IUnprocessedItem[];
 }
 
+/**
+ * Options for storing an item to persistence.
+ */
 export interface IPersistenceStoreOptions {
-    specifiers?: string[];
+    /**
+     * An optional specifier that is used to determine in which compartment the data is to be stored.
+     */
+    specifier?: string;
+    /**
+     * The partition key that determines in which partition the item is stored. The combination of partitionKey and sortKey must be uniquely identify an item.
+     */
     partitionKey: string[];
+    /**
+     * The optional sort key that makes it possible to perform efficient queries on items with the same partitionKey.
+     */
     sortKey?: string[];
+    /**
+     * The binary value that needs to be stored.
+     *
+     * When not present, the item is removed from the store.
+     *
+     * It is up to the application developer to choose the format, but BSON is the only format that is understood by Darlean itself and for which advanced querying functionality
+     * (like projection filters and item filters) is available.
+     */
     value?: Buffer;
+    /**
+     * The mandatory version of the data.
+     *
+     * Only when the provided version string is lexicographically larger than the version for the current item in the store (if any), the item is stored.
+     */
     version: string;
 }
 
+/**
+ * Options for loading a single item from persistence.
+ */
 export interface IPersistenceLoadOptions {
-    specifiers?: string[];
+    /**
+     * An optional specifier that is used to determine from which compartment the data is to be loaded.
+     */
+    specifier?: string;
+    /**
+     * The partition key of the item to be loaded. Must be identical to the partition key used for previous storing of the item.
+     */
     partitionKey: string[];
+    /**
+     * The sort key of the item to be loaded. Must be identical to the sort key used for the previous storing of the item.
+     */
     sortKey?: string[];
+    /**
+     * Optional list of fields that should be present in the result object.
+     *
+     * When present, the value must be encoded as BSON object, and the selected fields are transformed into a new object and encoded as BSON.
+     * When not present, the exact (literal) stored value is returned.
+     *
+     * @See
+     * * {@link filterStructure} which is the function that performs the projection filtering.
+     */
     projectionFilter?: string[];
 }
 
+/**
+ * The result of loading an item.
+ */
 export interface IPersistenceLoadResult {
+    /**
+     * The value of the item, or `undefined` when the item was not found.
+     *
+     * When a projectionFilter is applied, value contains a BSON encoded object with the projection fields.
+     */
     value?: Buffer;
+
+    /**
+     * The version of the item.
+     *
+     * That is, the version provided in the last successful store operation. The caller can store the version and use it to derive a
+     * new (lexicographically larger) version later on when it wants to update the item via a new store operation.
+     */
     version?: string;
 }
 
 /**
- * Defines the options for performing a query.
+ * Options for performing a query.
  *
- * # Notes about sorting
+ * # Overview
  *
- * Records form a tree based on their sort key. Assume we have the following records, sorted lexicographically:
+ * Execution of a query consists of 3 subsequent steps:
+ * * *Sort key filtering*. Constraints on the sort key narrow down the result set in a very efficient way. That is possible because the sort keys are
+ *     indexed, and only very specific types of constraints (greater-than-equal and less-than-equal) are allowed.
+ * * *Item filtering*. The item filter step is applied to all items from the sort key filtering step, and allows more sophisticated filtering, both on keys
+ *   fields and on data fields (provided that the data is stored as BSON object).
+ * * *Field projection*. Field projection is applied to all items resulting from the item filter step. When field projection is requested, only the indicated
+ *   subset of fields is returned.
+ *
+ * # Sort key filtering
+ *
+ * Sort key filtering makes it possible to extract a subset of items very efficiently by providing a {@link sortKeyFrom}, {@link sortKeyTo} and/or a {@link sortKeyToMatch}.
+ * Darlean uses lexicographical case-sensitive comparisons to determine wheter a sort key is `>= sortKeyFrom` or `<= sortKeyTo`.
+ *
+ * Example: The following items are listed in lexicographical order: `['', '0', '1', '10', '100', '11', '2', 'A', 'AA', 'B', 'a', 'b' ]`.
+ *
+ * During sort key filtering, when a node matches with the provided constraints (let's call that node a *base node*), all child node of that base node are automatically
+ * included in the result set (recursively -- so also children of children of base nodes are included, et cetera). A child node is a node for which the sort key starts
+ * with the sort key of the base node. As an example, when `sortKeyTo = ['T']`, an imaginary item with sort key `['T', 'A']` would also be returned because it is a child of ['T'].
+ *
+ * # Strict vs loose sort key mode
+ *
+ * The `sortKeyToMatch` field determines how the last element of the `sortKeyTo` field is matched.
+ * * When it is set to `'strict'` (the default), there must be a full-string (exact) match between
+ *   the last element of the `sortKeyTo` field and the corresponding field of the sort key of an item.
+ * * When it is set to `'loose'`, a prefix-match is performed. So all items for which the corresponding field of
+ *   the sort key starts with the last element of `sortKeyTo` are included in the result set.
+ *
+ * # Examples
+ *
+ * To illustrate the behaviour of {@link sortKeyFrom}, {@link sortKeyTo} and/or a {@link sortKeyToMatch}, let's consider the following items in the storage:
  * 1. `['A']`
  * 2. `['A', 'B']`
  * 3. `['A', 'C']`
@@ -54,136 +197,116 @@ export interface IPersistenceLoadResult {
  * 6. `['C', 'C']`
  * 7. `['C', 'C', '']`
  *
- * On a functional level, these records form the following tree structure:
- * * 'A'
- *   * 'B'
- *   * 'C'
- * * 'AA'
- * * 'B'
- * * 'C'
- *   * 'C'
- *     * ''
- *
- * Selection can be performed via `sortKeyFrom` and `sortKeyTo`.
- *
- * ## Sort key from
- * When a `sortKeyFrom` is provided, only records are included in the result set that are at the same position or lower in the sorted tree structure than
- * where the fictive record for the `sortKeyFrom` constraint would be.
- *
- * Examples:
+ * Here are examples of constraints and which items will be returned:
  * * `sortKeyFrom = ['']` - Returns all items 1-7
  * * `sortKeyFrom = ['A']` - Returns all items 1-7
  * * `sortKeyFrom = ['A', 'B', 'G']` - Returns items 3-7
  * * `sortKeyFrom = ['AAA']` - Returns items 5-7
- *
- * ## Sort key to in strict mode
- * When a `sortKeyTo` is provided, only records are included in the result set that are at the same position or higher in the sorted tree structure than
- * where the fictive record for the `sortKeyTo` constraint would be. In strict mode, there must be an exact match between all fields in the constraint and
- * the corresponding field in the sortKey of the records.
- *
- * Note: All child records are included as well. For example, `sortKeyTo = ['A']` would normally only return item 1, but not its children. Because the records
- * are functionally considered to form a tree, it makes sense to also include the children of this node. That is why a query for `sortKeyTo = ['A]` returns
- * all records 1-3.
- *
- * Examples:
- * * `sortKeyTo = ['A']` - Returns items 1-3
- * * `sortKeyTo = ['A','B', 'G']` - Returns items 1-2
- * * `sortKeyTo = ['AAA'] - Returns items 1-4
- * * `sortKeyTo = ['C', 'C'] - Returns items 1-7
- *
- * ## Sort key to in loose mode
- * When a `sortKeyTo` is provided, only records are included in the result set that are at the same position or higher in the sorted tree structure than
- * where the fictive record for the `sortKeyTo` constraint would be. In loose mode, there must be a prefix match between all fields in the constraint and
- * the corresponding field in the sortKey of the records.
- *
- * Note: All child records are included as well. For example, `sortKeyTo = ['A']` would normally only return item 1, but not its children. Because the records
- * are functionally considered to form a tree, it makes sense to also include the children of this node. That is why a query for `sortKeyTo = ['A]` returns
- * all records 1-3.
- *
- * Examples:
- * * `sortKeyTo = ['A']` - Returns items 1-4
- * * `sortKeyTo = ['A','B', 'G']` - Returns items 1-2
- * * `sortKeyTo = ['AAA'] - Returns items 1-4
- * * `sortKeyTo = ['C', 'C'] - Returns items 1-7
- *
- * ## Sort key prefix
- * *NOT SUPPORTED ANYMORE*
- *
- * When a 'sortKeyPrefix' constraint is provided, it depends on the last constraint element (we call that the *tail*) how the prefix match is performed.
- *
- * When the last constraint element is an empty string (`''`), like in `sortKeyPrefix = ['A', '']`, item `['A']` itself and all items under `['A']` are included
- * (so items 1-3 would be returned).
- *
- * When the last constraint element is not an empty string, like in `sortKeyPrefix = ['A']`, all items
- * Records can have a sort key which can consist of multiple parts. During search, a sortKeyFrom, sortKeyTo and sortKeyPrefix
- * can be provided.
- *
- * They operate on the lexicographical representation of the sort key, where the sort key fields are joined together, separated
- * by a separator. On a functional level, the separator has the (fictional) unicode value -1. That is, it is smaller than all of
- * the unicode characters that can be present in the key fields. (Implementation may implement this differently, as long as the
- * functionality does not change).
- *
- * Example: the sort key `['A', 'B']` is functionally represented as `[65, -1, 66]`.
- *
- * Comparison is performed on this functional representation where the numeric values are compared left-to-right like is the case in
- * regular lexigraphical ordering.
- *
- * As an illustration, the following keys are listed here in ascending order of their functional representation:
- * 1. `['A']` with functional representation `[65]`
- * 2. `['A', 'B']` with functional representation `[65, -1, 66]`
- * 3. `['A', 'C']` with functional representation `[65, -1, 67]`
- * 4. `['AA', 'B']` with functional representation `[65, 65, -1, 66]`
- * 5. `['B']` with functional representation `[66]`
- * 6. `['C', 'C']` with functional representation `[66, -1, 66]`
- * 7. `['C', 'C', '']` with functional representation `[66, -1, 66, -1]`
- *
- * The consequence for querying is as follows:
- * * The `sortKeyFrom` field is converted to the corresponding functional representation and then 'lexicographically' matched with the functional representations of the stored keys.
- *   In particular, `sortKeyFrom = ['A', 'C']` will include item 3, but also item 4 (because `[65, 65] >= [65, -1]) and all other items 5-7.
- * * The `sortKeyTo` field is converted to the corresponding functional representation and then 'lexicographically' matched with the functional representations of the stored keys (in
- *   an inclusive way). In addition to that, all 'children' of these matched keys (that may in fact have a larger functional representation than `sortKeyTo`, so should normally be excluded)
- *   are included. So, `sortKeyTo = ['A', 'C']` will include items 1-3, but not items 4-7. And, `sortKeyTo = ['A']` not only includes item 1 but
- *   also items 2 and 3 that have a larger functional representation than `sortKeyTo`, but are nevertheless included because they 'belong to a'.
- * * The `sortKeyPrefix` field is converted to the corresponding functional representation and then compared with the functional representations of the stored keys. Keys that
- *   have the functional representation as an exact prefix are returned. So, `sortKeyPrefix = ['A']` returns items 1-4 (including item 4 which starts with `'AA'`).
- *   To only return items 2 and 3 that are child items of exactly `'A'`, use `sortkeyPrefix = ['A', '']. To return all items 1-3 that start with exactly `'A'`
- *   (including item 1 which does nt have children), use `sortKeyFrom = ['A']` together with `sortKeyTo = ['A', '\u{10FFFF}'].
+ * * `sortKeyTo = ['A']`, `sortKeyToMatch = 'strict'` - Returns items 1-3
+ * * `sortKeyTo = ['A','B', 'G']`, `sortKeyToMatch = 'strict'` - Returns items 1-2
+ * * `sortKeyTo = ['AAA']`, `sortKeyToMatch = 'strict'` - Returns items 1-4
+ * * `sortKeyTo = ['C', 'C']`, `sortKeyToMatch = 'strict'` - Returns items 1-7
+ * * `sortKeyTo = ['A']`, `sortKeyToMatch = 'loose'` - *Returns items 1-4 (!)*
+ * * `sortKeyTo = ['A','B', 'G']`, `sortKeyToMatch = 'loose'` - Returns items 1-2
+ * * `sortKeyTo = ['AAA']`, `sortKeyToMatch = 'loose'` - Returns items 1-4
+ * * `sortKeyTo = ['C', 'C']`, `sortKeyToMatch = 'loose'` - Returns items 1-7
  */
 export interface IPersistenceQueryOptions {
-    specifiers?: string[];
     /**
-     * Exact match for the partition key. Only items for which the partition keys match exactly with the provided `partitionKey` are returned.
+     * An optional specifier that is used to determine in which compartment the query is to be performed.
+     */
+    specifier?: string;
+    /**
+     * The partition key of the items to be queried. This is a mandatory field, and only queries on items with the same partition key are allowed.
+     * Data should be organized in such a way that this requirement is met.
      */
     partitionKey: string[];
     /**
-     * Smallest value (inclusive) that returned sort keys must have. See the description of {@link IPersistenceQueryOptions} for more information.
+     * Smallest value (inclusive) that sort keys that items must have to be returned.
      */
     sortKeyFrom?: string[];
     /**
-     * Largest value (inclusive) that returned sort keys must have. See the description of {@link IPersistenceQueryOptions} for more information.
+     * Largest value (inclusive) that sort keys for items must have to be returned. Please see the information under 'Sort key filtering' about returning child items.
      */
     sortKeyTo?: string[];
+    /**
+     * Indicates whether the last element of sortKeyTo must match exactly (full string match) with the corresponding sort key element of items (`'strict'`, which is the default)
+     * or whether a prefix match is sufficient (`'loose'`).
+     */
     sortKeyToMatch?: 'strict' | 'loose';
+    /**
+     * Indicates whether the resulting items are sorted according to ascending order of the sort keys (the default) or in descending order.
+     */
     sortKeyOrder?: 'ascending' | 'descending';
     /**
      * When present, only items for which the sort key starts with the `sortKeyPrefix` are returned. See the description of {@link IPersistenceQueryOptions} for more information.
      */
-    // sortKeyPrefix?: string[];
-    maxItems?: number;
-    continuationToken?: string;
+    /**
+     * Nested-list structure of filter operations. A list consists of a keyword, followed by zero or more arguments.
+     */
     filterExpression?: unknown[];
+    /**
+     * Optional name of a root element in value that is used as root for finding field values that are part of the filter expression.
+     */
     filterFieldBase?: string;
+    /**
+     * Optional offset that indicates how many leading partition key elements are ignored when deriving the value for a certain partition key field that is part of the filter expression.
+     */
     filterPartitionKeyOffset?: number;
+    /**
+     * Optional offset that indicates how many leading sort key elements are ignored when deriving the value for a certain sort key field that is part of the filter expression.
+     */
     filterSortKeyOffset?: number;
+    /**
+     * An optional projection filter.
+     *
+     * @See
+     * * {@link filterStructure} which is the function that performs the projection filtering.
+     */
     projectionFilter?: string[];
+    /**
+     * When present, limits the result set to the specified number of items.
+     *
+     * @remarks It is possible for a query to return less than the specified `maxItems`, or even no items at all,
+     * even when thare are remaining items present in the store. To determine whether more data is available, use
+     * the returned {@link IPersistenceQueryResult.continuationToken}.
+     */
+    maxItems?: number;
+    /**
+     * Instructs Darlean to resume a previous query and return the next part of the result set. The token should be the exact same {@link IPersistenceQueryResult.continuationToken} as
+     * returned from a previous query. In addition to that, all other fields must be exactly the same as for the original query.
+     */
+    continuationToken?: string;
 }
 
+/**
+ * Represents one result item from a query
+ */
 export interface IQueryItem<T> {
+    /**
+     * The sort key for the item
+     */
     sortKey: string[];
+
+    /**
+     * The value for the item.
+     *
+     * When a projectionFilter is applied, only the projected fields are present as a BSON encoded object.
+     */
     value?: T;
 }
 
 export interface IPersistenceQueryResult<T> {
+    /**
+     * When present, indicates that remaning items may be still be available in the store. When not present (`undefined`), indicates
+     * that there are no more remaining items.
+     *
+     * When present, the query can be performed again, providing this `continuationToken`. All other query fields must be exactly equal
+     * to the initial query.
+     */
     continuationToken?: string;
+    /**
+     * The result set for the query.
+     */
     items: IQueryItem<T>[];
 }

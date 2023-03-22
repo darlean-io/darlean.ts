@@ -77,12 +77,6 @@ export class PersistenceService implements IPersistenceService {
                 });
             }
         });
-        /*
-        const compartment = this.deriveCompartment(options.specifiers || []);
-        const handler = this.deriveHandler(compartment);
-        const p = this.portal.retrieve<IPersistenceService>(handler.actorType, [compartment]);
-        return p.store(options);
-        */
     }
 
     @action({ locking: 'shared' })
@@ -92,7 +86,7 @@ export class PersistenceService implements IPersistenceService {
 
     @action({ locking: 'shared' })
     public load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult> {
-        const compartment = this.deriveCompartment(options.specifiers || []);
+        const compartment = this.deriveCompartment(options.specifier || '');
         const handler = this.deriveHandler(compartment);
         const p = this.portal.retrieve<IPersistenceService>(handler.actorType, [compartment]);
         return p.load(options);
@@ -100,7 +94,7 @@ export class PersistenceService implements IPersistenceService {
 
     @action({ locking: 'shared' })
     public query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>> {
-        const compartment = this.deriveCompartment(options.specifiers || []);
+        const compartment = this.deriveCompartment(options.specifier || '');
         const handler = this.deriveHandler(compartment);
         const p = this.portal.retrieve<IPersistenceService>(handler.actorType, [compartment]);
         return p.query(options);
@@ -111,7 +105,7 @@ export class PersistenceService implements IPersistenceService {
 
         const batches: Map<string, IPersistenceStoreBatchOptions> = new Map();
         for (const item of options.items) {
-            const compartment = this.deriveCompartment(item.specifiers || []);
+            const compartment = this.deriveCompartment(item.specifier || '');
             let b: IPersistenceStoreBatchOptions | undefined = batches.get(compartment);
             if (!b) {
                 b = { items: [] };
@@ -151,23 +145,21 @@ export class PersistenceService implements IPersistenceService {
         return results;
     }
 
-    protected deriveCompartment(specifiers: string[]): string {
-        for (const specifier of specifiers) {
-            for (const mapping of this.options.compartments) {
-                const fields: string[] = [];
-                if (wildcardMatch(specifier, mapping.specifier, fields)) {
-                    let compartment = mapping.compartment;
-                    for (let idx = 0; idx < 10; idx++) {
-                        const pattern = ''.padEnd(idx, '*');
-                        compartment = replaceAll(compartment, '${' + pattern + '}', fields[idx] ?? '');
-                    }
-                    return compartment;
+    protected deriveCompartment(specifier: string): string {
+        for (const mapping of this.options.compartments) {
+            const fields: string[] = [];
+            if (wildcardMatch(specifier, mapping.specifier, fields)) {
+                let compartment = mapping.compartment;
+                for (let idx = 0; idx < 10; idx++) {
+                    const pattern = ''.padEnd(idx, '*');
+                    compartment = replaceAll(compartment, '${' + pattern + '}', fields[idx] ?? '');
                 }
+                return compartment;
             }
         }
 
-        throw new ApplicationError('NO_COMPARTMENT', 'No compartment could be derived for specifiers [Specifiers]', {
-            Specifiers: specifiers
+        throw new ApplicationError('NO_COMPARTMENT', 'No compartment could be derived for specifier [Specifier]', {
+            Specifier: specifier
         });
     }
 
