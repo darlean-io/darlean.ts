@@ -84,15 +84,11 @@ export class Filterer {
         });
 
         this.evaluators.set('prefix', (context, command) => {
-            return this.toString(this.eval(context, command[1])).startsWith(
-                this.toString(this.eval(context, command[2]))
-            );
+            return this.toString(this.eval(context, command[1])).startsWith(this.toString(this.eval(context, command[2])));
         });
 
         this.evaluators.set('contains', (context, command) => {
-            return this.toString(this.eval(context, command[1])).includes(
-                this.toString(this.eval(context, command[2]))
-            );
+            return this.toString(this.eval(context, command[1])).includes(this.toString(this.eval(context, command[2])));
         });
 
         this.evaluators.set('field', (context, command) => {
