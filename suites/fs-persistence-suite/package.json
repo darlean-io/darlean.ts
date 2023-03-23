@@ -52,7 +52,6 @@
     "@darlean/base": "^2.0.0-alpha.0",
     "@darlean/utils": "^2.0.0-alpha.0",
     "better-sqlite3": "^8.2.0",
-    "sqlite3": "^5.1.4",
     "threads": "^1.7.0"
   }
 }
