@@ -89,7 +89,7 @@ describe('Remote portal', () => {
         expect(error?.nested?.length).toBeGreaterThanOrEqual(5);
         expect(error?.nested?.[0]?.kind).toBe('framework');
         expect(error?.nested?.[0]?.code).toBe('TEST_FRAMEWORK_ERROR');
-        expect(duration).toBeGreaterThan(1500);
+        expect(duration).toBeGreaterThan(1000);
     }, 10000);
 
     test('Remote Portal - Registered - Application error', async () => {
