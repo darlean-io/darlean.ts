@@ -520,7 +520,7 @@ export class RemotePortal implements IPortal {
 
                 const receivers = this.findReceivers(type);
                 if (receivers.length > 0) {
-                    const currentIdx = i === 0 && this.defaultDestination ? receivers.indexOf(this.defaultDestination) : -1;
+                    const currentIdx = -1; // TODO: Only do this when "multiplar" = i === 0 && this.defaultDestination ? receivers.indexOf(this.defaultDestination) : -1;
                     const idx = currentIdx >= 0 ? currentIdx : Math.floor(Math.random() * receivers.length);
                     const receiver = receivers[idx];
 
