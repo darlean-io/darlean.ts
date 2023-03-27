@@ -2,7 +2,7 @@ import Ajv, { JTDParser, JTDSchemaType } from 'ajv/dist/jtd';
 import { IWebServiceRequest, IWebServiceResponse } from './types';
 import { Request, Response } from './wrapper';
 
-export class JsonRequestParser<T, D extends Record<string, unknown>> {
+export class JsonRequestParser<T, D extends Record<string, unknown> = Record<string, never>> {
     protected parser: JTDParser<T>;
 
     constructor(schema: JTDSchemaType<T, D>) {
@@ -29,7 +29,7 @@ export class JsonRequestParser<T, D extends Record<string, unknown>> {
     }
 }
 
-export class JsonResponseEncoder<T, D extends Record<string, unknown> | void = void> {
+export class JsonResponseEncoder<T, D extends Record<string, unknown> = Record<string, never>> {
     protected serializer: (data: T) => string;
 
     constructor(schema: JTDSchemaType<T, D>) {
