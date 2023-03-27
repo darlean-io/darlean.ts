@@ -32,9 +32,11 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
     }
 
     public async activate(): Promise<void> {
+        const promises: Promise<IConnection>[] = [];
         for (let idx = 0; idx < NR_READERS + 1; idx++) {
-            this.connections.push(await this.openDatabase(idx === 0 ? 'writable' : 'readonly'));
+            promises.push(this.openDatabase(idx === 0 ? 'writable' : 'readonly'));
         }
+        this.connections = await Promise.all(promises);
     }
 
     public async deactivate(): Promise<void> {

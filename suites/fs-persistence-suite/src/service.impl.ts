@@ -40,9 +40,11 @@ export class FsPersistenceService implements IPersistenceService, IActivatable {
     }
 
     public async activate(): Promise<void> {
+        const promises: Promise<void>[] = [];
         for (const shard of this.shards) {
-            await shard.actor.touch();
+            promises.push(shard.actor.touch());
         }
+        await Promise.all(promises);
     }
 
     @action({ locking: 'shared' })
