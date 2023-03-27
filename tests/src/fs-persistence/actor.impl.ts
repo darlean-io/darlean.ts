@@ -39,6 +39,36 @@ export class StorageTestActor {
     }
 }
 
+export class TableStorageTestActor {
+    protected persistence: TablePersistence<ITextState>;
+
+    constructor(persistence: TablePersistence<ITextState>) {
+        this.persistence = persistence;
+    }
+
+    @action({ locking: 'shared' })
+    public async store(partitionKey: string[], sortKey: string[], value: string | undefined): Promise<void> {
+        const p = this.persistence.persistable([...partitionKey, ...sortKey], undefined);
+        if (value === undefined) {
+            p.clear();
+        } else {
+            p.change({ text: value });
+        }
+        await p.store();
+    }
+
+    @action({ locking: 'shared' })
+    public async get(partitionKey: string[], sortKey: string[]): Promise<string | undefined> {
+        const p = this.persistence.persistable([...partitionKey, ...sortKey], undefined);
+        return (await p.load())?.text;
+    }
+
+    @action({ locking: 'shared' })
+    public async query(_options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<ITextState>> {
+        throw new Error('Unupported operation: query');
+    }
+}
+
 export function testActorSuite(): IActorSuite {
     return new ActorSuite([
         {
@@ -70,7 +100,7 @@ export function testActorSuite(): IActorSuite {
                     },
                     'indexstoragetest'
                 );
-                return new StorageTestActor(tp);
+                return new TableStorageTestActor(tp);
             }
         }
     ]);

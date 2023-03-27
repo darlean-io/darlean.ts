@@ -2,10 +2,10 @@ import Ajv, { JTDParser, JTDSchemaType } from 'ajv/dist/jtd';
 import { IWebServiceRequest, IWebServiceResponse } from './types';
 import { Request, Response } from './wrapper';
 
-export class JsonRequestParser<T> {
+export class JsonRequestParser<T, D extends Record<string, unknown>> {
     protected parser: JTDParser<T>;
 
-    constructor(schema: JTDSchemaType<T>) {
+    constructor(schema: JTDSchemaType<T, D>) {
         const a = new Ajv();
         this.parser = a.compileParser(schema);
     }
@@ -29,10 +29,10 @@ export class JsonRequestParser<T> {
     }
 }
 
-export class JsonResponseEncoder<T> {
+export class JsonResponseEncoder<T, D extends Record<string, unknown> | void = void> {
     protected serializer: (data: T) => string;
 
-    constructor(schema: JTDSchemaType<T>) {
+    constructor(schema: JTDSchemaType<T, D>) {
         const a = new Ajv();
         this.serializer = a.compileSerializer(schema);
     }

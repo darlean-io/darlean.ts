@@ -144,7 +144,7 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
     for (let idx = 0; idx < 10000; idx++) {
         tasks.push(async () => {
             const v = idx.toString().padStart(4, '0');
-            await actor.store(['idxtest'], [v], v);
+            await actor.store([], [v], v);
         });
     }
     const start = time.machineTicks();
@@ -157,7 +157,6 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
 
     await context('Single chunk table search', async () => {
         const results = await tp.search({
-            partitionKey: ['idxtest'],
             keys: [{ operator: 'prefix', value: '12' }]
         });
         check('1200', (results.items[0].tableFields?.text as string) ?? '', 'Prefix query must return prefix results');
@@ -173,7 +172,6 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
         let results: ITableSearchResponse | undefined;
         while (true) {
             results = await tp.search({
-                partitionKey: ['idxtest'],
                 keys: [{ operator: 'prefix', value: '12' }],
                 maxItems: 10,
                 continuationToken: results?.continuationToken
@@ -195,7 +193,6 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
     await context('Index search', async () => {
         const results = await tp.search({
             index: 'byprefix',
-            partitionKey: ['idxtest'],
             keys: [
                 { operator: 'eq', value: '12' },
                 { operator: 'eq', value: '23' }
