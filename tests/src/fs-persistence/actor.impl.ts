@@ -1,6 +1,5 @@
-import { action, ActorSuite, IActorSuite, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult, TABLE_SERVICE } from '@darlean/base';
+import { action, ActorSuite, IActorSuite, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult, ITablePersistence, ITableService, TABLE_SERVICE } from '@darlean/base';
 import { TablePersistence } from '@darlean/core';
-import { ITableService } from '@darlean/tables-suite';
 
 export const STORAGE_TEST_ACTOR = 'StorageTestActor';
 export const STORAGE_TEST_ACTOR_TABLE = 'StorageTestActorTable';
@@ -40,9 +39,9 @@ export class StorageTestActor {
 }
 
 export class TableStorageTestActor {
-    protected persistence: TablePersistence<ITextState>;
+    protected persistence: ITablePersistence<ITextState>;
 
-    constructor(persistence: TablePersistence<ITextState>) {
+    constructor(persistence: ITablePersistence<ITextState>) {
         this.persistence = persistence;
     }
 

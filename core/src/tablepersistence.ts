@@ -1,11 +1,4 @@
-import { IPersistable } from '@darlean/base';
-import {
-    IIndexItem,
-    ITablePutResponse,
-    ITableSearchRequest,
-    ITableSearchResponse,
-    ITableService
-} from '@darlean/tables-suite';
+import { IIndexItem, IPersistable, ITablePersistence, ITablePutResponse, ITableSearchItem, ITableSearchRequest, ITableSearchResponse, ITableService } from '@darlean/base';
 
 /**
  * For internal use. Helper class for {@link TablePersistence}.
@@ -84,7 +77,7 @@ class TablePersistable<T> implements IPersistable<T> {
  * Although this class implements persistence, it does not implement {@link IPersistence}, because it is too fundamentally
  * different. One such difference is that it only understands "just keys", not "partition" or "sort" keys.
  */
-export class TablePersistence<T> {
+export class TablePersistence<T> implements ITablePersistence<T> {
     private service: ITableService;
     private specifier: string | undefined;
     private indexer: (item: T | undefined) => IIndexItem[];
@@ -146,6 +139,26 @@ export class TablePersistence<T> {
                 });
             }
             return response;
+        }
+    }
+
+    public async *searchChunks(options: ITableSearchRequest): AsyncGenerator<ITableSearchResponse, void> {
+        let response: ITableSearchResponse | undefined;
+        while ((!response) || (response.continuationToken)) {
+            options.continuationToken = response?.continuationToken;
+            response = await this.search(options);
+            yield response;
+        }
+    }
+
+    public async *searchItems(options: ITableSearchRequest): AsyncGenerator<ITableSearchItem, void> {
+        let response: ITableSearchResponse | undefined;
+        while ((!response) || (response.continuationToken)) {
+            options.continuationToken = response?.continuationToken;
+            response = await this.search(options);
+            for (const item of response.items) {
+                yield item;
+            }
         }
     }
 

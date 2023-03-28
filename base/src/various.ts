@@ -91,3 +91,88 @@ export interface IVolatileTimer {
     once(handler: Function, delay: number, args?: unknown): IVolatileTimerHandle;
     repeat(handler: Function, interval: number, delay?: number, nrRepeats?: number, args?: unknown): IVolatileTimerHandle;
 }
+
+export interface ITablePutRequest {
+    id: string[];
+    data?: { [key: string]: unknown };
+    specifier?: string;
+    version: string;
+    baseline?: string;
+    indexes: IIndexItem[];
+}
+
+export const APPLICATION_ERROR_TABLE_ERROR = 'TABLE_ERROR';
+
+export interface ITablePutResponse {
+    baseline?: string;
+}
+
+export interface ITableGetRequest {
+    keys: string[];
+    specifier?: string;
+    projection?: string[];
+}
+
+export interface ITableGetResponse {
+    baseline?: string;
+    version: string;
+    data?: { [key: string]: unknown };
+}
+
+export interface IFilter {
+    expression: unknown[];
+}
+
+export interface IIndexItem {
+    name: string;
+    keys: string[];
+    data?: { [key: string]: unknown };
+}
+
+export interface IKeyConstraint {
+    operator: 'eq' | 'lte' | 'gte' | 'prefix' | 'between' | 'contains';
+    value: string;
+    value2?: string;
+}
+
+export type Indexer = (data?: { [key: string]: unknown }) => IIndexItem[];
+
+export interface ITableService {
+    put(request: ITablePutRequest): Promise<ITablePutResponse>;
+    get(request: ITableGetRequest): Promise<ITableGetResponse>;
+    search(request: ITableSearchRequest): Promise<ITableSearchResponse>;
+}
+
+export interface ITableSearchRequest {
+    index?: string;
+    keys?: IKeyConstraint[];
+    keysOrder?: 'ascending' | 'descending';
+    filter?: IFilter;
+    specifier?: string;
+    tableProjection?: string[];
+    indexProjection?: string[];
+    continuationToken?: string;
+    maxItems?: number;
+}
+
+export interface ITableSearchItem {
+    keys?: string[];
+    tableFields?: { [key: string]: unknown };
+    indexFields?: { [key: string]: unknown };
+    id: string[];
+}
+
+export interface ITableSearchResponse {
+    items: ITableSearchItem[];
+    continuationToken?: string;
+}
+
+
+export interface ITablePersistence<T> {
+    search(options: ITableSearchRequest): Promise<ITableSearchResponse>;
+    searchChunks(options: ITableSearchRequest): AsyncGenerator<ITableSearchResponse, void>;
+    searchItems(options: ITableSearchRequest): AsyncGenerator<ITableSearchItem, void>;
+    persistable(key: string[], value: T | undefined): IPersistable<T>;
+    load(key: string[]): Promise<IPersistable<T>>;
+}
+

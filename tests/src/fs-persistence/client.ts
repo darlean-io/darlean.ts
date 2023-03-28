@@ -1,6 +1,5 @@
-import { IPersistenceQueryResult, IPortal, IQueryItem, TABLE_SERVICE } from '@darlean/base';
+import { IIndexItem, IPersistenceQueryResult, IPortal, IQueryItem, ITableSearchItem, ITableSearchResponse, ITableService, TABLE_SERVICE } from '@darlean/base';
 import { ConfigRunnerBuilder, TablePersistence } from '@darlean/core';
-import { IIndexItem, ITableService, ITableSearchResponse, ITableSearchItem } from '@darlean/tables-suite';
 import { encodeNumber, ITime, parallel, ParallelTask, sleep, Time } from '@darlean/utils';
 import { ITextState, StorageTestActor, STORAGE_TEST_ACTOR, STORAGE_TEST_ACTOR_TABLE, testActorSuite } from './actor.impl';
 
@@ -22,7 +21,7 @@ async function tablepersistence_get_store(actor: StorageTestActor) {
 
     await actor.store(['foo'], [], 'FOO');
     check('FOO', await actor.get(['foo'], []), 'TABLE: Existing sort key');
-    check(undefined, await actor.get([], ['foo']), 'TABLE: Still unexisting sort key (but partition key exists');
+    check('FOO', await actor.get([], ['foo']), 'TABLE: For table persistence, there is no difference between sort and partition key');
 
     await actor.store(['foo'], [], undefined);
     check(undefined, await actor.get(['foo'], []), 'TABLE: Removed partition key');
@@ -185,6 +184,41 @@ async function tablepersistence_store_search(actor: StorageTestActor, time: ITim
             }
         }
         check(11, n, 'Amount of chunks should be correct');
+        check('1200', (items[0].tableFields?.text as string) ?? '', 'Prefix query must return prefix results');
+        check('1299', (items[99].tableFields?.text as string) ?? '', 'Prefix query must return prefix results');
+        check(100, items.length, 'Prefix query must return correct amount of items');
+    });
+
+    await context('Multi-chunk table search with chunk-iterator', async () => {
+        const items: ITableSearchItem[] = [];
+        let n = 0;
+        let results: ITableSearchResponse | undefined;
+        for await (const chunk of tp.searchChunks({
+                keys: [{ operator: 'prefix', value: '12' }],
+                maxItems: 10,
+                continuationToken: results?.continuationToken
+            })) {
+            n++;
+            for (const item of chunk.items) {
+                items.push(item);
+            }
+        }
+        check(11, n, 'Amount of chunks should be correct');
+        check('1200', (items[0].tableFields?.text as string) ?? '', 'Prefix query must return prefix results');
+        check('1299', (items[99].tableFields?.text as string) ?? '', 'Prefix query must return prefix results');
+        check(100, items.length, 'Prefix query must return correct amount of items');
+    });
+
+    await context('Multi-chunk table search with item-iterator', async () => {
+        const items: ITableSearchItem[] = [];
+        let results: ITableSearchResponse | undefined;
+        for await (const item of tp.searchItems({
+                keys: [{ operator: 'prefix', value: '12' }],
+                maxItems: 10,
+                continuationToken: results?.continuationToken
+            })) {
+            items.push(item);
+        }
         check('1200', (items[0].tableFields?.text as string) ?? '', 'Prefix query must return prefix results');
         check('1299', (items[99].tableFields?.text as string) ?? '', 'Prefix query must return prefix results');
         check(100, items.length, 'Prefix query must return correct amount of items');

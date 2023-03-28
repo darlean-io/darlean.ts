@@ -1,62 +1,8 @@
-import { action, ApplicationError, IPersistenceService, IPersistenceStoreBatchOptions } from '@darlean/base';
+import { action, ApplicationError, APPLICATION_ERROR_TABLE_ERROR, IIndexItem, IPersistenceService, IPersistenceStoreBatchOptions, ITableGetRequest, ITableGetResponse, ITablePutRequest, ITablePutResponse, ITableSearchItem, ITableSearchRequest, ITableSearchResponse, ITableService } from '@darlean/base';
 import { IDeSer, parallel, ParallelTask } from '@darlean/utils';
 import * as crypto from 'crypto';
 import { and, contains, eq, Expr, gte, sk, literal, lte, prefix } from './expressions';
 
-export interface ITablePutRequest {
-    id: string[];
-    data?: { [key: string]: unknown };
-    specifier?: string;
-    version: string;
-    baseline?: string;
-    indexes: IIndexItem[];
-}
-
-export const APPLICATION_ERROR_TABLE_ERROR = 'TABLE_ERROR';
-
-export interface ITablePutResponse {
-    baseline?: string;
-}
-
-export interface ITableGetRequest {
-    keys: string[];
-    specifier?: string;
-    projection?: string[];
-}
-
-export interface ITableGetResponse {
-    baseline?: string;
-    version: string;
-    data?: { [key: string]: unknown };
-}
-
-export interface IFilter {
-    expression: unknown[];
-}
-
-export interface ITableSearchRequest {
-    index?: string;
-    keys?: IKeyConstraint[];
-    keysOrder?: 'ascending' | 'descending';
-    filter?: IFilter;
-    specifier?: string;
-    tableProjection?: string[];
-    indexProjection?: string[];
-    continuationToken?: string;
-    maxItems?: number;
-}
-
-export interface ITableSearchItem {
-    keys?: string[];
-    tableFields?: { [key: string]: unknown };
-    indexFields?: { [key: string]: unknown };
-    id: string[];
-}
-
-export interface ITableSearchResponse {
-    items: ITableSearchItem[];
-    continuationToken?: string;
-}
 
 interface IIndexEntry {
     id: string[];
@@ -76,26 +22,6 @@ interface IBaseLine {
 interface IBaseItem {
     data?: { [key: string]: unknown };
     baseline: IBaseLine;
-}
-
-export interface IIndexItem {
-    name: string;
-    keys: string[];
-    data?: { [key: string]: unknown };
-}
-
-export interface IKeyConstraint {
-    operator: 'eq' | 'lte' | 'gte' | 'prefix' | 'between' | 'contains';
-    value: string;
-    value2?: string;
-}
-
-export type Indexer = (data?: { [key: string]: unknown }) => IIndexItem[];
-
-export interface ITableService {
-    put(request: ITablePutRequest): Promise<ITablePutResponse>;
-    get(request: ITableGetRequest): Promise<ITableGetResponse>;
-    search(request: ITableSearchRequest): Promise<ITableSearchResponse>;
 }
 
 type Operator = 'none' | 'exact' | 'prefix' | 'lte' | 'gte' | 'between';
