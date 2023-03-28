@@ -167,7 +167,6 @@ export interface ITableSearchResponse {
     continuationToken?: string;
 }
 
-
 export interface ITablePersistence<T> {
     search(options: ITableSearchRequest): Promise<ITableSearchResponse>;
     searchChunks(options: ITableSearchRequest): AsyncGenerator<ITableSearchResponse, void>;
@@ -175,4 +174,3 @@ export interface ITablePersistence<T> {
     persistable(key: string[], value: T | undefined): IPersistable<T>;
     load(key: string[]): Promise<IPersistable<T>>;
 }
-
