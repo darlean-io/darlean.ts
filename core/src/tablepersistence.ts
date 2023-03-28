@@ -1,4 +1,13 @@
-import { IIndexItem, IPersistable, ITablePersistence, ITablePutResponse, ITableSearchItem, ITableSearchRequest, ITableSearchResponse, ITableService } from '@darlean/base';
+import {
+    IIndexItem,
+    IPersistable,
+    ITablePersistence,
+    ITablePutResponse,
+    ITableSearchItem,
+    ITableSearchRequest,
+    ITableSearchResponse,
+    ITableService
+} from '@darlean/base';
 
 /**
  * For internal use. Helper class for {@link TablePersistence}.
@@ -12,11 +21,7 @@ class TablePersistable<T> implements IPersistable<T> {
     public value?: T | undefined;
     public version?: string | undefined;
 
-    constructor(
-        persistence: TablePersistence<T>,
-        key: string[],
-        value: T | undefined
-    ) {
+    constructor(persistence: TablePersistence<T>, key: string[], value: T | undefined) {
         this.persistence = persistence;
         this.key = key;
         this.value = value;
@@ -73,7 +78,7 @@ class TablePersistable<T> implements IPersistable<T> {
 
 /**
  * Implementation of persistence that uses a table as persistence.
- * 
+ *
  * Although this class implements persistence, it does not implement {@link IPersistence}, because it is too fundamentally
  * different. One such difference is that it only understands "just keys", not "partition" or "sort" keys.
  */
@@ -144,7 +149,7 @@ export class TablePersistence<T> implements ITablePersistence<T> {
 
     public async *searchChunks(options: ITableSearchRequest): AsyncGenerator<ITableSearchResponse, void> {
         let response: ITableSearchResponse | undefined;
-        while ((!response) || (response.continuationToken)) {
+        while (!response || response.continuationToken) {
             options.continuationToken = response?.continuationToken;
             response = await this.search(options);
             yield response;
@@ -153,7 +158,7 @@ export class TablePersistence<T> implements ITablePersistence<T> {
 
     public async *searchItems(options: ITableSearchRequest): AsyncGenerator<ITableSearchItem, void> {
         let response: ITableSearchResponse | undefined;
-        while ((!response) || (response.continuationToken)) {
+        while (!response || response.continuationToken) {
             options.continuationToken = response?.continuationToken;
             response = await this.search(options);
             for (const item of response.items) {
@@ -172,7 +177,9 @@ export class TablePersistence<T> implements ITablePersistence<T> {
         return result;
     }
 
-    public async loadImpl( key: string[] ): Promise<[value: T | undefined, version: string | undefined, baseline: string | undefined]> {
+    public async loadImpl(
+        key: string[]
+    ): Promise<[value: T | undefined, version: string | undefined, baseline: string | undefined]> {
         const result = await this.service.get({
             specifier: this.specifier,
             keys: key
