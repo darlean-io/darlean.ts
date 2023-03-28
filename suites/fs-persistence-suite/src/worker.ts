@@ -122,7 +122,10 @@ export class FsPersistenceWorker {
             items: []
         };
 
-        const limit = options.maxItems ?? -1;
+        // When we have a filter expression, do not set a hard limit, but iterate over entire result set until we
+        // have maxItems *filtered* results.
+        const limit = (options.maxItems && (!options.filterExpression)) ? options.maxItems : -1;
+
         const values = [
             encode(options.partitionKey),
             sortKeyFromString,
