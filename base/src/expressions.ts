@@ -44,9 +44,26 @@ export function prefix(value: Expr, prefix: Expr): Expr {
     return ['prefix', value, prefix];
 }
 
-export function contains(value: Expr, part: Expr): Expr {
-    return ['contains', value, part];
+export function contains(value: Expr, ...parts: Expr): Expr {
+    return ['contains', value, ...parts];
 }
+
+export function containsni(value: Expr, ...parts: Expr): Expr {
+    return ['containsni', value, ...parts];
+}
+
+export function uppercase(value: Expr): Expr {
+    return ['uppercase', value];
+}
+
+export function lowercase(value: Expr): Expr {
+    return ['lowercase', value];
+}
+
+export function normalize(value: Expr): Expr {
+    return ['normalize', value];
+}
+
 
 export function traverse(expr: unknown, callback: (expr: unknown, parsed: unknown[] | undefined) => void) {
     const isExpr = Array.isArray(expr);

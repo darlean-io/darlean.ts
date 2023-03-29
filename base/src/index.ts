@@ -217,3 +217,4 @@ export * from './decorations';
 export * from './various';
 export * from './suites';
 export * from './persistence';
+export * from './expressions';
