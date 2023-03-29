@@ -66,7 +66,9 @@ export class TableActor implements ITableService {
     public async put(request: ITablePutRequest): Promise<ITablePutResponse> {
         const sortKey = ['base', ...request.id];
         const indexes = request.indexes;
-        const baseline = request.baseline ? this.decodeBaseline(request.baseline) : await this.fetchBaseline(sortKey, request.specifier);
+        const baseline = request.baseline
+            ? this.decodeBaseline(request.baseline)
+            : await this.fetchBaseline(sortKey, request.specifier);
         const hashes: Map<string, string> = new Map();
 
         const newBaseline: IBaseLine = {
@@ -194,7 +196,7 @@ export class TableActor implements ITableService {
                         phase = 'filter';
                         filterParts.push(containsni(sk(idx), literal(c.value)));
                         break;
-                    }
+                }
             } else {
                 switch (c.operator) {
                     case 'prefix':
@@ -383,7 +385,6 @@ export class TableActor implements ITableService {
             return { indexes: [] };
         }
     }
-    
 
     protected async getImpl(request: ITableGetRequest): Promise<ITableGetResponse> {
         const result = await this.persistence.load({
