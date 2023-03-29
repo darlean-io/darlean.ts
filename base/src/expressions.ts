@@ -64,7 +64,6 @@ export function normalize(value: Expr): Expr {
     return ['normalize', value];
 }
 
-
 export function traverse(expr: unknown, callback: (expr: unknown, parsed: unknown[] | undefined) => void) {
     const isExpr = Array.isArray(expr);
     callback(expr, isExpr ? expr : undefined);
