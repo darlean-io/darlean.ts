@@ -7,7 +7,7 @@ export interface IStaticFileHandlerOptions {
     /**
      * List of paths in which the static file handler looks to find files. The request path is (after removal of `.` and `..`) appended to each of the
      * base paths. Base paths are processed in the order specified (first base path is tried first).
-     * 
+     *
      * Usually, only base path will be present. Multiple base paths make it possible to provide 'fall-back' folders. A use case for that could be the
      * situation in which there is a standard prebuilt webapp which needs project-specific customizations. The base app could be placed in the `base` folder,
      * and the override files (like different `css` files to adjust project-specific styling of the webapp) could go in the `project` folder. The
@@ -26,10 +26,10 @@ export interface IStaticFileHandlerOptions {
      * When set to true, and no file is found for the request path in combination with any of the `indexFiles` within a certain base path, the
      * parent paths of the request path are tried recursively (but iteration stops at the base path -- the static file handler will never serve files
      * higher than the base paths).
-     * 
-     * This feature is useful for serving sinple page applications that use the request path for routing (like `/blog/123`), but only have a 
+     *
+     * This feature is useful for serving sinple page applications that use the request path for routing (like `/blog/123`), but only have a
      * single '/index.html' file at the root of a base path that must be served for each such request.
-     * 
+     *
      * Defaults to `false`.
      */
     recurseUp?: boolean;
@@ -54,7 +54,7 @@ export class StaticFileHandler {
             let subpath = [...parts];
             while (true) {
                 const newPath = subpath.join('/');
-            
+
                 const fullPath = [basePath, newPath].join('/');
                 for (const indexFile of ['', ...this.indexFiles]) {
                     const fullPath2 = indexFile === '' ? fullPath : [fullPath, indexFile].join('/');

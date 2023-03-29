@@ -1,6 +1,6 @@
 {
   "name": "@darlean/webservice",
-  "version": "2.0.0-alpha.2",
+  "version": "2.0.0-alpha.3",
   "description": "Webservice library for Darlean",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
