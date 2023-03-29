@@ -55,7 +55,8 @@ class TablePersistable<T> implements IPersistable<T> {
             version = next.toString().padStart(20, '0');
             this.version = version;
         }
-        await this.persistence.storeImpl(this.key, this.value, version, this.baseline);
+        const result = await this.persistence.storeImpl(this.key, this.value, version, this.baseline);
+        this.baseline = result.baseline;
         this._changed = false;
     }
 

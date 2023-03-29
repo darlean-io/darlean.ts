@@ -1,7 +1,13 @@
 import {
     action,
+    and,
     ApplicationError,
     APPLICATION_ERROR_TABLE_ERROR,
+    contains,
+    containsni,
+    eq,
+    Expr,
+    gte,
     IIndexItem,
     IPersistenceService,
     IPersistenceStoreBatchOptions,
@@ -12,11 +18,14 @@ import {
     ITableSearchItem,
     ITableSearchRequest,
     ITableSearchResponse,
-    ITableService
+    ITableService,
+    literal,
+    lte,
+    prefix,
+    sk
 } from '@darlean/base';
 import { IDeSer, parallel, ParallelTask } from '@darlean/utils';
 import * as crypto from 'crypto';
-import { and, contains, eq, Expr, gte, sk, literal, lte, prefix } from './expressions';
 
 interface IIndexEntry {
     id: string[];
@@ -55,8 +64,9 @@ export class TableActor implements ITableService {
 
     @action({ locking: 'shared' })
     public async put(request: ITablePutRequest): Promise<ITablePutResponse> {
+        const sortKey = ['base', ...request.id];
         const indexes = request.indexes;
-        const baseline = this.decodeBaseline(request.baseline);
+        const baseline = request.baseline ? this.decodeBaseline(request.baseline) : await this.fetchBaseline(sortKey, request.specifier);
         const hashes: Map<string, string> = new Map();
 
         const newBaseline: IBaseLine = {
@@ -103,7 +113,7 @@ export class TableActor implements ITableService {
         };
         batch.items.push({
             partitionKey: ['Table', this.name, this.shard.toString()],
-            sortKey: ['base', ...request.id],
+            sortKey,
             specifier: request.specifier,
             value: this.deser.serialize(baseItem),
             version: request.version,
@@ -180,7 +190,11 @@ export class TableActor implements ITableService {
                         phase = 'filter';
                         filterParts.push(contains(sk(idx), literal(c.value)));
                         break;
-                }
+                    case 'containsni':
+                        phase = 'filter';
+                        filterParts.push(containsni(sk(idx), literal(c.value)));
+                        break;
+                    }
             } else {
                 switch (c.operator) {
                     case 'prefix':
@@ -355,12 +369,28 @@ export class TableActor implements ITableService {
         return [...prefix, ...(key ?? [])];
     }
 
+    protected async fetchBaseline(keys: string[], specifier: string | undefined): Promise<IBaseLine> {
+        const result = await this.persistence.load({
+            partitionKey: ['Table', this.name, this.shard.toString()],
+            sortKey: ['base', ...keys],
+            specifier: specifier,
+            projectionFilter: this.enhanceProjection([])
+        });
+        if (result.value) {
+            const baseItem = this.deser.deserialize(result.value) as IBaseItem;
+            return baseItem.baseline;
+        } else {
+            return { indexes: [] };
+        }
+    }
+    
+
     protected async getImpl(request: ITableGetRequest): Promise<ITableGetResponse> {
         const result = await this.persistence.load({
             partitionKey: ['Table', this.name, this.shard.toString()],
             sortKey: ['base', ...request.keys],
             specifier: request.specifier,
-            projectionFilter: request.projection
+            projectionFilter: request.projection ? this.enhanceProjection(request.projection) : undefined
         });
         if (result.value) {
             const baseItem = this.deser.deserialize(result.value) as IBaseItem;
