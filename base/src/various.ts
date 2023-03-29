@@ -130,7 +130,7 @@ export interface IIndexItem {
 }
 
 export interface IKeyConstraint {
-    operator: 'eq' | 'lte' | 'gte' | 'prefix' | 'between' | 'contains';
+    operator: 'eq' | 'lte' | 'gte' | 'prefix' | 'between' | 'contains' | 'containsni';
     value: string;
     value2?: string;
 }

@@ -1,4 +1,4 @@
-import { encodeNumber, wildcardMatch } from '@darlean/utils';
+import { encodeNumber, normalize, wildcardMatch } from '@darlean/utils';
 
 export interface IFilterContext {
     data(): { [key: string]: unknown };
@@ -79,6 +79,11 @@ export class Filterer {
             return input.toLowerCase();
         });
 
+        this.evaluators.set('normalize', (context, command) => {
+            const input = this.toString(this.eval(context, command[1]));
+            return normalize(input);
+        });
+
         this.evaluators.set('not', (context, command) => {
             return this.isFalsy(this.eval(context, command[1]));
         });
@@ -88,7 +93,25 @@ export class Filterer {
         });
 
         this.evaluators.set('contains', (context, command) => {
-            return this.toString(this.eval(context, command[1])).includes(this.toString(this.eval(context, command[2])));
+            let n = 0;
+            const base = this.toString(this.eval(context, command[1]));
+            for (let idx = 2; idx < command.length; idx++) {
+                if (base.includes(this.toString(this.eval(context, command[idx])))) {
+                    n++;
+                }
+            }
+            return n;
+        });
+
+        this.evaluators.set('containsni', (context, command) => {
+            let n = 0;
+            const base = normalize(this.toString(this.eval(context, command[1]))).toLowerCase();
+            for (let idx = 2; idx < command.length; idx++) {
+                if (base.includes(normalize(this.toString(this.eval(context, command[idx]))).toLowerCase())) {
+                    n++;
+                }
+            }
+            return n;
         });
 
         this.evaluators.set('field', (context, command) => {
