@@ -100,7 +100,10 @@ export default function suite() {
             kind: 'multiplar',
             creator: (context) => {
                 const service = context.portal.retrieve<IOracleService>(ORACLE_SERVICE, []);
-                const sfh = new StaticFileHandler(['./webroot/'], ['index.html']);
+                const sfh = new StaticFileHandler({
+                    basePaths: ['./webroot/'], 
+                    indexFiles: ['index.html']
+                });
                 return new WebApiService(service, sfh);
             }
         }
