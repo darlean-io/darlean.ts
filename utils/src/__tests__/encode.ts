@@ -1,4 +1,4 @@
-import { decodeKeyReadable, decodeNumber, decodeNumberRtl, encodeKeyReadable, encodeNumber } from '../util';
+import { decodeKeyReadable, decodeNumber, encodeKeyReadable, encodeNumber } from '../util';
 
 describe('EncodeNumber', () => {
     test('Zero', () => {
@@ -10,7 +10,7 @@ describe('EncodeNumber', () => {
 
         expect(decodeNumber('a')).toBe(0);
         expect(decodeNumber('c00')).toBe(0);
-        expect(decodeNumber('FOOb0', 3)).toBe(0);
+        expect(decodeNumber('b0')).toBe(0);
     });
 
     test('Positive', () => {
@@ -29,32 +29,47 @@ describe('EncodeNumber', () => {
         expect(decodeNumber('d123')).toBe(123);
     });
 
-    test('Negative', () => {
-        expect(encodeNumber(-1)).toBe('Y8');
-        expect(encodeNumber(-2)).toBe('Y7');
-        expect(encodeNumber(-9)).toBe('Y0');
-        expect(encodeNumber(-10)).toBe('X89');
-        expect(encodeNumber(-19)).toBe('X80');
-        expect(encodeNumber(-25)).toBe('X74');
-        expect(encodeNumber(-123)).toBe('W876');
-
-        expect(decodeNumber('Y8')).toBe(-1);
-        expect(decodeNumber('Y7')).toBe(-2);
-        expect(decodeNumber('Y0')).toBe(-9);
-        expect(decodeNumber('X89')).toBe(-10);
-        expect(decodeNumber('X80')).toBe(-19);
-        expect(decodeNumber('X74')).toBe(-25);
-        expect(decodeNumber('W876')).toBe(-123);
+    test('Fractions', () => {
+        expect(encodeNumber(0.0, 2)).toBe('a');
+        expect(encodeNumber(0.05, 2)).toBe('b005');
+        expect(encodeNumber(0.1, 2)).toBe('b01');
+        expect(encodeNumber(0.9, 2)).toBe('b09');
+        expect(encodeNumber(1.1, 2)).toBe('b11');
+        expect(encodeNumber(1.2, 2)).toBe('b12');
+        expect(encodeNumber(-0.05, 2)).toBe('Y995');
+        expect(encodeNumber(-0.1, 2)).toBe('Y99');
+        expect(encodeNumber(-0.9, 2)).toBe('Y91');
+        expect(encodeNumber(-1.0, 2)).toBe('Y9');
+        expect(encodeNumber(-1.1, 2)).toBe('Y89');
+        expect(encodeNumber(-1.2, 2)).toBe('Y88');
     });
 
-    test('RightToLeft', () => {
+    test('Negative', () => {
+        expect(encodeNumber(-1)).toBe('Y9');
+        expect(encodeNumber(-2)).toBe('Y8');
+        expect(encodeNumber(-9)).toBe('Y1');
+        expect(encodeNumber(-10)).toBe('X90');
+        expect(encodeNumber(-19)).toBe('X81');
+        expect(encodeNumber(-25)).toBe('X75');
+        expect(encodeNumber(-123)).toBe('W877');
+
+        expect(decodeNumber('Y9')).toBe(-1);
+        expect(decodeNumber('Y8')).toBe(-2);
+        expect(decodeNumber('Y1')).toBe(-9);
+        expect(decodeNumber('X90')).toBe(-10);
+        expect(decodeNumber('X81')).toBe(-19);
+        expect(decodeNumber('X75')).toBe(-25);
+        expect(decodeNumber('W877')).toBe(-123);
+    });
+
+    /*test('RightToLeft', () => {
         expect(decodeNumberRtl('foob1')).toStrictEqual([1, 3]);
         expect(decodeNumberRtl('fooY8')).toStrictEqual([-1, 3]);
         expect(decodeNumberRtl('foob1abc', 4)).toStrictEqual([1, 3]);
         expect(decodeNumberRtl('fooY8abc', 4)).toStrictEqual([-1, 3]);
         expect(decodeNumberRtl('fooc10')).toStrictEqual([10, 3]);
         expect(decodeNumberRtl('fooX89')).toStrictEqual([-10, 3]);
-    });
+    });*/
 
     test('Sorting', () => {
         const numbers: number[] = [];
@@ -62,7 +77,22 @@ describe('EncodeNumber', () => {
             numbers.push(nr);
         }
         const encodeds = numbers.map((nr) => encodeNumber(nr));
-        const sorteds = encodeds.sort();
+        const sorteds = [...encodeds];
+        sorteds.sort();
+        expect(sorteds).toStrictEqual(encodeds);
+        const decodeds = sorteds.map((txt) => decodeNumber(txt));
+        expect(decodeds).toStrictEqual(numbers);
+    });
+
+    test('Sorting float', () => {
+        const numbers: number[] = [];
+        for (let nr = -1500; nr < 1500; nr++) {
+            numbers.push(nr * 0.01);
+        }
+        const encodeds = numbers.map((nr) => encodeNumber(nr, 25));
+        const sorteds = [...encodeds];
+        sorteds.sort();
+        expect(sorteds).toStrictEqual(encodeds);
         const decodeds = sorteds.map((txt) => decodeNumber(txt));
         expect(decodeds).toStrictEqual(numbers);
     });
