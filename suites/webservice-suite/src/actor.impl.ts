@@ -167,16 +167,16 @@ export class WebServiceHostActor implements IActivatable, IDeactivatable {
             }
 
             res.statusCode = 404;
-            res.write('File not Found');
+            res.statusMessage = 'File not Dound';
             res.end();
         } catch (e) {
             notifier().warning(
                 'io.darlean.webservice.ProcessingFailed',
-                'An error during processing of web service request: [Error]',
+                'An error occurred during processing of web service request: [Error]',
                 () => ({ Error: e })
             );
             res.statusCode = 500;
-            res.write('Internal server error');
+            res.statusMessage = 'Internal server error';
             res.end();
         }
     }
