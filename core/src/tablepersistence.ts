@@ -86,9 +86,9 @@ class TablePersistable<T> implements IPersistable<T> {
 export class TablePersistence<T> implements ITablePersistence<T> {
     private service: ITableService;
     private specifier: string | undefined;
-    private indexer: (item: T | undefined) => IIndexItem[];
+    private indexer: (item: T) => IIndexItem[];
 
-    constructor(service: ITableService, indexer: (item: T | undefined) => IIndexItem[], specifier?: string) {
+    constructor(service: ITableService, indexer: (item: T) => IIndexItem[], specifier?: string) {
         this.service = service;
         this.specifier = specifier;
         this.indexer = indexer;
@@ -198,7 +198,7 @@ export class TablePersistence<T> implements ITablePersistence<T> {
     ): Promise<ITablePutResponse> {
         const result = await this.service.put({
             specifier: this.specifier,
-            indexes: this.indexer(value),
+            indexes: value ? this.indexer(value) : [],
             baseline,
             id: key,
             data: value as { [key: string]: unknown },

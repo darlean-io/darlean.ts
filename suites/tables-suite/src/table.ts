@@ -65,6 +65,8 @@ export class TableActor implements ITableService {
     @action({ locking: 'shared' })
     public async put(request: ITablePutRequest): Promise<ITablePutResponse> {
         const sortKey = ['base', ...request.id];
+        const isDelete = (request.data === undefined);
+
         const indexes = request.indexes;
         const baseline = request.baseline
             ? this.decodeBaseline(request.baseline)
@@ -79,32 +81,34 @@ export class TableActor implements ITableService {
 
         const batch: IPersistenceStoreBatchOptions = { items: [] };
 
-        // Persist new or changed index values
-        for (const index of indexes) {
-            const key = JSON.stringify([index.name, ...index.keys]);
-            const hash = this.calculateHash(index);
-            hashes.set(key, hash);
-            const bli = baseline?.indexes.find((x) => JSON.stringify([x.name, ...x.keys]) === key);
-            if (!bli || bli.hash !== hash) {
-                const entry: IIndexEntry = {
-                    id: request.id,
-                    data: index.data
-                };
+        if (!isDelete) {
+            // Persist new or changed index values
+            for (const index of indexes) {
+                const key = JSON.stringify([index.name, ...index.keys]);
+                const hash = this.calculateHash(index);
+                hashes.set(key, hash);
+                const bli = baseline?.indexes.find((x) => JSON.stringify([x.name, ...x.keys]) === key);
+                if (!bli || bli.hash !== hash) {
+                    const entry: IIndexEntry = {
+                        id: request.id,
+                        data: index.data
+                    };
 
-                batch.items.push({
-                    partitionKey: ['Table', this.name, this.shard.toString()],
-                    sortKey: ['index', index.name, ...index.keys, itemKey, hash],
-                    specifier: request.specifier,
-                    value: this.deser.serialize(entry),
-                    version: request.version,
-                    identifier: ''
-                });
+                    batch.items.push({
+                        partitionKey: ['Table', this.name, this.shard.toString()],
+                        sortKey: ['index', index.name, ...index.keys, itemKey, hash],
+                        specifier: request.specifier,
+                        value: this.deser.serialize(entry),
+                        version: request.version,
+                        identifier: ''
+                    });
 
-                newBaseline.indexes.push({
-                    name: index.name,
-                    keys: index.keys,
-                    hash
-                });
+                    newBaseline.indexes.push({
+                        name: index.name,
+                        keys: index.keys,
+                        hash
+                    });
+                }
             }
         }
 
@@ -117,7 +121,7 @@ export class TableActor implements ITableService {
             partitionKey: ['Table', this.name, this.shard.toString()],
             sortKey,
             specifier: request.specifier,
-            value: this.deser.serialize(baseItem),
+            value: isDelete ? undefined : this.deser.serialize(baseItem),
             version: request.version,
             identifier: ''
         });
@@ -145,7 +149,7 @@ export class TableActor implements ITableService {
         }
 
         return {
-            baseline: this.encodeBaseline(newBaseline)
+            baseline: isDelete ? undefined : this.encodeBaseline(newBaseline)
         };
     }
 
