@@ -40,6 +40,9 @@
 		    "path": "suites/webservice-suite"
 		},		
 		{
+		    "path": "suites/timers-suite"
+		},		
+		{
 			"path": "."
 		}
 	],

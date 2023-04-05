@@ -1,0 +1,6 @@
+node_modules
+lib
+.vscode
+**/*.nots
+typedoc-out.json
+docs
