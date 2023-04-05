@@ -23,8 +23,11 @@ import {
     IPersistenceService,
     IPortal,
     IRemote,
+    ITablePersistenceOptions,
+    ITableService,
     IVolatileTimer,
-    PERSISTENCE_SERVICE
+    PERSISTENCE_SERVICE,
+    TABLES_SERVICE
 } from '@darlean/base';
 import { ACTOR_LOCK_SERVICE, IActorLockService } from '@darlean/actor-lock-suite';
 import actorLockSuite from '@darlean/actor-lock-suite';
@@ -37,6 +40,7 @@ import { DistributedPersistence } from './distributedpersistence';
 import persistenceSuite, { IPersistenceServiceOptions } from '@darlean/persistence-suite';
 import fsPersistenceSuite, { IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { normalizeActorType } from './shared';
+import { TablePersistence } from './tablepersistence';
 
 export const DEFAULT_CAPACITY = 1000;
 
@@ -221,7 +225,7 @@ export class ActorRunnerBuilder {
         return this;
     }
 
-    public hostActorLock(nodes: string[], redundancy: number) {
+    public hostActorLockService(nodes: string[], redundancy: number) {
         const suite = actorLockSuite({
             locks: nodes,
             id: [],
@@ -230,17 +234,17 @@ export class ActorRunnerBuilder {
         this.registerSuite(suite);
     }
 
-    public hostActorRegistry(nodes: string[]) {
+    public hostActorRegistryService(nodes: string[]) {
         const suite = actorRegistrySuite(nodes);
         this.registerSuite(suite);
     }
 
-    public hostPersistence(options: IPersistenceServiceOptions) {
+    public hostPersistenceService(options: IPersistenceServiceOptions) {
         const suite = persistenceSuite(options);
         this.registerSuite(suite);
     }
 
-    public hostFsPersistence(options: IFsPersistenceOptions) {
+    public hostFsPersistenceService(options: IFsPersistenceOptions) {
         const suite = fsPersistenceSuite(options);
         this.registerSuite(suite);
     }
@@ -499,6 +503,14 @@ export class ActorRunnerBuilder {
                 const typePersistence =
                     typeof persistenceFactory === 'function' ? persistenceFactory(type, specifier) : persistenceFactory;
                 return typePersistence.sub([type, id.length.toString(), ...id]) as IPersistence<T>;
+            },
+            tablePersistence: <T>(options: ITablePersistenceOptions<T>) => {
+                if (!this.portal) {
+                    throw new Error('No portal');
+                }
+                const tableId = options.id ?? [type, id.length.toString(), ...id];
+                const service = this.portal.retrieve<ITableService>(TABLES_SERVICE, tableId);
+                return new TablePersistence(service, options.indexer ?? (() => []), options.specifier);
             },
             time,
             newVolatileTimer: () => {

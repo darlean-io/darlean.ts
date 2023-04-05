@@ -27,7 +27,7 @@ describe('Actor runner & builder', () => {
     test('Actor runner - persistence', async () => {
         const builder = new ActorRunnerBuilder();
         builder.setDefaultApps([DEFAULT_LOCAL_APP_ID]);
-        builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
+        builder.hostActorLockService([DEFAULT_LOCAL_APP_ID], 1);
         builder.setPersistence(new MemoryPersistence());
         builder.registerActor({
             type: 'MyActor',
@@ -96,7 +96,7 @@ describe('Actor runner & builder', () => {
         // Test the local portal functionality by having one actor invoke another actor
         const builder = new ActorRunnerBuilder();
         builder.setDefaultApps([DEFAULT_LOCAL_APP_ID]);
-        builder.hostActorLock([DEFAULT_LOCAL_APP_ID], 1);
+        builder.hostActorLockService([DEFAULT_LOCAL_APP_ID], 1);
         builder.setPersistence(new MemoryPersistence());
         builder.registerActor({
             type: 'ViaEchoActor',
@@ -139,7 +139,7 @@ describe('Actor runner & builder', () => {
         // all actors live in the same app
         const builder = new ActorRunnerBuilder();
 
-        builder.hostActorLock(['my-app'], 1);
+        builder.hostActorLockService(['my-app'], 1);
         builder.setPersistence(new MemoryPersistence());
 
         builder.registerActor({

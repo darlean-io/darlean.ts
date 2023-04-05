@@ -50,15 +50,17 @@ interface IBaseItem {
 type Operator = 'none' | 'exact' | 'prefix' | 'lte' | 'gte' | 'between';
 
 export class TableActor implements ITableService {
-    private name: string;
+    private id: string[];
+    private internalId: string[];
     private persistence: IPersistenceService;
     private shard: number;
     private deser: IDeSer;
 
-    constructor(persistence: IPersistenceService, deser: IDeSer, name: string, shard: number) {
+    constructor(persistence: IPersistenceService, deser: IDeSer, id: string[], shard: number) {
         this.persistence = persistence;
         this.deser = deser;
-        this.name = name;
+        this.id = id;
+        this.internalId = [id.length.toString(), ...id];
         this.shard = shard;
     }
 
@@ -95,7 +97,7 @@ export class TableActor implements ITableService {
                     };
 
                     batch.items.push({
-                        partitionKey: ['Table', this.name, this.shard.toString()],
+                        partitionKey: ['Table', ...this.internalId, this.shard.toString()],
                         sortKey: ['index', index.name, ...index.keys, itemKey, hash],
                         specifier: request.specifier,
                         value: this.deser.serialize(entry),
@@ -118,7 +120,7 @@ export class TableActor implements ITableService {
             baseline: newBaseline
         };
         batch.items.push({
-            partitionKey: ['Table', this.name, this.shard.toString()],
+            partitionKey: ['Table', ...this.internalId, this.shard.toString()],
             sortKey,
             specifier: request.specifier,
             value: isDelete ? undefined : this.deser.serialize(baseItem),
@@ -133,7 +135,7 @@ export class TableActor implements ITableService {
             const hash = hashes.get(key);
             if (!index || hash !== bli.hash) {
                 batch.items.push({
-                    partitionKey: ['Table', this.name, this.shard.toString()],
+                    partitionKey: ['Table', ...this.internalId, this.shard.toString()],
                     sortKey: ['index', bli.name, ...bli.keys, itemKey, bli.hash ?? ''],
                     specifier: request.specifier,
                     value: undefined,
@@ -239,7 +241,7 @@ export class TableActor implements ITableService {
             const [sortKeyFrom, sortKeyTo, sortKeyToMatch] = this.deriveKeyInfo(operator, sortKey, sortKey2);
 
             const result = await this.persistence.query({
-                partitionKey: ['Table', this.name, this.shard.toString()],
+                partitionKey: ['Table', ...this.internalId, this.shard.toString()],
                 sortKeyFrom: this.prefixSortKey(['index', request.index], sortKeyFrom),
                 sortKeyTo: this.prefixSortKey(['index', request.index], sortKeyTo),
                 sortKeyToMatch,
@@ -304,7 +306,7 @@ export class TableActor implements ITableService {
             const [sortKeyFrom, sortKeyTo, sortKeyToMatch] = this.deriveKeyInfo(operator, sortKey, sortKey2);
 
             const result = await this.persistence.query({
-                partitionKey: ['Table', this.name, this.shard.toString()],
+                partitionKey: ['Table', ...this.internalId, this.shard.toString()],
                 sortKeyFrom: this.prefixSortKey(['base'], sortKeyFrom),
                 sortKeyTo: this.prefixSortKey(['base'], sortKeyTo),
                 sortKeyToMatch,
@@ -377,7 +379,7 @@ export class TableActor implements ITableService {
 
     protected async fetchBaseline(keys: string[], specifier: string | undefined): Promise<IBaseLine> {
         const result = await this.persistence.load({
-            partitionKey: ['Table', this.name, this.shard.toString()],
+            partitionKey: ['Table', ...this.internalId, this.shard.toString()],
             sortKey: ['base', ...keys],
             specifier: specifier,
             projectionFilter: this.enhanceProjection([])
@@ -392,7 +394,7 @@ export class TableActor implements ITableService {
 
     protected async getImpl(request: ITableGetRequest): Promise<ITableGetResponse> {
         const result = await this.persistence.load({
-            partitionKey: ['Table', this.name, this.shard.toString()],
+            partitionKey: ['Table', ...this.internalId, this.shard.toString()],
             sortKey: ['base', ...request.keys],
             specifier: request.specifier,
             projectionFilter: request.projection ? this.enhanceProjection(request.projection) : undefined

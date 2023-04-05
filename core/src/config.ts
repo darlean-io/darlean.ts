@@ -324,13 +324,13 @@ export class ConfigRunnerBuilder {
 
     protected configureHostActorLock(builder: ActorRunnerBuilder, runtime: IRuntimeCfg | undefined, runtimeApps: string[]) {
         if (!(runtime?.actorLock?.enabled === false)) {
-            builder.hostActorLock(runtime?.actorLock?.apps ?? runtimeApps, runtime?.actorLock?.redundancy ?? 3);
+            builder.hostActorLockService(runtime?.actorLock?.apps ?? runtimeApps, runtime?.actorLock?.redundancy ?? 3);
         }
     }
 
     protected configureHostActorRegistry(builder: ActorRunnerBuilder, runtime: IRuntimeCfg | undefined, runtimeApps: string[]) {
         if (!(runtime?.actorRegistry?.enabled === false)) {
-            builder.hostActorRegistry(runtime?.actorRegistry?.apps ?? runtimeApps);
+            builder.hostActorRegistryService(runtime?.actorRegistry?.apps ?? runtimeApps);
         }
     }
 
@@ -362,7 +362,7 @@ export class ConfigRunnerBuilder {
                     actorType: handler.actorType
                 });
             }
-            builder.hostPersistence(options);
+            builder.hostPersistenceService(options);
         }
     }
 
@@ -391,7 +391,7 @@ export class ConfigRunnerBuilder {
                     shardCount: limit(comp.shardCount ?? DEFAULT_SHARD_COUNT, maxShardCount)
                 });
             }
-            builder.hostFsPersistence(options);
+            builder.hostFsPersistenceService(options);
         }
     }
 

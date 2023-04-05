@@ -1,7 +1,7 @@
 import { ITime } from '@darlean/utils';
 import { IInstanceContainer } from './instances';
 import { IActorPlacement, IPortal } from './remoteinvocation';
-import { IPersistence, IVolatileTimer } from './various';
+import { IIndexItem, IPersistence, ITablePersistence, IVolatileTimer } from './various';
 
 export interface IStartAction {
     name: string;
@@ -66,6 +66,12 @@ export interface IActorRegistrationOptions<T extends object> {
     startActions?: IStartAction[];
 }
 
+export interface ITablePersistenceOptions<T> {
+    id?: string[];
+    indexer? : (item: T) => IIndexItem[];
+    specifier?: string;
+}
+
 /**
  * Provides useful context to the {@link IActorRegistrationOptions.creater} factory function that creates
  * new actor instances.
@@ -87,6 +93,11 @@ export interface IActorCreateContext {
      * * `shoppingcart.archive` to store the state of shopping carts that have been fully processed
      */
     persistence<T>(specifier?: string): IPersistence<T>;
+
+    /**
+     * Acquire a table persistence interface that can be used by the created actor to load and persist its state.
+      */
+    tablePersistence<T>(options: ITablePersistenceOptions<T>): ITablePersistence<T>;
 
     /**
      * The portal interface that gives the created actor access to other actors within the cluster.
