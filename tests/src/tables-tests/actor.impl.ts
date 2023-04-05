@@ -1,41 +1,10 @@
-import { action, ActorSuite, IActorSuite, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult, ITablePersistence, ITableService, TABLE_SERVICE } from '@darlean/base';
+import { action, ActorSuite, IActorSuite, IPersistenceQueryOptions, IPersistenceQueryResult, ITablePersistence, ITableService, TABLES_SERVICE } from '@darlean/base';
 import { TablePersistence } from '@darlean/core';
 
-export const STORAGE_TEST_ACTOR = 'StorageTestActor';
 export const STORAGE_TEST_ACTOR_TABLE = 'StorageTestActorTable';
 
 export interface ITextState {
     text: string;
-}
-
-export class StorageTestActor {
-    protected persistence: IPersistence<ITextState>;
-
-    constructor(persistence: IPersistence<ITextState>) {
-        this.persistence = persistence;
-    }
-
-    @action({ locking: 'shared' })
-    public async store(partitionKey: string[], sortKey: string[], value: string | undefined): Promise<void> {
-        const p = this.persistence.persistable(partitionKey, sortKey);
-        if (value === undefined) {
-            p.clear();
-        } else {
-            p.change({ text: value });
-        }
-        await p.store();
-    }
-
-    @action({ locking: 'shared' })
-    public async get(partitionKey: string[], sortKey: string[]): Promise<string | undefined> {
-        const p = this.persistence.persistable(partitionKey, sortKey);
-        return (await p.load())?.text;
-    }
-
-    @action({ locking: 'shared' })
-    public async query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<ITextState>> {
-        return this.persistence.query(options);
-    }
 }
 
 export class TableStorageTestActor {
@@ -71,18 +40,10 @@ export class TableStorageTestActor {
 export function testActorSuite(): IActorSuite {
     return new ActorSuite([
         {
-            type: STORAGE_TEST_ACTOR,
-            kind: 'singular',
-            creator: (context) => {
-                const p = context.persistence('storagetest') as IPersistence<ITextState>;
-                return new StorageTestActor(p);
-            }
-        },
-        {
             type: STORAGE_TEST_ACTOR_TABLE,
             kind: 'singular',
             creator: (context) => {
-                const ts = context.portal.retrieve<ITableService>(TABLE_SERVICE, ['testtable']);
+                const ts = context.portal.retrieve<ITableService>(TABLES_SERVICE, ['testtable']);
                 const tp = new TablePersistence<ITextState>(
                     ts,
                     (item) => {
