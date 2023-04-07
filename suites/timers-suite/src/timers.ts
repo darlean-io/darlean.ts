@@ -1,34 +1,7 @@
-import { action, IActivatable, ITablePersistence, ITableSearchRequest, IVolatileTimer, IVolatileTimerHandle, timer } from "@darlean/base";
+import { action, IActivatable, IDeactivatable, IPortal, ITablePersistence, ITableSearchRequest, ITimerCancelOptions, ITimerOptions, ITimersService, ITimerTrigger, IVolatileTimer, IVolatileTimerHandle, timer } from "@darlean/base";
 import { decodeNumber, encodeNumber, ITime } from "@darlean/utils";
 
 export const TIMER_MOMENT_INDEX = 'by-moment';
-
-export interface ITimerTrigger {
-    // Moment (in milliseconds since January 1, 1970 00:00:00 UTC). Either interval or moment should be specified.
-    moment?: number;
-    // Interval (in milliseconds) since the firing of the previous trigger. Either interval or moment should be specified.
-    interval?: number;
-    // Allowed amount of jitter (in milliseconds). A random amount of jitter between 0 and the specified jitter is explicitly added
-    // to the moment or interval. Note that even in the absense of jitter (or jitter = 0), triggers may fire later than the specified
-    // moment or interval.
-    jitter?: number;
-    // Number of times this trigger will repeat. Set to 0 for indefinately. Default is 1.
-    repeatCount?: number;
-    // Indicates what should happen when the callback results in an error. Continue with the next trigger, or break the chain.
-    error: 'continue' | 'break';
-    // Indicates what should happen when the callback is successful. Continue with the next trigger, or break the chain.
-    success: 'continue' | 'break';
-}
-
-export interface ITimerOptions {
-    id: string;
-    // Array of moments that the timer should fire
-    triggers: ITimerTrigger[];
-    callbackActorType: string;
-    callbackActorId: string[];
-    callbackActionName: string;
-    callbackActionArgs?: unknown[];
-}
 
 export interface ITimerState {
     id: string;
@@ -42,25 +15,28 @@ export interface ITimerState {
     callbackActionArgs?: unknown[];
 }
 
-
-// TODO: Handle re-checking when actor is deactivated
-
-export class TimerActor implements IActivatable {
+export class TimerActor implements IActivatable, IDeactivatable, ITimersService {
     private persistence: ITablePersistence<ITimerState>;
     private time: ITime;
     private timer: IVolatileTimer;
     private timerHandle?: IVolatileTimerHandle;
     private nextTime?: number;
+    private portal: IPortal;
 
 
-    constructor(persistence: ITablePersistence<ITimerState>, time: ITime, timer: IVolatileTimer) {
+    constructor(persistence: ITablePersistence<ITimerState>, time: ITime, timer: IVolatileTimer, portal: IPortal) {
         this.persistence = persistence;
         this.time = time;
         this.timer = timer;
+        this.portal = portal;
     }
 
     public async activate(): Promise<void> {
-        this.timerHandle = this.timer.repeat(this.step, 60*1000);
+        this.timerHandle = this.timer.repeat(this.step, 60*1000, 0);
+    }
+
+    public async deactivate(): Promise<void> {
+        this.timerHandle?.cancel();
     }
 
     @action({locking: 'shared'})
@@ -76,12 +52,15 @@ export class TimerActor implements IActivatable {
             callbackActionArgs: [...options.callbackActionArgs ?? []]
         };
 
-        newState.nextMoment = this.extractFirstMoment(newState);
-
+        const newMoment = this.updateNextMoment(newState);
+        if (!newMoment) {
+            throw new Error('Unable to schedule timer');
+        }
+        
         const item = await this.persistence.load([newState.id]);
         item.change(newState);
         await item.store();
-
+        
         if (this.nextTime !== undefined) {
             if (newState.nextMoment <= this.nextTime) {
                 this.nextTime = newState.nextMoment;
@@ -92,6 +71,19 @@ export class TimerActor implements IActivatable {
             this.trigger();
         }
     }
+
+    // When cancelling and a step is performed meanwhile, the cancel can delete the record and the step restore it.
+    // To prevent this, make cancel exclusive. We may implement a better (smarter) solution, but for now it is reasonable.
+
+    @action({locking: 'exclusive'})
+    public async cancel(options: ITimerCancelOptions) {
+        const item = await this.persistence.load([options.id]);
+        if (item.value) {
+            item.clear();
+            await item.store();
+        }
+    }
+    
 
     @action()
     public async touch() {
@@ -110,6 +102,8 @@ export class TimerActor implements IActivatable {
             // No need to "reserve" the item; when we fail/crash, another actor will retry
             // (but we are then dead anyways)
 
+            // TODO: Process items in parallel
+
             for (const item of chunk.items) {
                 const currentItem = await this.persistence.load(item.id);
                 const currentTimer = currentItem.value;
@@ -117,9 +111,11 @@ export class TimerActor implements IActivatable {
                     let breaking = false;
                     const trigger = currentTimer.remainingTriggers[0];
                     try {
-                          // TODO: Invoke callback
+                        // TODO: Invoke callback
+                        const actor = this.portal.retrieve(currentTimer.callbackActorType, currentTimer.callbackActorId) as any;
+                        await actor[currentTimer.callbackActionName]();
 
-                        if ((trigger?.error ?? 'continue') === 'break') {
+                        if ((trigger?.success ?? 'continue') === 'break') {
                             breaking = true;
                         }
                     } catch (e) {
@@ -182,8 +178,8 @@ export class TimerActor implements IActivatable {
         }
     }
 
-    protected updateNextMoment(state: ITimerState) {
-        const trigger = state.remainingTriggers[0];
+    private updateNextMoment(state: ITimerState) {
+        let trigger = state.remainingTriggers[0];
         const now = this.time.machineTime();
         if (trigger) {
             if (trigger.repeatCount === 0) {
@@ -195,32 +191,24 @@ export class TimerActor implements IActivatable {
             } else {
                 // No more remaining repeats, move to next trigger
                 state.remainingTriggers = state.remainingTriggers.slice(1);
-                if (state.remainingTriggers.length > 0) {
-                    state.remainingRepeatCount = state.remainingTriggers[0].repeatCount ?? 1;
-                    state.nextMoment = state.remainingTriggers[0].moment ?? now + (state.remainingTriggers[0].interval ?? 0);
+                trigger = state.remainingTriggers[0];
+
+                if (trigger) {
+                    state.remainingRepeatCount = (trigger.repeatCount ?? 1) - 1;
+                    state.nextMoment = trigger.moment ?? now + (trigger.interval ?? 0);
                 } else {
                     state.nextMoment = 0;
                     return undefined;
                 }
             }
+            if (trigger.jitter ?? 0 > 0) {
+                const offset = Math.random() * (trigger.jitter ?? 0);
+                state.nextMoment += offset;
+            }
+            return state.nextMoment;
         } else {
             state.nextMoment = 0;
             return undefined;
         }
-    }
-
-    protected extractFirstMoment(state: ITimerState) {
-        const trigger = state.remainingTriggers[0];
-        if (!trigger) {
-            return this.time.machineTime();
-        }
-
-        let moment = trigger.moment ?? this.time.machineTime() + (trigger.interval ?? 0);
-        if (trigger.jitter ?? 0 > 0) {
-            const offset = Math.random() * (trigger.jitter ?? 0);
-            moment += offset;
-        }
-
-        return moment;
     }
 }

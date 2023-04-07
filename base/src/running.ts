@@ -10,6 +10,16 @@ export interface IStartAction {
     arguments?: unknown[];
 }
 
+export interface IStartHandler {
+    name: string;
+    handler: (portal: IPortal, time: ITime) => Promise<void>;
+}
+
+export interface IStopHandler {
+    name: string;
+    handler: (portal: IPortal, time: ITime) => Promise<void>;
+}
+
 /**
  * Options that specify how an actor type should be registered.
  */
@@ -64,6 +74,16 @@ export interface IActorRegistrationOptions<T extends object> {
      * When present, invoked when the actor runner has been started.
      */
     startActions?: IStartAction[];
+
+    /**
+     * When present, invoked when the actor runner has been started.
+     */
+    startHandlers?: IStartHandler[];
+
+    /**
+     * When present, invoked when the actor runner will be stopped.
+     */
+    stopHandlers?: IStopHandler[];
 }
 
 export interface ITablePersistenceOptions<T> {

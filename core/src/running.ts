@@ -275,7 +275,7 @@ export class ActorRunnerBuilder {
         const ar = new ActorRunner(portal);
         this.configurePortal(ar);
 
-        this.registerAutoStarts(ar);
+        this.registerAutoStarts(ar, time);
         return ar;
     }
 
@@ -521,7 +521,47 @@ export class ActorRunnerBuilder {
         };
     }
 
-    private registerAutoStarts(ar: ActorRunner) {
+    private registerAutoStarts(ar: ActorRunner, time: ITime) {
+        const autoStartHandlers = this.actors.filter((a) => a.startHandlers);
+        if (autoStartHandlers.length > 0) {
+            ar.addStarter(
+                async () => {
+                    for (const actor of autoStartHandlers) {
+                        if (actor.startHandlers) {
+                            for (const h of actor.startHandlers) {
+                                notifier().info('io.darlean.runner.AutoStarting', `Starting [Name]...`, () => ({ Name: h.name }));
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                await h.handler(ar.getPortal(), time);
+                                notifier().info('io.darlean.runner.AutoStarted', `Started [Name]`, () => ({ Name: h.name }));
+                            }
+                        }
+                    }
+                },
+                98,
+                'Autostart Actor Handlers'
+            );
+        }
+
+        const autoStopHandlers = this.actors.filter((a) => a.stopHandlers);
+        if (autoStopHandlers.length > 0) {
+            ar.addStopper(
+                async () => {
+                    for (const actor of autoStopHandlers) {
+                        if (actor.stopHandlers) {
+                            for (const h of actor.stopHandlers) {
+                                notifier().info('io.darlean.runner.AutoStopping', `Starting [Name]...`, () => ({ Name: h.name }));
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                await h.handler(ar.getPortal(), time);
+                                notifier().info('io.darlean.runner.AutoStopped', `Started [Name]`, () => ({ Name: h.name }));
+                            }
+                        }
+                    }
+                },
+                98,
+                'Autostop Actor Handlers'
+            );
+        }
+        
         const autoStartActors = this.actors.filter((a) => a.startActions);
         if (autoStartActors.length > 0) {
             ar.addStarter(
