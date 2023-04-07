@@ -51,7 +51,9 @@ export class Time implements ITime {
                 await util_sleep(nextDelay, aborter);
                 if (!cancelled) {
                     try {
-                        await scope.branch('io.darlean.timer-callback', name).perform(callback as () => Promise<unknown>);
+                        if (resumeMoment === undefined) {
+                            await scope.branch('io.darlean.timer-callback', name).perform(callback as () => Promise<unknown>);
+                        }
                     } catch (e) {
                         scope.error('Error in callback of timer [Name]: [Error]', () => ({
                             Name: name,
@@ -62,10 +64,12 @@ export class Time implements ITime {
                             if (resumeMoment === -1) {
                                 // Wait forever
                                 nextDelay = 1000 * 1000 * 1000;
+                                resumeMoment = undefined;
                             } else if (resumeMoment === undefined) {
                                 nextDelay = interval;
                             } else {
                                 nextDelay = resumeMoment - performance.now();
+                                resumeMoment = undefined;
                                 if (nextDelay < 0) {
                                     nextDelay = 0;
                                 }
