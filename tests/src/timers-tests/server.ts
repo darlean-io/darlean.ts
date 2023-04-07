@@ -3,7 +3,6 @@ import { createTablesSuite } from '@darlean/tables-suite';
 
 async function main() {
     const builder = new ConfigRunnerBuilder();
-    //builder.registerSuite(testActorSuite());
     builder.registerSuite(createTablesSuite());
     const runner = builder.build();
     await runner.run();
