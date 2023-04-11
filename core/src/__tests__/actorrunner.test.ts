@@ -4,6 +4,7 @@ import { action, IPersistence, ITypedPortal } from '@darlean/base';
 import { MemoryPersistence } from '../various';
 import { EchoActor, IEchoActor } from '../testing';
 import { InProcessTransport } from '../infra/inprocesstransport';
+import { createActorLockSuite } from '@darlean/actor-lock-suite';
 
 export interface IViaEchoActor {
     echo(id: string, value: string): Promise<string | undefined>;
@@ -27,7 +28,7 @@ describe('Actor runner & builder', () => {
     test('Actor runner - persistence', async () => {
         const builder = new ActorRunnerBuilder();
         builder.setDefaultApps([DEFAULT_LOCAL_APP_ID]);
-        builder.hostActorLockService([DEFAULT_LOCAL_APP_ID], 1);
+        builder.registerSuite(createActorLockSuite({ id: [], locks: [DEFAULT_LOCAL_APP_ID], redundancy: 1 }));
         builder.setPersistence(new MemoryPersistence());
         builder.registerActor({
             type: 'MyActor',
@@ -96,7 +97,7 @@ describe('Actor runner & builder', () => {
         // Test the local portal functionality by having one actor invoke another actor
         const builder = new ActorRunnerBuilder();
         builder.setDefaultApps([DEFAULT_LOCAL_APP_ID]);
-        builder.hostActorLockService([DEFAULT_LOCAL_APP_ID], 1);
+        builder.registerSuite(createActorLockSuite({ id: [], locks: [DEFAULT_LOCAL_APP_ID], redundancy: 1 }));
         builder.setPersistence(new MemoryPersistence());
         builder.registerActor({
             type: 'ViaEchoActor',
@@ -139,7 +140,7 @@ describe('Actor runner & builder', () => {
         // all actors live in the same app
         const builder = new ActorRunnerBuilder();
 
-        builder.hostActorLockService(['my-app'], 1);
+        builder.registerSuite(createActorLockSuite({ id: [], locks: ['my-app'], redundancy: 1 }));
         builder.setPersistence(new MemoryPersistence());
 
         builder.registerActor({

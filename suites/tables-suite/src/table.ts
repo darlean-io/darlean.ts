@@ -67,7 +67,7 @@ export class TableActor implements ITableService {
     @action({ locking: 'shared' })
     public async put(request: ITablePutRequest): Promise<ITablePutResponse> {
         const sortKey = ['base', ...request.id];
-        const isDelete = (request.data === undefined);
+        const isDelete = request.data === undefined;
 
         const indexes = request.indexes;
         const baseline = request.baseline

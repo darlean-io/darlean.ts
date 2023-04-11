@@ -210,4 +210,3 @@ export interface ITimersService {
     schedule(options: ITimerOptions): Promise<void>;
     cancel(options: ITimerCancelOptions): Promise<void>;
 }
-

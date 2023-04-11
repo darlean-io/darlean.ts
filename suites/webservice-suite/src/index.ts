@@ -13,7 +13,7 @@ export const WEBSERVICE_HOST_ACTOR = 'io.darlean.WebServiceHostActor';
 export * from './actor.impl';
 export * from './intf';
 
-export default function suite(config: IWebServiceCfg, appId: string) {
+export function createWebserviceSuite(config: IWebServiceCfg, appId: string) {
     const startActions: IStartAction[] = [];
     for (const host of config.hosts ?? []) {
         startActions.push({ name: `Webservice ${host.id ?? 'default'}`, id: [host.id ?? 'default', appId], action: 'touch' });

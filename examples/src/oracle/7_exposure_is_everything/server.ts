@@ -1,15 +1,17 @@
 import { ConfigRunnerBuilder } from '@darlean/core';
 import { knowledge } from './knowledge';
 import oracle_suite from './oracle.suite';
-import webservice_suite from '@darlean/webservice-suite';
 import webapi_suite from './webapi';
+import { createRuntimeSuiteFromBuilder } from '@darlean/runtime-suite';
+import { createWebserviceSuite } from '@darlean/webservice-suite';
 
 async function main() {
     const builder = new ConfigRunnerBuilder();
+    builder.registerSuite(createRuntimeSuiteFromBuilder(builder));
     builder.registerSuite(oracle_suite(knowledge));
     builder.registerSuite(webapi_suite());
     builder.registerSuite(
-        webservice_suite(
+        createWebserviceSuite(
             {
                 hosts: [
                     {

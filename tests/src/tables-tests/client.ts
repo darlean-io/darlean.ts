@@ -71,10 +71,10 @@ async function tablepersistence_store_search(actor: TableStorageTestActor, time:
         let n = 0;
         let results: ITableSearchResponse | undefined;
         for await (const chunk of tp.searchChunks({
-                keys: [{ operator: 'prefix', value: '12' }],
-                maxItems: 10,
-                continuationToken: results?.continuationToken
-            })) {
+            keys: [{ operator: 'prefix', value: '12' }],
+            maxItems: 10,
+            continuationToken: results?.continuationToken
+        })) {
             n++;
             for (const item of chunk.items) {
                 items.push(item);
@@ -90,10 +90,10 @@ async function tablepersistence_store_search(actor: TableStorageTestActor, time:
         const items: ITableSearchItem[] = [];
         let results: ITableSearchResponse | undefined;
         for await (const item of tp.searchItems({
-                keys: [{ operator: 'prefix', value: '12' }],
-                maxItems: 10,
-                continuationToken: results?.continuationToken
-            })) {
+            keys: [{ operator: 'prefix', value: '12' }],
+            maxItems: 10,
+            continuationToken: results?.continuationToken
+        })) {
             items.push(item);
         }
         check('1200', (items[0].tableFields?.text as string) ?? '', 'Prefix query must return prefix results');

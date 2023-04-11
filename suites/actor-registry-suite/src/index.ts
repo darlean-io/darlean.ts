@@ -8,13 +8,14 @@
  */
 
 import { ActorSuite } from '@darlean/base';
+import { IConfigEnv } from '@darlean/utils';
 import { ActorRegistryService } from './service.impl';
 
 export * from './intf';
 
 export const ACTOR_REGISTRY_SERVICE = 'io.darlean.ActorRegistryService';
 
-export default function suite(hosts: string[]) {
+export function createActorRegistrySuite(hosts: string[]) {
     return new ActorSuite([
         {
             type: ACTOR_REGISTRY_SERVICE,
@@ -25,4 +26,16 @@ export default function suite(hosts: string[]) {
             apps: hosts
         }
     ]);
+}
+
+export interface IActorRegistryCfg {
+    enabled?: boolean;
+    apps?: string[];
+}
+
+export function createActorRegistrySuiteFromConfig(cfg: IConfigEnv<IActorRegistryCfg>, runtimeApps: string[]) {
+    if (cfg.fetchBoolean('enabled') !== false) {
+        const apps = cfg.fetchStringArray('apps') ?? runtimeApps;
+        return createActorRegistrySuite(apps);
+    }
 }

@@ -1,15 +1,5 @@
-import { FS_PERSISTENCE_SERVICE, IActorRegistrationOptions, IActorSuite } from '@darlean/base';
-import { IFsPersistenceCompartment, IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
-import { IPersistenceServiceOptions } from '@darlean/persistence-suite';
-import {
-    BsonDeSer,
-    fetchConfigArray,
-    fetchConfigNumber,
-    fetchConfigString,
-    notifier,
-    onApplicationStop,
-    sleep
-} from '@darlean/utils';
+import { IActorRegistrationOptions, IActorSuite } from '@darlean/base';
+import { BsonDeSer, ConfigEnv, IConfigEnv, notifier, onApplicationStop, sleep } from '@darlean/utils';
 import { InProcessTransport, NatsTransport } from './infra';
 import { NatsServer } from './infra/natsserver';
 import { ActorRunner, ActorRunnerBuilder } from './running';
@@ -19,48 +9,22 @@ import path from 'path';
 
 const DMB_BASE_PORT = 4500;
 const DMB_CLUSTER_PORT_BASE = 5500;
-const DEFAULT_SHARD_COUNT = 8;
 
-export interface IPersistenceSpecifierCfg {
-    specifier: string;
-    compartment: string;
-}
-
-export interface IPersistenceHandlerCfg {
-    compartment: string;
-    actorType: string;
-}
-
-export interface IFileSystemCompartmentCfg {
-    compartment: string;
-    shardCount?: number;
-    nodes?: string[];
-    basePath?: string;
-    subPath?: string;
-}
-
-export interface IFileSystemPersistenceCfg {
+/**
+ * Configuration for when this application acts as a runtime application.
+ */
+export interface IApplicationRuntimeCfg {
+    /**
+     * Enables or disables the provided runtime functionalities. Can be overruled by
+     * `runtime-enabled` command-line argument or `RUNTIME_ENABLED` environment variable set to `true` or `false`.
+     * @default By default, the runtime functionality is *not* enabled.
+     */
     enabled?: boolean;
-    maxShardCount?: number;
-    compartments: IFileSystemCompartmentCfg[];
-}
 
-export interface IPersistenceCfg {
-    enabled?: boolean;
-    specifiers: IPersistenceSpecifierCfg[];
-    handlers: IPersistenceHandlerCfg[];
-    fs: IFileSystemPersistenceCfg;
-}
-
-export interface IActorLockCfg {
-    enabled?: boolean;
-    apps?: string[];
-    redundancy?: number;
-}
-
-export interface IActorRegistryCfg {
-    enabled?: boolean;
-    apps?: string[];
+    /**
+     * Configuration of the DMB message bus server.
+     */
+    dmb?: IDmbServerCfg;
 }
 
 /**
@@ -101,38 +65,6 @@ export interface IDmbClientCfg {
      * `dmb-base-port` command-line argument and `DMB_BASE_PORT` environment variable.
      */
     basePort?: number;
-}
-
-/**
- * Configuration for when this application acts as a runtime application.
- */
-export interface IRuntimeCfg {
-    /**
-     * Enables or disables the provided runtime functionalities. Can be overruled by
-     * `runtime-enabled` command-line argument or `RUNTIME_ENABLED` environment variable set to `true` or `false`.
-     * @default By default, the runtime functionality is *not* enabled.
-     */
-    enabled?: boolean;
-
-    /**
-     * Configuration of persistence.
-     */
-    persistence?: IPersistenceCfg;
-
-    /**
-     * Configuration of the actor lock.
-     */
-    actorLock?: IActorLockCfg;
-
-    /**
-     * Configuration of the actor registry.
-     */
-    actorRegistry?: IActorRegistryCfg;
-
-    /**
-     * Configuration of the DMB message bus server.
-     */
-    dmb?: IDmbServerCfg;
 }
 
 /**
@@ -185,7 +117,7 @@ export interface IApplicationCfg {
     /**
      * Optional configuration when this application acts as runtime.
      */
-    runtime?: IRuntimeCfg;
+    runtime?: IApplicationRuntimeCfg;
 
     /**
      * Configuration of the message bus that allows inter-application communication.
@@ -208,6 +140,9 @@ export interface IApplicationCfg {
      * can be set to `none` to disable the runFile functionality. When not set, the {@link pidFilePrefix} is used as run file prefix.
      */
     runFilePrefix?: string;
+
+    config?: string;
+    overrides?: string[];
 }
 
 /**
@@ -218,12 +153,12 @@ export interface IApplicationCfg {
  * configuration data as fall-back.
  *
  * **Command-line arguments** must by default be prefixed with `--darlean-`. So, when the documentation
- * mentions a command-line argument `app-id`, it must by default be provided as `--darlean-app-id`.
- * The value must be provided as after the `=` sign: `--darlean-app-id=client03`. When
+ * mentions a command-line argument `appid`, it must by default be provided as `--darlean-appid`.
+ * The value must be provided as after the `=` sign: `--darlean-appid=client03`. When
  * multiple vales are expected, they must be comma-separated.
  *
  * **Environment variables** must by default be prefixed with `DARLEAN_`. So, when the documentation
- * mentions an environment variable `APP_ID`, it must by default be provided as `DARLEAN_APP_ID`.
+ * mentions an environment variable `APPID`, it must by default be provided as `DARLEAN_APPID`.
  * When multiple values are expected, they must be comma-separated.
  *
  * The argument and environment variable prefix can be configured in the constructor.
@@ -231,23 +166,19 @@ export interface IApplicationCfg {
  * @see {@link IApplicationCfg} for an overview of all the available configuration items.
  */
 export class ConfigRunnerBuilder {
-    private config: IApplicationCfg;
     private actors: IActorRegistrationOptions<object>[];
-    private envPrefix: string;
-    private argPrefix: string;
     private overrides: Map<string, string>;
     private appId: string;
+    private root: IConfigEnv<IApplicationCfg>;
 
-    constructor(config?: IApplicationCfg, envPrefix?: string, argPrefix?: string) {
+    constructor(scope?: string) {
         this.actors = [];
-        this.envPrefix = envPrefix ?? 'DARLEAN_';
-        this.argPrefix = argPrefix ?? '--darlean-';
         this.overrides = new Map();
 
-        const cfg = this.deriveConfig();
-        this.config = cfg;
+        this.root = this.deriveConfig(scope ?? 'darlean');
+
         this.loadOverrides();
-        this.appId = this.fetchString('APP_ID', 'app-id') ?? cfg.appId ?? 'app';
+        this.appId = this.root.fetchString('appId') ?? 'app';
     }
 
     /**
@@ -276,32 +207,22 @@ export class ConfigRunnerBuilder {
         return this.appId ?? '';
     }
 
+    public getConfig(): IConfigEnv<IApplicationCfg> {
+        return this.root;
+    }
+
     public build(): ActorRunner {
-        const config = this.config;
         const appId = this.appId;
         const builder = new ActorRunnerBuilder();
 
+        const runtime = this.root.sub<IApplicationRuntimeCfg>('runtime');
+
         this.appId = appId;
-        const runtimeAppsExplicit = this.fetchArray('RUNTIME_APPS', 'runtime-apps') ?? config.runtimeApps;
+        const runtimeAppsExplicit = this.root.fetchStringArray('runtimeApps');
         const runtimeApps = runtimeAppsExplicit ?? [appId];
         const allInOne = runtimeAppsExplicit === undefined;
         const implicitRuntime = runtimeAppsExplicit?.includes(appId);
-        const runtimeEnabledString = this.fetchString('RUNTIME_ENABLED', 'runtime-enabled');
-        const runtimeEnabled =
-            runtimeEnabledString === undefined
-                ? config.runtime?.enabled ?? (allInOne || implicitRuntime)
-                : runtimeEnabledString.toLowerCase() === 'true';
-
-        // Note: We first configure/register the actor lock, before registering the actor registry (and others),
-        // because the deactivate happens in reverse order and actor registry needs actor lock.
-        if (runtimeEnabled) {
-            const runtime = config.runtime;
-
-            this.configureHostActorLock(builder, runtime, runtimeApps);
-            this.configureHostActorRegistry(builder, runtime, runtimeApps);
-            this.configurePersistence(builder, runtime);
-            this.configureFsPersistence(builder, runtime);
-        }
+        const runtimeEnabled = runtime.fetchString('enabled') ?? (allInOne || implicitRuntime);
 
         // Note: This call also registers the default appid's of the actor registry. Do this AFTER
         // the call to configureHostActorRegistry, to ensure that the actor lock is registered with
@@ -309,90 +230,17 @@ export class ConfigRunnerBuilder {
         builder.setRuntimeApps(runtimeApps);
 
         this.configureActors(builder);
-        this.configureTransports(builder, config, allInOne, runtimeApps, appId);
+        this.configureTransports(builder, allInOne, runtimeApps, appId);
 
         const runner = builder.build();
 
         if (runtimeEnabled && !allInOne) {
-            this.configureDmbServer(runner, config, runtimeApps, appId);
+            this.configureDmbServer(runner, this.root, runtimeApps, appId);
         }
 
-        this.configurePidAndRun(appId, runner, config);
+        this.configurePidAndRun(appId, runner);
 
         return runner;
-    }
-
-    protected configureHostActorLock(builder: ActorRunnerBuilder, runtime: IRuntimeCfg | undefined, runtimeApps: string[]) {
-        if (!(runtime?.actorLock?.enabled === false)) {
-            builder.hostActorLockService(runtime?.actorLock?.apps ?? runtimeApps, runtime?.actorLock?.redundancy ?? 3);
-        }
-    }
-
-    protected configureHostActorRegistry(builder: ActorRunnerBuilder, runtime: IRuntimeCfg | undefined, runtimeApps: string[]) {
-        if (!(runtime?.actorRegistry?.enabled === false)) {
-            builder.hostActorRegistryService(runtime?.actorRegistry?.apps ?? runtimeApps);
-        }
-    }
-
-    protected configurePersistence(builder: ActorRunnerBuilder, runtime: IRuntimeCfg | undefined) {
-        if (!(runtime?.persistence?.enabled === false)) {
-            const options: IPersistenceServiceOptions = {
-                compartments: [],
-                handlers: []
-            };
-
-            const DEFAULT_SPECIFIER: IPersistenceSpecifierCfg = {
-                specifier: '*',
-                compartment: 'fs.default'
-            };
-            for (const spec of [...(runtime?.persistence?.specifiers ?? []), DEFAULT_SPECIFIER]) {
-                options.compartments.push({
-                    compartment: spec.compartment,
-                    specifier: spec.specifier
-                });
-            }
-
-            const DEFAULT_HANDLER: IPersistenceHandlerCfg = {
-                compartment: 'fs.*',
-                actorType: FS_PERSISTENCE_SERVICE
-            };
-            for (const handler of [...(runtime?.persistence?.handlers ?? []), DEFAULT_HANDLER]) {
-                options.handlers.push({
-                    compartment: handler.compartment,
-                    actorType: handler.actorType
-                });
-            }
-            builder.hostPersistenceService(options);
-        }
-    }
-
-    protected configureFsPersistence(builder: ActorRunnerBuilder, runtime: IRuntimeCfg | undefined) {
-        if (!(runtime?.persistence?.fs?.enabled === false)) {
-            const options: IFsPersistenceOptions = {
-                compartments: []
-            };
-            const maxShardCount =
-                this.fetchNumber('FS_PERSISTENCE_MAX_SHARD_COUNT', 'fs-persistence-max-shard-count') ??
-                runtime?.persistence?.fs.maxShardCount;
-            const DEFAULT_COMPARTMENT: IFsPersistenceCompartment = {
-                compartment: 'fs.*',
-                basePath: this.fetchString('FS_PERSISTENCE_BASE_PATH', 'fs-persistence-base-path') ?? './persistence/',
-                shardCount: limit(
-                    this.fetchNumber('FS_PERSISTENCE_SHARD_COUNT', 'fs-persistence-shard-count') ?? DEFAULT_SHARD_COUNT,
-                    maxShardCount
-                )
-            };
-            for (const comp of [DEFAULT_COMPARTMENT, ...(runtime?.persistence?.fs?.compartments ?? [])]) {
-                options.compartments.push({
-                    compartment: comp.compartment,
-                    basePath: comp.basePath,
-                    subPath: comp.subPath,
-                    nodes: comp.nodes,
-                    shardCount: limit(comp.shardCount ?? DEFAULT_SHARD_COUNT, maxShardCount)
-                });
-            }
-            builder.hostFsPersistenceService(options);
-        }
     }
 
     protected configureActors(builder: ActorRunnerBuilder) {
@@ -401,26 +249,20 @@ export class ConfigRunnerBuilder {
         }
     }
 
-    protected configureTransports(
-        builder: ActorRunnerBuilder,
-        config: IApplicationCfg,
-        allInOne: boolean,
-        runtimeApps: string[],
-        appId: string
-    ) {
-        const messagingTransportsExplicit =
-            this.fetchArray('MESSAGING_TRANSPORTS', 'messaging-transports') ?? config.messaging?.transports;
+    protected configureTransports(builder: ActorRunnerBuilder, allInOne: boolean, runtimeApps: string[], appId: string) {
+        const messaging = this.root.sub<IMessagingCfg>('messaging');
+        const messagingTransportsExplicit = messaging.fetchStringArray('transports');
         const messagingTransports = messagingTransportsExplicit ?? allInOne ? [] : ['dmb'];
         let transportSet = false;
         if (!allInOne || (messagingTransportsExplicit?.length ?? 0 > 0)) {
             for (const transport of messagingTransports) {
                 if (transport === 'dmb') {
-                    const dmb = config.messaging?.dmb;
+                    const dmbClientCfg = messaging.sub<IDmbClientCfg>('dmb');
                     const seedUrls: string[] = [];
 
-                    const hosts = this.deriveHosts(dmb, runtimeApps);
+                    const hosts = this.deriveHosts(dmbClientCfg, runtimeApps);
                     const offsets = this.derivePortOffsets(hosts);
-                    const basePort = this.fetchNumber('DMB_BASE_PORT', 'dmb-base-port') ?? dmb?.basePort ?? DMB_BASE_PORT;
+                    const basePort = dmbClientCfg.fetchNumber('basePort') ?? DMB_BASE_PORT;
                     for (let idx = 0; idx < hosts.length; idx++) {
                         seedUrls.push(hosts[idx] + ':' + (basePort + offsets[idx]).toString());
                     }
@@ -435,20 +277,19 @@ export class ConfigRunnerBuilder {
         }
     }
 
-    protected configureDmbServer(runner: ActorRunner, config: IApplicationCfg, runtimeApps: string[], appId: string) {
-        const dmb = config.messaging?.dmb;
-        const runtimedmb = config.runtime?.dmb;
-        const enabled = truefalse(this.fetchString('DMB_SERVER_ENABLED', 'dmb-server-enabled')) ?? runtimedmb?.enabled;
+    protected configureDmbServer(runner: ActorRunner, config: IConfigEnv<IApplicationCfg>, runtimeApps: string[], appId: string) {
+        const messaging = config.sub<IMessagingCfg>('messaging');
+        const dmb = messaging.sub<IDmbClientCfg>('dmb');
+        const runtime = config.sub<IApplicationRuntimeCfg>('runtime');
+        const runtimedmb = runtime.sub<IDmbServerCfg>('dmb');
+        const enabled = runtimedmb.fetchBoolean('enabled');
         if (enabled === undefined || enabled === true) {
             const appidx = runtimeApps.indexOf(appId);
             const hosts = this.deriveHosts(dmb, runtimeApps);
             if (appidx >= 0 && appidx < hosts.length) {
                 const offsets = this.derivePortOffsets(hosts);
-                const basePort = this.fetchNumber('DMB_BASE_PORT', 'dmb-base-port') ?? dmb?.basePort ?? DMB_BASE_PORT;
-                const clusterPortBase =
-                    this.fetchNumber('DMB_CLUSTER_BASE_PORT', 'dmb-cluster-base-port') ??
-                    runtimedmb?.clusterPortBase ??
-                    DMB_CLUSTER_PORT_BASE;
+                const basePort = dmb.fetchNumber('basePort') ?? DMB_BASE_PORT;
+                const clusterPortBase = runtimedmb.fetchNumber('clusterPortBase') ?? DMB_CLUSTER_PORT_BASE;
                 const clusterSeeds: string[] = [];
                 for (let idx = 0; idx < hosts.length; idx++) {
                     clusterSeeds.push('nats://' + hosts[idx] + ':' + (clusterPortBase + offsets[idx]).toString());
@@ -501,12 +342,12 @@ export class ConfigRunnerBuilder {
         }
     }
 
-    protected configurePidAndRun(appId: string, runner: ActorRunner, config: IApplicationCfg) {
-        let pidFilePrefix = this.fetchString('PID_FILE_PREFIX', 'pid-file-prefix') ?? config.pidFilePrefix ?? './pid/';
+    protected configurePidAndRun(appId: string, runner: ActorRunner) {
+        let pidFilePrefix = this.root.fetchString('pidFilePrefix') ?? './pid/';
         if (pidFilePrefix === 'none') {
             pidFilePrefix = '';
         }
-        let runFilePrefix = this.fetchString('RUN_FILE_PREFIX', 'run-file-prefix') ?? config.runFilePrefix ?? pidFilePrefix;
+        let runFilePrefix = this.root.fetchString('runFilePrefix') ?? pidFilePrefix;
         if (runFilePrefix === 'none') {
             runFilePrefix = '';
         }
@@ -592,18 +433,6 @@ export class ConfigRunnerBuilder {
         }
     }
 
-    protected fetchString(envName: string, argName: string): string | undefined {
-        return fetchConfigString(this.envPrefix + envName, this.argPrefix + argName);
-    }
-
-    protected fetchNumber(envName: string, argName: string): number | undefined {
-        return fetchConfigNumber(this.envPrefix + envName, this.argPrefix + argName);
-    }
-
-    protected fetchArray(envName: string, argName: string): string[] | undefined {
-        return fetchConfigArray(this.envPrefix + envName, this.argPrefix + argName);
-    }
-
     protected derivePortOffsets(hosts: string[]) {
         const result: number[] = [];
         const ports = new Map<string, number>();
@@ -615,28 +444,26 @@ export class ConfigRunnerBuilder {
         return result;
     }
 
-    protected deriveHosts(dmb: IDmbClientCfg | undefined, appIds: string[]) {
-        const hostsExplicit = this.fetchArray('DMB_HOSTS', 'dmb-hosts') ?? dmb?.hosts;
+    protected deriveHosts(dmb: IConfigEnv<IDmbClientCfg> | undefined, appIds: string[]) {
+        const hostsExplicit = dmb?.fetchStringArray('hosts');
         const hosts = hostsExplicit ?? appIds.map(() => '127.0.0.1');
         return hosts.slice(0, appIds.length);
     }
 
-    protected deriveConfig(): IApplicationCfg {
-        const path = this.fetchString('CONFIG', 'config');
+    protected deriveConfig(scope: string): IConfigEnv<IApplicationCfg> {
+        const cfg = new ConfigEnv<IApplicationCfg>(scope, {});
+        const path = cfg.fetchString('config');
         if (path) {
             const contents = fs.readFileSync(path, { encoding: 'utf-8' });
-            return json5.parse(contents) as IApplicationCfg;
+            const parsed = json5.parse(contents) as IApplicationCfg;
+            return new ConfigEnv<IApplicationCfg>(scope, parsed);
         }
 
-        if (this.config) {
-            return this.config;
-        }
-
-        return {};
+        return new ConfigEnv<IApplicationCfg>(scope, {});
     }
 
     protected loadOverrides() {
-        const overrides = this.fetchString('OVERRIDES', 'overrides');
+        const overrides = this.root.fetchString('overrides');
         if (overrides) {
             for (const override of overrides.split(',').map((x) => x.trim())) {
                 const contents = fs.readFileSync(override, { encoding: 'utf-8' });
@@ -657,21 +484,7 @@ export class ConfigRunnerBuilder {
     }
 }
 
-function truefalse(value: string | undefined) {
-    if (value === undefined) {
-        return undefined;
-    }
-    return value.toLowerCase() === 'true';
-}
-
 function makeNice(value: string) {
     // Replaces all characters that are not a-z, A-Z or _ with a -.
     return value.replace(/(\W+)/gi, '-');
-}
-
-function limit(n: number | undefined, max: number | undefined): number | undefined {
-    if (n === undefined) {
-        return undefined;
-    }
-    return max === undefined || n <= max ? n : max;
 }

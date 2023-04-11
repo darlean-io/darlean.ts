@@ -34,10 +34,10 @@ export class TimerTestActor {
 
     @action({ locking: 'shared' })
     public async cancel(id: string) {
-        await this.service.cancel({id});
+        await this.service.cancel({ id });
     }
 
-    @action({ locking: 'exclusive'})
+    @action({ locking: 'exclusive' })
     public async getMoments(): Promise<number[]> {
         return this.moments;
     }
@@ -45,7 +45,7 @@ export class TimerTestActor {
     @timer({ locking: 'shared' })
     public async HandleTimerEvent(): Promise<void> {
         const n = this.moments.length - 1;
-        this.moments.push(this.time.machineTime())
+        this.moments.push(this.time.machineTime());
         if (this.errorAt.includes(n)) {
             throw new Error('Test error');
         }

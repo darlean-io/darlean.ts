@@ -1,23 +1,21 @@
 import { ConfigRunnerBuilder } from '@darlean/core';
-import { createTimersSuite } from '@darlean/timers-suite';
 import { sleep, Time } from '@darlean/utils';
 import { TimerTestActor, timerTestActorSuite, TIMER_TEST_ACTOR } from './actor.impl';
 
 const INTERVAL = 500;
 
 async function timers(actor: TimerTestActor) {
-
     // A "dummy" call to allow the persistence service to get up, so that the timing of the
-    // subsequent "real" tests becomes more reliable.    
+    // subsequent "real" tests becomes more reliable.
     await context('WarmingUp', async () => {
         await actor.schedule({
             id: 'Timer00',
             callbackActorType: '',
             callbackActorId: [],
             callbackActionName: '',
-            triggers: [{interval: INTERVAL, success: 'continue', error: 'continue'}]
+            triggers: [{ interval: INTERVAL, success: 'continue', error: 'continue' }]
         });
-        await sleep(5*INTERVAL);
+        await sleep(5 * INTERVAL);
         const moments = await actor.getMoments();
         check(2, moments.length, 'There should be one event');
     });
@@ -28,9 +26,9 @@ async function timers(actor: TimerTestActor) {
             callbackActorType: '',
             callbackActorId: [],
             callbackActionName: '',
-            triggers: [{interval: INTERVAL, success: 'continue', error: 'continue'}]
+            triggers: [{ interval: INTERVAL, success: 'continue', error: 'continue' }]
         });
-        await sleep(5*INTERVAL);
+        await sleep(5 * INTERVAL);
         const moments = await actor.getMoments();
         checkIntervals([INTERVAL], moments, 'Intervals should match');
     });
@@ -41,11 +39,11 @@ async function timers(actor: TimerTestActor) {
             callbackActorType: '',
             callbackActorId: [],
             callbackActionName: '',
-            triggers: [{interval: INTERVAL, repeatCount: 2, success: 'continue', error: 'continue'}]
+            triggers: [{ interval: INTERVAL, repeatCount: 2, success: 'continue', error: 'continue' }]
         });
-        await sleep(5*INTERVAL);
+        await sleep(5 * INTERVAL);
         const moments = await actor.getMoments();
-        checkIntervals([1*INTERVAL, 1*INTERVAL], moments, 'Intervals should match');    
+        checkIntervals([1 * INTERVAL, 1 * INTERVAL], moments, 'Intervals should match');
     });
 
     await context('MultipleTriggers', async () => {
@@ -54,11 +52,15 @@ async function timers(actor: TimerTestActor) {
             callbackActorType: '',
             callbackActorId: [],
             callbackActionName: '',
-            triggers: [{interval: INTERVAL, success: 'continue', error: 'continue'}, {interval: 2*INTERVAL, success: 'continue', error: 'continue'}, {interval: INTERVAL, success: 'continue', error: 'continue'}]
+            triggers: [
+                { interval: INTERVAL, success: 'continue', error: 'continue' },
+                { interval: 2 * INTERVAL, success: 'continue', error: 'continue' },
+                { interval: INTERVAL, success: 'continue', error: 'continue' }
+            ]
         });
-        await sleep(8*INTERVAL);
+        await sleep(8 * INTERVAL);
         const moments = await actor.getMoments();
-        checkIntervals([1*INTERVAL, 2*INTERVAL, 1*INTERVAL], moments, 'Intervals should match');    
+        checkIntervals([1 * INTERVAL, 2 * INTERVAL, 1 * INTERVAL], moments, 'Intervals should match');
     });
 
     await context('MultipleTriggersAndRepeats', async () => {
@@ -67,11 +69,15 @@ async function timers(actor: TimerTestActor) {
             callbackActorType: '',
             callbackActorId: [],
             callbackActionName: '',
-            triggers: [{interval: INTERVAL, repeatCount: 2, success: 'continue', error: 'continue'}, {interval: 2*INTERVAL, repeatCount: 2, success: 'continue', error: 'continue'}, {interval: INTERVAL, repeatCount: 1, success: 'continue', error: 'continue'}]
+            triggers: [
+                { interval: INTERVAL, repeatCount: 2, success: 'continue', error: 'continue' },
+                { interval: 2 * INTERVAL, repeatCount: 2, success: 'continue', error: 'continue' },
+                { interval: INTERVAL, repeatCount: 1, success: 'continue', error: 'continue' }
+            ]
         });
-        await sleep(10*INTERVAL);
+        await sleep(10 * INTERVAL);
         const moments = await actor.getMoments();
-        checkIntervals([1*INTERVAL, 1*INTERVAL, 2*INTERVAL, 2*INTERVAL, 1*INTERVAL], moments, 'Intervals should match');    
+        checkIntervals([1 * INTERVAL, 1 * INTERVAL, 2 * INTERVAL, 2 * INTERVAL, 1 * INTERVAL], moments, 'Intervals should match');
     });
 
     await context('BreakOnSuccess', async () => {
@@ -80,24 +86,35 @@ async function timers(actor: TimerTestActor) {
             callbackActorType: '',
             callbackActorId: [],
             callbackActionName: '',
-            triggers: [{interval: INTERVAL, success: 'continue', error: 'continue'}, {interval: 2*INTERVAL, success: 'break', error: 'continue'}, {interval: INTERVAL, success: 'continue', error: 'continue'}]
+            triggers: [
+                { interval: INTERVAL, success: 'continue', error: 'continue' },
+                { interval: 2 * INTERVAL, success: 'break', error: 'continue' },
+                { interval: INTERVAL, success: 'continue', error: 'continue' }
+            ]
         });
-        await sleep(8*INTERVAL);
+        await sleep(8 * INTERVAL);
         const moments = await actor.getMoments();
-        checkIntervals([1*INTERVAL, 2*INTERVAL], moments, 'Intervals should match');    
+        checkIntervals([1 * INTERVAL, 2 * INTERVAL], moments, 'Intervals should match');
     });
 
     await context('BreakOnError', async () => {
-        await actor.schedule({
-            id: 'Timer06',
-            callbackActorType: '',
-            callbackActorId: [],
-            callbackActionName: '',
-            triggers: [{interval: INTERVAL, success: 'continue', error: 'continue'}, {interval: 2*INTERVAL, success: 'continue', error: 'break'}, {interval: INTERVAL, success: 'continue', error: 'continue'}]
-        }, [1, 2]);
-        await sleep(8*INTERVAL);
+        await actor.schedule(
+            {
+                id: 'Timer06',
+                callbackActorType: '',
+                callbackActorId: [],
+                callbackActionName: '',
+                triggers: [
+                    { interval: INTERVAL, success: 'continue', error: 'continue' },
+                    { interval: 2 * INTERVAL, success: 'continue', error: 'break' },
+                    { interval: INTERVAL, success: 'continue', error: 'continue' }
+                ]
+            },
+            [1, 2]
+        );
+        await sleep(8 * INTERVAL);
         const moments = await actor.getMoments();
-        checkIntervals([1*INTERVAL, 2*INTERVAL], moments, 'Intervals should match');    
+        checkIntervals([1 * INTERVAL, 2 * INTERVAL], moments, 'Intervals should match');
     });
 
     await context('Indefinately', async () => {
@@ -106,25 +123,28 @@ async function timers(actor: TimerTestActor) {
             callbackActorType: '',
             callbackActorId: [],
             callbackActionName: '',
-            triggers: [{interval: INTERVAL, repeatCount: 0, success: 'continue', error: 'continue'}]
+            triggers: [{ interval: INTERVAL, repeatCount: 0, success: 'continue', error: 'continue' }]
         });
-        await sleep(8*INTERVAL);
+        await sleep(8 * INTERVAL);
         const moments = await actor.getMoments();
-        checkBetween(5, 10, moments.length-1, 'There should be a lot of triggers');
+        checkBetween(5, 10, moments.length - 1, 'There should be a lot of triggers');
         const expecteds = moments.slice(1).map(() => INTERVAL);
         checkIntervals(expecteds, moments, 'Intervals should match');
         await actor.cancel('Timer07');
     });
 
     await context('IndefinatelyUntilError', async () => {
-        await actor.schedule({
-            id: 'Timer08',
-            callbackActorType: '',
-            callbackActorId: [],
-            callbackActionName: '',
-            triggers: [{interval: INTERVAL, repeatCount: 0, success: 'continue', error: 'break'}]
-        }, [2]);
-        await sleep(8*INTERVAL);
+        await actor.schedule(
+            {
+                id: 'Timer08',
+                callbackActorType: '',
+                callbackActorId: [],
+                callbackActionName: '',
+                triggers: [{ interval: INTERVAL, repeatCount: 0, success: 'continue', error: 'break' }]
+            },
+            [2]
+        );
+        await sleep(8 * INTERVAL);
         const moments = await actor.getMoments();
         checkIntervals([INTERVAL, INTERVAL, INTERVAL], moments, 'Intervals should match');
         await actor.cancel('Timer08');
@@ -136,18 +156,17 @@ async function timers(actor: TimerTestActor) {
             callbackActorType: '',
             callbackActorId: [],
             callbackActionName: '',
-            triggers: [{interval: INTERVAL, repeatCount: 0, success: 'continue', error: 'continue', jitter: 4*INTERVAL}]
+            triggers: [{ interval: INTERVAL, repeatCount: 0, success: 'continue', error: 'continue', jitter: 4 * INTERVAL }]
         });
-        await sleep(8*INTERVAL);
+        await sleep(8 * INTERVAL);
         const moments = await actor.getMoments();
-        checkBetween(1, 5, moments.length-1, 'There should be a few triggers');
+        checkBetween(1, 5, moments.length - 1, 'There should be a few triggers');
         await actor.cancel('Timer09');
     });
 }
 
 async function main() {
     const builder = new ConfigRunnerBuilder();
-    builder.registerSuite(createTimersSuite());
     builder.registerSuite(timerTestActorSuite());
     const runner = builder.build();
     await runner.start();
@@ -160,7 +179,6 @@ async function main() {
             const actor = portal.retrieve([]);
             await timers(actor);
         });
-
     } catch (e) {
         console.log('ERROR', e);
         console.log(JSON.stringify(e, undefined, 2));
@@ -200,7 +218,7 @@ function check<T>(expected: T, actual: T, descr: string) {
 }
 
 function checkBetween<T>(expectedMin: T, expectedMax: T, actual: T, descr: string) {
-    if ( (actual >= expectedMin) && (actual <= expectedMax) ) {
+    if (actual >= expectedMin && actual <= expectedMax) {
         let value = actual === undefined ? 'undefined' : (actual as string).toString();
         if (value.length > 100) {
             value = value.substring(0, 100) + '...';
@@ -218,8 +236,8 @@ function checkMoments(expectedValues: number[], moments: number[], descr: string
     if (expectedValues.length !== moments.length - 1) {
         check(expectedValues.length, moments.length - 1, `${descr}: Length should be ok`);
     }
-    for (let idx=0; idx<expectedValues.length; idx++) {
-        checkBetween(expectedValues[idx], expectedValues[idx] + 150, times[idx+1], `${descr} (${idx})`);
+    for (let idx = 0; idx < expectedValues.length; idx++) {
+        checkBetween(expectedValues[idx], expectedValues[idx] + 150, times[idx + 1], `${descr} (${idx})`);
     }
 }
 
@@ -228,8 +246,8 @@ function checkIntervals(expectedValues: number[], moments: number[], descr: stri
         check(expectedValues.length, moments.length - 1, `${descr}: Length should be ok`);
     }
     let moment = moments[0];
-    for (let idx=0; idx<expectedValues.length; idx++) {
-        const newMoment = moments[idx+1];
+    for (let idx = 0; idx < expectedValues.length; idx++) {
+        const newMoment = moments[idx + 1];
         const interval = newMoment - moment;
         checkBetween(expectedValues[idx], expectedValues[idx] + 0.9 * INTERVAL, interval, `${descr} (${idx})`);
         moment = newMoment;

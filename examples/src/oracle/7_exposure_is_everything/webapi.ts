@@ -101,7 +101,7 @@ export default function suite() {
             creator: (context) => {
                 const service = context.portal.retrieve<IOracleService>(ORACLE_SERVICE, []);
                 const sfh = new StaticFileHandler({
-                    basePaths: ['./webroot/'], 
+                    basePaths: ['./webroot/'],
                     indexFiles: ['index.html']
                 });
                 return new WebApiService(service, sfh);

@@ -1,5 +1,19 @@
-import { action, IActivatable, IDeactivatable, IPortal, ITablePersistence, ITableSearchRequest, ITimerCancelOptions, ITimerOptions, ITimersService, ITimerTrigger, IVolatileTimer, IVolatileTimerHandle, timer } from "@darlean/base";
-import { decodeNumber, encodeNumber, ITime } from "@darlean/utils";
+import {
+    action,
+    IActivatable,
+    IDeactivatable,
+    IPortal,
+    ITablePersistence,
+    ITableSearchRequest,
+    ITimerCancelOptions,
+    ITimerOptions,
+    ITimersService,
+    ITimerTrigger,
+    IVolatileTimer,
+    IVolatileTimerHandle,
+    timer
+} from '@darlean/base';
+import { decodeNumber, encodeNumber, ITime } from '@darlean/utils';
 
 export const TIMER_MOMENT_INDEX = 'by-moment';
 
@@ -23,7 +37,6 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
     private nextTime?: number;
     private portal: IPortal;
 
-
     constructor(persistence: ITablePersistence<ITimerState>, time: ITime, timer: IVolatileTimer, portal: IPortal) {
         this.persistence = persistence;
         this.time = time;
@@ -32,35 +45,35 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
     }
 
     public async activate(): Promise<void> {
-        this.timerHandle = this.timer.repeat(this.step, 60*1000, 0);
+        this.timerHandle = this.timer.repeat(this.step, 60 * 1000, 0);
     }
 
     public async deactivate(): Promise<void> {
         this.timerHandle?.cancel();
     }
 
-    @action({locking: 'shared'})
+    @action({ locking: 'shared' })
     public async schedule(options: ITimerOptions) {
         const newState: ITimerState = {
             id: options.id,
             nextMoment: 0,
             remainingRepeatCount: options.triggers[0].repeatCount ?? 1,
-            remainingTriggers: options.triggers.map((x) => ({...x})),
+            remainingTriggers: options.triggers.map((x) => ({ ...x })),
             callbackActorType: options.callbackActorType,
             callbackActorId: options.callbackActorId,
             callbackActionName: options.callbackActionName,
-            callbackActionArgs: [...options.callbackActionArgs ?? []]
+            callbackActionArgs: [...(options.callbackActionArgs ?? [])]
         };
 
         const newMoment = this.updateNextMoment(newState);
         if (!newMoment) {
             throw new Error('Unable to schedule timer');
         }
-        
+
         const item = await this.persistence.load([newState.id]);
         item.change(newState);
         await item.store();
-        
+
         if (this.nextTime !== undefined) {
             if (newState.nextMoment <= this.nextTime) {
                 this.nextTime = newState.nextMoment;
@@ -75,7 +88,7 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
     // When cancelling and a step is performed meanwhile, the cancel can delete the record and the step restore it.
     // To prevent this, make cancel exclusive. We may implement a better (smarter) solution, but for now it is reasonable.
 
-    @action({locking: 'exclusive'})
+    @action({ locking: 'exclusive' })
     public async cancel(options: ITimerCancelOptions) {
         const item = await this.persistence.load([options.id]);
         if (item.value) {
@@ -83,19 +96,18 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
             await item.store();
         }
     }
-    
 
     @action()
     public async touch() {
         //
     }
 
-    @timer({locking: 'shared'})
+    @timer({ locking: 'shared' })
     public async step() {
         const now = this.time.machineTime();
         const options: ITableSearchRequest = {
             index: TIMER_MOMENT_INDEX,
-            keys: [{operator: 'lte', value: encodeNumber(now)}]
+            keys: [{ operator: 'lte', value: encodeNumber(now) }]
         };
         for await (const chunk of this.persistence.searchChunks(options)) {
             // We are the only actor that is processing the item (we are a singleton).
@@ -146,7 +158,7 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
                     this.timerHandle?.resume(0);
                     return;
                 }
-                
+
                 break;
             }
         }
@@ -157,11 +169,11 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
             index: TIMER_MOMENT_INDEX,
             maxItems: 1
         };
-        
+
         for await (const item of this.persistence.searchItems(options2)) {
             if (item.keys?.[0]) {
                 const time = decodeNumber(item.keys[0]);
-                if ((this.nextTime === undefined) || (time < this.nextTime)) {
+                if (this.nextTime === undefined || time < this.nextTime) {
                     this.nextTime = time;
                     this.trigger();
                 }
@@ -174,7 +186,7 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
         if (this.nextTime) {
             const now = this.time.machineTime();
             const remaining = Math.max(0, this.nextTime - now);
-            this.timerHandle?.resume(Math.min(60*1000, remaining));
+            this.timerHandle?.resume(Math.min(60 * 1000, remaining));
         }
     }
 
@@ -184,8 +196,7 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
         if (trigger) {
             if (trigger.repeatCount === 0) {
                 state.nextMoment = trigger.moment ?? now + (trigger.interval ?? 0);
-            } else
-            if (state.remainingRepeatCount > 0) {
+            } else if (state.remainingRepeatCount > 0) {
                 state.remainingRepeatCount--;
                 state.nextMoment = trigger.moment ?? now + (trigger.interval ?? 0);
             } else {

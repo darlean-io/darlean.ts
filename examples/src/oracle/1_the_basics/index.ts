@@ -2,9 +2,11 @@ import { ConfigRunnerBuilder } from '@darlean/core';
 import { IOracleActor, ORACLE_ACTOR } from './oracle.intf';
 import { knowledge } from './knowledge';
 import oracle_suite from './oracle.suite';
+import { createRuntimeSuiteFromBuilder } from '@darlean/runtime-suite';
 
 async function main() {
     const builder = new ConfigRunnerBuilder();
+    builder.registerSuite(createRuntimeSuiteFromBuilder(builder));
     builder.registerSuite(oracle_suite(knowledge));
     const runner = builder.build();
 

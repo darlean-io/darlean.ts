@@ -43,6 +43,9 @@
 		    "path": "suites/timers-suite"
 		},		
 		{
+		    "path": "suites/runtime-suite"
+		},		
+		{
 			"path": "."
 		}
 	],

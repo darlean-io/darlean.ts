@@ -1,4 +1,13 @@
-import { action, ActorSuite, IActorSuite, IPersistenceQueryOptions, IPersistenceQueryResult, ITablePersistence, ITableService, TABLES_SERVICE } from '@darlean/base';
+import {
+    action,
+    ActorSuite,
+    IActorSuite,
+    IPersistenceQueryOptions,
+    IPersistenceQueryResult,
+    ITablePersistence,
+    ITableService,
+    TABLES_SERVICE
+} from '@darlean/base';
 import { TablePersistence } from '@darlean/core';
 
 export const STORAGE_TEST_ACTOR_TABLE = 'StorageTestActorTable';

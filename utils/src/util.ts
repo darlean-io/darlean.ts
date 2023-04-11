@@ -120,13 +120,13 @@ const CODE_9 = 57;
  * @remarks The encoding works by counting the number of digits before the '.', and encoding that number as a
  * character. For positive numbers, characters 'a'..'z' are used for 0, 1 .. 26 digits. For negative numbers,
  * characters 'Y'..'A' are used for 1 .. 26 digits. The resulting character is prepadded to the number.
- * 
+ *
  * Because the number of digits before the '.' is already encoded by the leading character, the '.' is removed
  * from the textual representation of the number.
- * 
+ *
  * For negative numbers, the textual representation of the number is complemented ('0' becomes '9' .. '9' becomes '0').
  * This ensure that negative numbers are sorted properly ("the other way around").
- * 
+ *
  * Numbers are converted into a textual representation via `value.toFixed(maxDigits)`. After that, zeroes on the
  * end are removed (only for zeroes after the '.'). For positive numbers, this has no impact on sorting: `b35` (3.5) still
  * comes before `b351` (3.51). For negative numbers, this is different: the sorted order would become -3.52, -3.51, -3.4, -3.49.
@@ -171,7 +171,7 @@ export function encodeNumber(value: number, maxDigits = 0) {
         // "shorter" numbers (like -2) sort well with longer numbers (like 2.1).
         // We use BigInt here to avoid rounding errors.
         // We use the "'1' +"" to make sure that number '000' becomes '001' after +1n (and not '1').
-        return prefix + ( BigInt('1' + complement(base.replace('.', ''))) + 1n).toString().substring(1);
+        return prefix + (BigInt('1' + complement(base.replace('.', ''))) + 1n).toString().substring(1);
     }
 }
 
@@ -191,12 +191,14 @@ export function decodeNumber(text: string) {
         const len = CODE_Z - prefixCode;
         const base = (BigInt('1' + text.substring(1)) - 1n).toString().substring(1);
         const compl = complement(base);
-        return (compl.length > len) ? parseFloat('-' + compl.substring(0, len) + '.' + compl.substring(len)) : parseInt('-' + compl);
+        return compl.length > len
+            ? parseFloat('-' + compl.substring(0, len) + '.' + compl.substring(len))
+            : parseInt('-' + compl);
     } else if (prefixCode >= CODE_a && prefixCode <= CODE_z) {
         // Positive number or zero
         const len = prefixCode - CODE_a;
         const base = text.substring(1);
-        return (base.length > len) ? parseFloat(base.substring(0, len) + '.' + base.substring(len)) : parseInt(base);
+        return base.length > len ? parseFloat(base.substring(0, len) + '.' + base.substring(len)) : parseInt(base);
     } else {
         throw new Error('Not a decoded number');
     }

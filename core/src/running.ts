@@ -30,15 +30,11 @@ import {
     TABLES_SERVICE
 } from '@darlean/base';
 import { ACTOR_LOCK_SERVICE, IActorLockService } from '@darlean/actor-lock-suite';
-import actorLockSuite from '@darlean/actor-lock-suite';
 import { DistributedActorLock, IActorLock } from './distributedactorlock';
 import { InProcessTransport } from './infra/inprocesstransport';
 import { DistributedActorRegistry } from './distributedactorregistry';
 import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-registry-suite';
-import actorRegistrySuite from '@darlean/actor-registry-suite';
 import { DistributedPersistence } from './distributedpersistence';
-import persistenceSuite, { IPersistenceServiceOptions } from '@darlean/persistence-suite';
-import fsPersistenceSuite, { IFsPersistenceOptions } from '@darlean/fs-persistence-suite';
 import { normalizeActorType } from './shared';
 import { TablePersistence } from './tablepersistence';
 
@@ -178,9 +174,11 @@ export class ActorRunnerBuilder {
      * @param suite The suite to be registered
      * @returns The builder
      */
-    public registerSuite(suite: IActorSuite): ActorRunnerBuilder {
-        for (const options of suite.getRegistrationOptions()) {
-            this.registerActor(options);
+    public registerSuite(suite: IActorSuite | undefined): ActorRunnerBuilder {
+        if (suite) {
+            for (const options of suite.getRegistrationOptions()) {
+                this.registerActor(options);
+            }
         }
         return this;
     }
@@ -201,7 +199,7 @@ export class ActorRunnerBuilder {
         // Always register the actor registry service so that we can find it (chicken-egg problem: without actor
         // registry service, we cannot find the actor registry service).
         // Note: We do not RUN the actor registry service (we do not specify a creator); we just make sure that
-        // we can find it.
+        // we can FIND it.
 
         this.registerActor({
             type: ACTOR_REGISTRY_SERVICE,
@@ -223,30 +221,6 @@ export class ActorRunnerBuilder {
         this.transport = transport;
         this.transportMechanism = 'nats';
         return this;
-    }
-
-    public hostActorLockService(nodes: string[], redundancy: number) {
-        const suite = actorLockSuite({
-            locks: nodes,
-            id: [],
-            redundancy
-        });
-        this.registerSuite(suite);
-    }
-
-    public hostActorRegistryService(nodes: string[]) {
-        const suite = actorRegistrySuite(nodes);
-        this.registerSuite(suite);
-    }
-
-    public hostPersistenceService(options: IPersistenceServiceOptions) {
-        const suite = persistenceSuite(options);
-        this.registerSuite(suite);
-    }
-
-    public hostFsPersistenceService(options: IFsPersistenceOptions) {
-        const suite = fsPersistenceSuite(options);
-        this.registerSuite(suite);
     }
 
     /**
@@ -561,7 +535,7 @@ export class ActorRunnerBuilder {
                 'Autostop Actor Handlers'
             );
         }
-        
+
         const autoStartActors = this.actors.filter((a) => a.startActions);
         if (autoStartActors.length > 0) {
             ar.addStarter(

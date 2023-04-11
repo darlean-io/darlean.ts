@@ -5,6 +5,7 @@
  */
 
 import { ActorSuite } from '@darlean/base';
+import { IConfigEnv } from '@darlean/utils';
 import { ActorLockActor } from './actor.impl';
 import { ActorLockService } from './service.impl';
 
@@ -41,7 +42,7 @@ export interface IActorLockOptions {
     timeout?: number;
 }
 
-export default function suite(options: IActorLockOptions) {
+export function createActorLockSuite(options: IActorLockOptions) {
     return new ActorSuite([
         {
             type: ACTOR_LOCK_ACTOR,
@@ -66,4 +67,21 @@ export default function suite(options: IActorLockOptions) {
             apps: options.locks
         }
     ]);
+}
+
+export interface IActorLockCfg {
+    enabled?: boolean;
+    apps?: string[];
+    redundancy?: number;
+}
+
+export function createActorLockSuiteFromConfig(cfg: IConfigEnv<IActorLockCfg>, runtimeApps: string[]) {
+    if (cfg.fetchBoolean('enabled') !== false) {
+        const options: IActorLockOptions = {
+            id: [],
+            locks: cfg.fetchStringArray('apps') ?? runtimeApps,
+            redundancy: cfg.fetchNumber('redundancy') ?? 3
+        };
+        return createActorLockSuite(options);
+    }
 }

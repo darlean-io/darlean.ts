@@ -88,7 +88,7 @@ export interface IActorRegistrationOptions<T extends object> {
 
 export interface ITablePersistenceOptions<T> {
     id?: string[];
-    indexer? : (item: T) => IIndexItem[];
+    indexer?: (item: T) => IIndexItem[];
     specifier?: string;
 }
 
@@ -116,7 +116,7 @@ export interface IActorCreateContext {
 
     /**
      * Acquire a table persistence interface that can be used by the created actor to load and persist its state.
-      */
+     */
     tablePersistence<T>(options: ITablePersistenceOptions<T>): ITablePersistence<T>;
 
     /**
@@ -149,11 +149,13 @@ export interface IActorSuite {
 export class ActorSuite implements IActorSuite {
     protected options: IActorRegistrationOptions<object>[];
 
-    constructor(actors: IActorRegistrationOptions<object>[] = []) {
+    constructor(actors: Array<IActorRegistrationOptions<object> | undefined> = []) {
         this.options = [];
 
         for (const item of actors) {
-            this.addActor(item);
+            if (item) {
+                this.addActor(item);
+            }
         }
     }
 
@@ -161,9 +163,11 @@ export class ActorSuite implements IActorSuite {
         this.options.push(options);
     }
 
-    public addSuite(suite: IActorSuite) {
-        for (const options of suite.getRegistrationOptions()) {
-            this.addActor(options);
+    public addSuite(suite: IActorSuite | undefined) {
+        if (suite) {
+            for (const options of suite.getRegistrationOptions()) {
+                this.addActor(options);
+            }
         }
     }
 

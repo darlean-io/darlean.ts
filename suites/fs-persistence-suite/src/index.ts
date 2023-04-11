@@ -8,7 +8,7 @@
  */
 
 import { ActorSuite, ApplicationError, FS_PERSISTENCE_SERVICE as baseService } from '@darlean/base';
-import { wildcardMatch } from '@darlean/utils';
+import { IConfigEnv, wildcardMatch } from '@darlean/utils';
 import { FsPersistenceActor } from './syncactor.impl';
 import { FsPersistenceService } from './service.impl';
 
@@ -63,7 +63,7 @@ function findOptions(options: IFsPersistenceOptions, compartment: string): IFsPe
     });
 }
 
-export default function suite(options: IFsPersistenceOptions) {
+export function createFsPersistenceSuite(options: IFsPersistenceOptions) {
     return new ActorSuite([
         {
             type: FS_PERSISTENCE_ACTOR,
@@ -95,4 +95,56 @@ export default function suite(options: IFsPersistenceOptions) {
             }
         }
     ]);
+}
+
+export interface IFileSystemCompartmentCfg {
+    compartment: string;
+    shardCount?: number;
+    nodes?: string[];
+    basePath?: string;
+    subPath?: string;
+}
+
+export interface IFileSystemPersistenceCfg {
+    enabled?: boolean;
+    maxShardCount?: number;
+    compartments: IFileSystemCompartmentCfg[];
+    basePath?: string;
+    shardCount?: number;
+}
+
+export function createFsPersistenceSuiteFromConfig(env: IConfigEnv<IFileSystemPersistenceCfg>) {
+    if (env.fetchBoolean('enabled') === false) {
+        return;
+    }
+
+    const options: IFsPersistenceOptions = {
+        compartments: []
+    };
+
+    const maxShardCount = env.fetchNumber('maxShardCount');
+    const DEFAULT_COMPARTMENT: IFsPersistenceCompartment = {
+        compartment: 'fs.*',
+        basePath: env.fetchString('basePath') ?? './persistence/',
+        shardCount: limit(env.fetchNumber('shardCount') ?? DEFAULT_SHARD_COUNT, maxShardCount)
+    };
+
+    for (const comp of [DEFAULT_COMPARTMENT, ...(env.fetchRaw('compartments') ?? [])]) {
+        options.compartments.push({
+            compartment: comp.compartment,
+            basePath: comp.basePath,
+            subPath: comp.subPath,
+            nodes: comp.nodes,
+            shardCount: limit(comp.shardCount ?? DEFAULT_SHARD_COUNT, maxShardCount)
+        });
+    }
+
+    return createFsPersistenceSuite(options);
+}
+
+function limit(n: number | undefined, max: number | undefined): number | undefined {
+    if (n === undefined) {
+        return undefined;
+    }
+    return max === undefined || n <= max ? n : max;
 }
