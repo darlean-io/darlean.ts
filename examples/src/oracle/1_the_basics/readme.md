@@ -134,10 +134,11 @@ The entry point (main function) of our application is found in [index.ts](index.
 The following code from [index.ts](index.ts) configures a local actor runner to which the oracle suite is registered:
 ```ts
 const builder = new ConfigRunnerBuilder();
-builder.registerSuite(oracle_suite(knowledge));
+builder.registerSuite(createRuntimeSuiteFromBuilder(builder));
+builder.registerSuite(createOracleSuite(knowledge));
 const runner = builder.build();
 ```
-The first and third line are quite standard; the second line is project specific and registers our actor suite to the framework.
+The first, second and fourth line are quite standard; the third line is project specific and registers our own actor suite to the framework.
 
 The runner is now started via
 ```ts
@@ -189,31 +190,6 @@ check(
 We have to clean things up (for example, to allow actors to persist their state in a nice way -- but in this example we do not yet have actors that need to persist anything):
 ```ts
 await runner.stop();
-```
-## Configuration
-
-The configuration for this example is provided in [config.json5](../../../config/oracle/allinone/config.json5):
-```ts
-// Minimal config file for an all-in-one application that contains both runtime and application actors
-// in one single application.
-{
-    runtime: {
-        // Ensures that this node provides the runtime functionality like the actor registry and actor lock to itself.
-        enabled: true
-    },
-    messaging: {
-        // Disable the NATS transport for this all-in-one setup. This will effectively use an in-process transport which
-        // is sufficient for an all-in-one application.
-        transports: []
-    }
-}
-```
-
-> Note: Darlean supports json5 files, which in addition to ordinary json files, allow comments and do not require keys to be surrounded by quotes.
-
-The `example:oracle:1` script as defined in [package.json](../../../package.json) points the application to this script via the `--darlean-config` command line argument:
-```
-"example:oracle:1": "node lib/oracle/1_the_basics/index.js --darlean-config config/oracle/allinone/config.json5",
 ```
 
 ## Running
