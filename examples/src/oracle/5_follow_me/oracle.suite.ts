@@ -34,7 +34,8 @@ export function createOracleSuite(knowledge?: IKnowledgeTopics): IActorSuite {
                 // Derive a persistable instance with the provided default knowledge
                 const persistable = p.persistable(['knowledge'], undefined, k ?? {});
                 // Create a reference to the controller (when we are a follower -- which is when our id contains more than 1 part)
-                const controller = context.id.length > 1 ? context.portal.retrieve<IOracleActor>(ORACLE_ACTOR, [context.id[0]]) : undefined;
+                const controller =
+                    context.id.length > 1 ? context.portal.retrieve<IOracleActor>(ORACLE_ACTOR, [context.id[0]]) : undefined;
                 // Create the refresh timer that the follower actor uses to refresh its data from the controller
                 const timer = context.newVolatileTimer();
                 // Create and return a new OracleActor instance with the provided persistable and controller

@@ -8,11 +8,7 @@ export class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
     protected controller?: IOracleActor;
     protected refreshTimer: IVolatileTimer;
 
-    constructor(
-        persistable: IPersistable<Knowledge>,
-        controller: IOracleActor | undefined,
-        refreshTimer: IVolatileTimer
-    ) {
+    constructor(persistable: IPersistable<Knowledge>, controller: IOracleActor | undefined, refreshTimer: IVolatileTimer) {
         this.knowledge = persistable;
         this.controller = controller;
         this.refreshTimer = refreshTimer;

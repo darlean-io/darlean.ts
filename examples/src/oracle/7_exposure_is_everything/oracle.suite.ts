@@ -53,7 +53,7 @@ export function createOracleSuite(knowledge?: IKnowledgeTopics): IActorSuite {
                 // Derive a persistable instance with the provided default knowledge
                 const persistable = p.persistable(['knowledge'], undefined, k ?? {});
                 // Create and return a new OracleControllerActor instance with the provided persistable
-                return new OracleControllerActor(persistable);// Create and return a new OracleControlActor instance with the provided persistence and knowledge
+                return new OracleControllerActor(persistable);
             }
         },
         // Registration of the OracleService service actor
