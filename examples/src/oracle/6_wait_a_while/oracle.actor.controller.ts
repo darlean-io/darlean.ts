@@ -1,4 +1,4 @@
-import { action, IActivatable, IDeactivatable, IPersistable, IPersistence } from '@darlean/base';
+import { action, IActivatable, IDeactivatable, IPersistable } from '@darlean/base';
 import * as uuid from 'uuid';
 import { PollController } from '@darlean/utils';
 import { Knowledge } from './oracle.intf';
@@ -8,8 +8,8 @@ export class OracleControllerActor implements OracleControllerActor, IActivatabl
     protected nonce = '';
     protected pollController: PollController<boolean>;
 
-    constructor(persistence: IPersistence<Knowledge>, knowledge?: Knowledge) {
-        this.knowledge = persistence.persistable(['knowledge'], undefined, knowledge ?? {});
+    constructor(persistable: IPersistable<Knowledge>) {
+        this.knowledge = persistable;
         this.pollController = new PollController();
     }
 

@@ -1,4 +1,4 @@
-import { action, IActivatable, IDeactivatable, IPersistable, IPersistence } from '@darlean/base';
+import { action, IActivatable, IDeactivatable, IPersistable } from '@darlean/base';
 import { IOracleActor } from './oracle.intf';
 
 export type Knowledge = { [fact: string]: number };
@@ -6,8 +6,8 @@ export type Knowledge = { [fact: string]: number };
 export class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
     protected knowledge: IPersistable<Knowledge>;
 
-    constructor(persistence: IPersistence<Knowledge>, knowledge?: Knowledge) {
-        this.knowledge = persistence.persistable(['knowledge'], undefined, knowledge ?? {});
+    constructor(persistable: IPersistable<Knowledge>) {
+        this.knowledge = persistable;
     }
 
     public async activate(): Promise<void> {

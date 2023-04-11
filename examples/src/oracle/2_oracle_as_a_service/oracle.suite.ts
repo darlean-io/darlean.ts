@@ -15,7 +15,7 @@ const ORACLE_ACTOR = 'OracleActor';
 
 // Application code can invoke this suite function to register the oracle actors
 // (OracleService and OracleActor) to their actor runner.
-export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
+export function createOracleSuite(knowledge?: IKnowledgeTopics): IActorSuite {
     return new ActorSuite([
         // Registration of the OracleActor virtual actor
         {

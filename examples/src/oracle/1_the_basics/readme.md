@@ -95,12 +95,12 @@ Nothing complicated here. The `OracleActor` really is just an ordinary class. We
 
 # Suite
 
-To make it easy for a developer to register the actor with the framework, we also provide a `suite` function in [oracle.suite.ts](oracle.suite.ts). This is like a factory function that receives all relevant configuration and preknowledge (in our case: the knowledge facts) as parameter, and returns an actor suite that consists of the `OracleActor`.
+To make it easy for a developer to register the actor with the framework, we also provide a `createOracleSuite` function in [oracle.suite.ts](oracle.suite.ts). This is like a factory function that receives all relevant configuration and preknowledge (in our case: the knowledge facts) as parameter, and returns an actor suite that consists of the `OracleActor`.
 
 > Note: An actor suite is in essence just a list of actor definitions.
 
 ```ts
-export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
+export function createOracleSuite(knowledge?: IKnowledgeTopics): IActorSuite {
     return new ActorSuite([
         {
             type: ORACLE_ACTOR,
@@ -115,7 +115,7 @@ export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
 }
 ```
 
-The `suite` function receives the knowledge as a parameter, and returns a new actor suite with one actor type in it: our oracle actor. The constant `ORACLE_ACTOR` contains the name of our actor under which it is known in the cluster: `'OracleActor'`. Other actors can use this name to retrieve a proxy to the actors of this type. To avoid typing errors, we use the constant `ORACLE_ACTOR` instead of the name `'OracleActor'`.
+The `createOracleSuite` function receives the knowledge as a parameter, and returns a new actor suite with one actor type in it: our oracle actor. The constant `ORACLE_ACTOR` contains the name of our actor under which it is known in the cluster: `'OracleActor'`. Other actors can use this name to retrieve a proxy to the actors of this type. To avoid typing errors, we use the constant `ORACLE_ACTOR` instead of the name `'OracleActor'`.
 
 The actor is registered as `singular`, which means (in actor terminology) that there can never be more than 1 instance active within the entire cluster of an actor of the same type and id.
 

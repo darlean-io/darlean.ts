@@ -1,10 +1,8 @@
 {
     runtimeApps: ['server01', 'server02', 'server03'],
     runtime: {
-        enabled: true,
         persistence: {
             specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
-            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
             fs: {
                 compartments: [
                     { compartment: '*', basePath: './persistence', shardCount: 1 },

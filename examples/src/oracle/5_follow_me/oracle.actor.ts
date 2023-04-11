@@ -1,4 +1,4 @@
-import { action, IActivatable, IDeactivatable, IPersistable, IPersistence, IVolatileTimer, timer } from '@darlean/base';
+import { action, IActivatable, IDeactivatable, IPersistable, IVolatileTimer, timer } from '@darlean/base';
 import { IOracleActor } from './oracle.intf';
 
 export type Knowledge = { [fact: string]: number };
@@ -9,12 +9,11 @@ export class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
     protected refreshTimer: IVolatileTimer;
 
     constructor(
-        persistence: IPersistence<Knowledge>,
+        persistable: IPersistable<Knowledge>,
         controller: IOracleActor | undefined,
-        refreshTimer: IVolatileTimer,
-        knowledge?: Knowledge
+        refreshTimer: IVolatileTimer
     ) {
-        this.knowledge = persistence.persistable(['knowledge'], undefined, knowledge ?? {});
+        this.knowledge = persistable;
         this.controller = controller;
         this.refreshTimer = refreshTimer;
     }

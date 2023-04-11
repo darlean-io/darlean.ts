@@ -45,19 +45,14 @@ export class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
 
 When our actor acts as a follower, it needs access to the controller actor (and must set a refresh timer). When our actor acts as a controller, it does not need a controller (it is a controller by itself). So, we allow `controller` to also be `undefined`. An actor can check whether it is a controller or a follower by checking whether the `controller` is undefined or not.
 ```ts
-    constructor(
-        persistence: IPersistence<Knowledge>,
-        controller: IOracleActor | undefined,
-        refreshTimer: IVolatileTimer,
-        knowledge?: Knowledge
-    ) {
-        this.knowledge = persistence.persistable(['knowledge'], undefined, knowledge ?? {});
+    constructor( persistable: IPersistable<Knowledge>, controller: IOracleActor | undefined, refreshTimer: IVolatileTimer ) {
+        this.knowledge = persistable;
         this.controller = controller;
         this.refreshTimer = refreshTimer;
     }
 ```
 
-> Note: Like everywhere in darlean, we follow the pattern of constructor dependency injection here. The persistence, controller, refresh timer and knowledge are all injected. That keeps the actor itself clean with as little dependencies as possible.
+> Note: Like everywhere in darlean, we follow the pattern of constructor dependency injection here. The persistable, controller and refresh timer are all injected. That keeps the actor itself clean with as little dependencies as possible.
 
 We must change our activation logic. When we are a controller, nothing changes. But when we are a follower, we must not load the data from the *persistence*, but instead fetch it from the controller. And we must start our refresh timer.
 ```ts
@@ -183,13 +178,15 @@ The registration for the `OracleActor` becomes:
             const topic = context.id[0];
             const k = topic ? knowledge?.[topic] : undefined;
             const p = context.persistence<Knowledge>('oracle.fact.knowledge');
+            // Derive a persistable instance with the provided default knowledge
+            const persistable = p.persistable(['knowledge'], undefined, k ?? {});
             // Create a reference to the controller (when we are a follower -- which is when our id contains more than 1 part)
             const controller =
                 context.id.length > 1 ? context.portal.retrieve<IOracleActor>(ORACLE_ACTOR, [context.id[0]]) : undefined;
             // Create the refresh timer that the follower actor uses to refresh its data from the controller
             const timer = context.newVolatileTimer();
-            // Create and return a new OracleActor instance with the provided persistence, controller. timer and knowledge
-            return new OracleActor(p, controller, timer, k);
+            // Create and return a new OracleActor instance with the provided persistable, controller and timer
+            return new OracleActor(persistable, controller, timer);
         }
     },
 ```

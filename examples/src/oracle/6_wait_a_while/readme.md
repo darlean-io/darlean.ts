@@ -57,8 +57,8 @@ export class OracleControllerActor implements OracleControllerActor, IActivatabl
     protected nonce = '';
     protected pollController: PollController<boolean>;
 
-    constructor(persistence: IPersistence<Knowledge>, knowledge?: Knowledge) {
-        this.knowledge = persistence.persistable(['knowledge'], undefined, knowledge ?? {});
+    constructor(perssistable: IPersistable<Knowledge>) {
+        this.knowledge = persistable;
         this.pollController = new PollController();
     }
 

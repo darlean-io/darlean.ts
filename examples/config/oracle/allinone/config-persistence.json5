@@ -1,5 +1,4 @@
-// Slightly more elaborate config file than config.json5 that has file system persistence configured
-// for an all-in-one application.
+// Config file that maps our oracle data to a specific folder on disk.
 {
     runtime: {
         persistence: {
@@ -7,12 +6,16 @@
             specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
 
             // Mapping from compartment mask to which actor type implements the persistence service
+            // Note: This line is only shown here for illustration. The mapping as listed here is
+            // the default mapping that would also be used when not present here. So, feel free
+            // to remove this line.
             handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
             
             // Configuration of file-system persistence
             fs: {
                 compartments: [
-                    // Default settings for all compartments
+                    // Default settings for all compartments. For debugging convenience, we configure Darlean to
+                    // only use one shard.
                     { compartment: '*', basePath: './persistence', shardCount: 1 },
                     // Settings for the compartment where oracle facts are stored. We choose here
                     // to store them in a separate folder on disk.

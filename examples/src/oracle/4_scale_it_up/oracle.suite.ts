@@ -15,7 +15,7 @@ const ORACLE_ACTOR = 'OracleActor';
 
 // Application code can invoke this suite function to register the oracle actors
 // (OracleService and OracleActor) to their actor runner.
-export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
+export function createOracleSuite(knowledge?: IKnowledgeTopics): IActorSuite {
     return new ActorSuite([
         // Registration of the OracleActor virtual actor
         {
@@ -31,8 +31,10 @@ export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
                 // Create persistence interface. The specifier must match with the one of the `runtime.peristence.specifiers`
                 // filters in the configuration file.
                 const p = context.persistence<Knowledge>('oracle.fact.knowledge');
-                // Create and return a new OracleActor instance with the provided persistence and knowledge
-                return new OracleActor(p, k);
+                // Derive a persistable instance with the provided default knowledge
+                const persistable = p.persistable(['knowledge'], undefined, k ?? {});
+                // Create and return a new OracleActor instance with the provided persistable
+                return new OracleActor(persistable);
             }
         },
         // Registration of the OracleService service actor

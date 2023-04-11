@@ -17,7 +17,7 @@ const ORACLE_FOLLOWER_ACTOR = 'OracleFollowerActor';
 
 // Application code can invoke this suite function to register the oracle actors
 // (OracleService and OracleActor) to their actor runner.
-export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
+export function createOracleSuite(knowledge?: IKnowledgeTopics): IActorSuite {
     return new ActorSuite([
         // Registration of the OracleReadActor virtual follower actor
         {
@@ -50,8 +50,10 @@ export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
                 // Create persistence interface. The specifier must match with the one of the `runtime.peristence.specifiers`
                 // filters in the configuration file.
                 const p = context.persistence<Knowledge>('oracle.fact.knowledge');
-                // Create and return a new OracleControlActor instance with the provided persistence and knowledge
-                return new OracleControllerActor(p, k);
+                // Derive a persistable instance with the provided default knowledge
+                const persistable = p.persistable(['knowledge'], undefined, k ?? {});
+                // Create and return a new OracleControllerActor instance with the provided persistable
+                return new OracleControllerActor(persistable);// Create and return a new OracleControlActor instance with the provided persistence and knowledge
             }
         },
         // Registration of the OracleService service actor

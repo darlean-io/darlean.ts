@@ -69,6 +69,7 @@ The implementation of `main` for [server.ts](server.ts) is so simple that we giv
 ```ts
 async function main() {
     const builder = new ConfigRunnerBuilder();
+    builder.registerSuite(createRuntimeSuiteFromBuilder(builder));
     builder.registerSuite(oracle_suite(knowledge));
     const runner = builder.build();
 
@@ -78,9 +79,10 @@ async function main() {
 
 Like the client, it creates a `ConfigRunnerBuilder`, but the server application also registers the oracle suite of actors. That means that the server application is capable of hosting our actors and of invoking actions on them.
 
-The server is configured to be a *runtime node*. That is, it provides basic Darlean functionality that the cluster needs to operate, such as the distributed actor registry and actor lock, and persistence. Below, we will focus on this configuration.
+The server is configured to be a *runtime node*. That is, it provides basic Darlean functionality that the cluster needs to operate, such as the distributed actor registry and actor lock, and persistence. 
+The line with `createRuntimeSuiteFromBuilder` takes care of this: It registers all these special actors that are required to run Darlean applications. Below, we will focus on this configuration.
 
-## One important optimization
+## Shared locking
 
 When we told you that we did not have to make any code change in your business logic -- we were lying. There is one very small changes we need to make. We should already had done that before, but we did not want
 to bother you with that at that moment. Because of the defensive nature of Darlean, the default action locking
@@ -111,13 +113,13 @@ the assertion that the underlying data is not changed meanwhile. We could than c
 result, it is one synchronous block of code, and the way javascript works (with only one main thread) already means that no 2 calls to `ask` will ever be performed in parallel. That just is not possible. So we have nothing to
 gain here. In fact, it will only cause us trouble when we refactor our code in parts [5](../5_follow_me/) and [6](../6_wait_a_while/) and change how we receive new knowledge.
 
-## Configuration
+## Different ways of configuration
 
 To illustrate the flexibility of Darlean, we will show two kinds of configuration.
 * For our setup with one client and one server, we illustrate the use of a single configuration file for both client and server application. This simplifies configuration a bit for small applications, but it also confuses because client applications have access to settings like the persistence configuration that are none of their business (only the server applications need this info in our example).
 * For our setup with one client and 3 servers, we use a separate configuration file for the client, and a separate configuration file for the server. It requires an additional file, but is much cleaner because applications only have access to settings they really need.
 
-### Single configuration file
+### Approach 1: Single configuration file
 The single configuration file for client and server in a cluster of 1 client and 1 server application is provided in [config.json5](../../../config/oracle/cluster1/config.json5):
 ```ts
 {
@@ -125,7 +127,6 @@ The single configuration file for client and server in a cluster of 1 client and
     runtime: {
         persistence: {
             specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
-            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
             fs: {
                 compartments: [
                     { compartment: '*', basePath: './persistence', shardCount: 1 },
@@ -133,35 +134,28 @@ The single configuration file for client and server in a cluster of 1 client and
                 ]
             }
         },
-        nats: {
-            enabled: true
-        }
-    },
-    messaging: {
-        providers: ['nats'],
-        nats: {
-            hosts: ['127.0.0.1']
-        }
     }
 }
+
+
 ```
 
 The config starts with defining which applications form the 'runtime' (provide the distributed actor lock and registry and persistence). In our scenario, this is only the server application that we named "server" here.
 
-Then comes the runtime configuration. This is only required for the server application, but because we illustrate here the use of a single config file for both client and server, we have to include it here. So, we provide the runtime settings, but we have not yet enabled the runtime itself (for the server application, we will reenable the runtime functionality by means of the `--darlean-runtime-enabled` command line argument).
+Then comes the runtime configuration. This is only required for the server application, but because we illustrate here the use of a single config file for both client and server, we have to include it here. The runtime functionality will
+by default only be enabled when the application id is in the list of provided `runtimeApps`. Because we only run the service application with appid `server`, the runtime functionality is automatically enabled for the server application,
+and disabled for the client application.
 
-The configuration of persistence is not different from the previous part of this tutorial. What is new, however, is that we instruct the server application to host the Nats server. Nats is the message bus that Darlean uses for communication between processes.
-
-At the bottom, we configure the client and server application to actually use Nats. The `hosts` setting should have the same length as the `runtimeApps` settings, and must provide the hostname or IP address of the application.
+The configuration of persistence is not different from the previous part of this tutorial.
 
 We use command line arguments to pass the config file to the client and server application, and to override certain settings in [package.json](../../../package.json):
 ```
-$ node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster1/config.json5 --darlean-app-id server --darlean-runtime-enabled true
-$ node lib/oracle/4_scale_it_up/client.js --darlean-config config/oracle/cluster1/config.json5 --darlean-app-id client    
+$ node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster1/config.json5 --darlean-appid server
+$ node lib/oracle/4_scale_it_up/client.js --darlean-config config/oracle/cluster1/config.json5 --darlean-appid client    
 ```
-So, for the server, we set the app-id to `server`, and enable the runtime to make it a runtime node. For the client, we set the app-id to `client`, and do not make it a runtime node.
+So, for the server, we set the app-id to `server`. For the client, we set the app-id to `client`.
 
-### Separate configuration files
+### Approach 2: Separate configuration files
 
 For the setup with one client and 3 servers, we will illustrate what configuration looks like when we split it up into two files: one for the client, and one for the server applications.
 
@@ -170,8 +164,7 @@ For the client application, the [client.json5](../../../config/oracle/cluster3/c
 {
     runtimeApps: ['server01', 'server02', 'server03'],
     messaging: {
-        providers: ['nats'],
-        nats: {
+        dmb: {
             hosts: ['127.0.0.1', '127.0.0.1', '127.0.0.1']
         }
     }
@@ -179,47 +172,61 @@ For the client application, the [client.json5](../../../config/oracle/cluster3/c
 ```
 Quite lean and mean, isn't it? It defines the applications that form the runtime (the 3 server applications, in this case). The clients needs to know this as a bootstrap in order to contact the distributed actor registry (which are actors itself) to find out on which node the other runtime actors are hosted in the cluster.
 
-It also defines that Nats should be used for messaging, and for each of the runtime apps in the cluster, it defines the corresponding host name or IP address (in this case, localhost, `127.0.0.1`).
+It also defines the host names / IP addresses for each of the runtime apps in the cluster. In this case, we use localhost (`127.0.0.1`) because all processes are running on the same machine.
+
+> Note: `dmb` stands for Darlean Message Bus. It is a message bus that Darlean provides out-of-the-box. Internally, it uses NATS, which a very simple but powerful message bus.
 
 For the server, the configuration is in [server.json5](../../../config/oracle/cluster3/server.json5):
 ```ts
 {
     runtimeApps: ['server01', 'server02', 'server03'],
     runtime: {
-        enabled: true,
         persistence: {
             specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
-            handlers: [{ compartment: 'fs.*', actorType: 'io.darlean.fspersistenceservice' }],
             fs: {
                 compartments: [
                     { compartment: '*', basePath: './persistence', shardCount: 1 },
                     { compartment: 'fs.oracle-fact', basePath: './persistence/oracle/fact' }
                 ]
             }
-        },
-        nats: {
-            enabled: true
-        }
-    },
-    messaging: {
-        providers: ['nats'],
-        nats: {
-            hosts: ['127.0.0.1', '127.0.0.1', '127.0.0.1']
         }
     }
 }
 ```
-The server configuration also defines the 3 runtime apps, but it also defines the runtime settings. In particular, the runtime functionality is already enabled (`runtime: { enabled: true }`), so we do not have to do that anymore on the command line. The other settings are similar to what we have already seen before.
+The server configuration also defines the 3 runtime apps, but it also defines the runtime settings.
+
+We have chosen here to omit the `messaging.dmb.hosts` setting, which is allowed because Darlean assumes localhost (`127.0.0.1`) by default.
 
 To start the applications:
 ```
-$ node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster3/server.json5 --darlean-app-id server00
-$ node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster3/server.json5 --darlean-app-id server01
-$ node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster3/server.json5 --darlean-app-id server02
-$ node lib/oracle/4_scale_it_up/client.js --darlean-config config/oracle/cluster3/client.json5 --darlean-app-id client
+$ node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster3/server.json5 --darlean-appid=server00
+$ node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster3/server.json5 --darlean-appid=server01
+$ node lib/oracle/4_scale_it_up/server.js --darlean-config config/oracle/cluster3/server.json5 --darlean-appid=server02
+$ node lib/oracle/4_scale_it_up/client.js --darlean-config config/oracle/cluster3/client.json5 --darlean-appid=client
 ```
 
 Because we have separate configuration files for client and server, we just have to specify the correct configuration file and the proper app-id on the command line.
+
+### Approach 3: No configuration at all
+
+When we do not care about where our oracle-specific data is stored on disk, we can even run without any configuration files at all!
+
+```
+$ node lib/oracle/4_scale_it_up/server.js --darlean-runtimeapps=server01,server02,server03 --darlean-appid=server00
+$ node lib/oracle/4_scale_it_up/server.js --darlean-runtimeapps=server01,server02,server03 --darlean-appid=server01
+$ node lib/oracle/4_scale_it_up/server.js --darlean-runtimeapps=server01,server02,server03 --darlean-appid=server02
+$ node lib/oracle/4_scale_it_up/client.js --darlean-runtimeapps=server01,server02,server03 --darlean-appid=client
+```
+
+Or by a combination of environment variables and command line arguments:
+```
+$ export DARLEAN_RUNTIMEAPPS=server01,server02,server03
+$ node lib/oracle/4_scale_it_up/server.js --darlean-appid=server00
+$ node lib/oracle/4_scale_it_up/server.js --darlean-appid=server01
+$ node lib/oracle/4_scale_it_up/server.js --darlean-appid=server02
+$ node lib/oracle/4_scale_it_up/client.js --darlean-appid=client
+```
+
 
 ## That's all folks!
 We can now run our distributed examples using the provided npm scripts:

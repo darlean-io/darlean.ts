@@ -10,7 +10,7 @@ export interface IKnowledgeTopics {
     [topic: string]: IKnowledgeFacts;
 }
 
-export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
+export function createOracleSuite(knowledge?: IKnowledgeTopics): IActorSuite {
     return new ActorSuite([
         {
             type: ORACLE_ACTOR,
