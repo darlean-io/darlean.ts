@@ -86,10 +86,10 @@ export interface IOracleService {
 
 ### The suite function
 
-Now that we have two different types of actors in our suite (`OracleActor` and `OracleService`), we have to adjust our suite function in [oracle.suite.ts](oracle.suite.ts)
+Now that we have two different types of actors in our suite (`OracleActor` and `OracleService`), we have to adjust our suite creator function in [oracle.suite.ts](oracle.suite.ts)
 to register both types:
 ```ts
-export default function suite(knowledge?: IKnowledgeTopics): IActorSuite {
+export function createOracleSuite(knowledge?: IKnowledgeTopics): IActorSuite {
     return new ActorSuite([
         // Registration of the OracleActor virtual actor
         {

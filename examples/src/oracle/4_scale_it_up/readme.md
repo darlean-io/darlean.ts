@@ -70,7 +70,7 @@ The implementation of `main` for [server.ts](server.ts) is so simple that we giv
 async function main() {
     const builder = new ConfigRunnerBuilder();
     builder.registerSuite(createRuntimeSuiteFromBuilder(builder));
-    builder.registerSuite(oracle_suite(knowledge));
+    builder.registerSuite(createOracleSuite(knowledge));
     const runner = builder.build();
 
     await runner.run();
