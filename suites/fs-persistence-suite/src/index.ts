@@ -113,33 +113,31 @@ export interface IFileSystemPersistenceCfg {
     shardCount?: number;
 }
 
-export function createFsPersistenceSuiteFromConfig(env: IConfigEnv<IFileSystemPersistenceCfg>) {
-    if (env.fetchBoolean('enabled') === false) {
-        return;
+export function createFsPersistenceSuiteFromConfig(env: IConfigEnv<IFileSystemPersistenceCfg>, runtimeEnabled: boolean) {
+    if (env.fetchBoolean('enabled') ?? runtimeEnabled) {
+        const options: IFsPersistenceOptions = {
+            compartments: []
+        };
+
+        const maxShardCount = env.fetchNumber('maxShardCount');
+        const DEFAULT_COMPARTMENT: IFsPersistenceCompartment = {
+            compartment: 'fs.*',
+            basePath: env.fetchString('basePath') ?? './persistence/',
+            shardCount: limit(env.fetchNumber('shardCount') ?? DEFAULT_SHARD_COUNT, maxShardCount)
+        };
+
+        for (const comp of [DEFAULT_COMPARTMENT, ...(env.fetchRaw('compartments') ?? [])]) {
+            options.compartments.push({
+                compartment: comp.compartment,
+                basePath: comp.basePath,
+                subPath: comp.subPath,
+                nodes: comp.nodes,
+                shardCount: limit(comp.shardCount ?? DEFAULT_SHARD_COUNT, maxShardCount)
+            });
+        }
+
+        return createFsPersistenceSuite(options);
     }
-
-    const options: IFsPersistenceOptions = {
-        compartments: []
-    };
-
-    const maxShardCount = env.fetchNumber('maxShardCount');
-    const DEFAULT_COMPARTMENT: IFsPersistenceCompartment = {
-        compartment: 'fs.*',
-        basePath: env.fetchString('basePath') ?? './persistence/',
-        shardCount: limit(env.fetchNumber('shardCount') ?? DEFAULT_SHARD_COUNT, maxShardCount)
-    };
-
-    for (const comp of [DEFAULT_COMPARTMENT, ...(env.fetchRaw('compartments') ?? [])]) {
-        options.compartments.push({
-            compartment: comp.compartment,
-            basePath: comp.basePath,
-            subPath: comp.subPath,
-            nodes: comp.nodes,
-            shardCount: limit(comp.shardCount ?? DEFAULT_SHARD_COUNT, maxShardCount)
-        });
-    }
-
-    return createFsPersistenceSuite(options);
 }
 
 function limit(n: number | undefined, max: number | undefined): number | undefined {

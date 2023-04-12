@@ -75,8 +75,8 @@ export interface IActorLockCfg {
     redundancy?: number;
 }
 
-export function createActorLockSuiteFromConfig(cfg: IConfigEnv<IActorLockCfg>, runtimeApps: string[]) {
-    if (cfg.fetchBoolean('enabled') !== false) {
+export function createActorLockSuiteFromConfig(cfg: IConfigEnv<IActorLockCfg>, runtimeEnabled: boolean, runtimeApps: string[]) {
+    if (cfg.fetchBoolean('enabled') ?? runtimeEnabled) {
         const options: IActorLockOptions = {
             id: [],
             locks: cfg.fetchStringArray('apps') ?? runtimeApps,

@@ -39,38 +39,36 @@ export interface IPersistenceHandlerCfg {
     actorType: string;
 }
 
-export function createPersistenceSuiteFromConfig(env: IConfigEnv<IPersistenceCfg>) {
-    if (env.fetchBoolean('enabled') === false) {
-        return;
+export function createPersistenceSuiteFromConfig(env: IConfigEnv<IPersistenceCfg>, runtimeEnabled: boolean) {
+    if (env.fetchBoolean('enabled') ?? runtimeEnabled) {
+        const options: IPersistenceServiceOptions = {
+            compartments: [],
+            handlers: []
+        };
+
+        const DEFAULT_SPECIFIER: IPersistenceSpecifierCfg = {
+            specifier: '*',
+            compartment: 'fs.default'
+        };
+
+        for (const spec of [...(env.fetchRaw('specifiers') ?? []), DEFAULT_SPECIFIER]) {
+            options.compartments.push({
+                compartment: spec.compartment,
+                specifier: spec.specifier
+            });
+        }
+
+        const DEFAULT_HANDLER: IPersistenceHandlerCfg = {
+            compartment: 'fs.*',
+            actorType: FS_PERSISTENCE_SERVICE
+        };
+        for (const handler of [...(env.fetchRaw('handlers') ?? []), DEFAULT_HANDLER]) {
+            options.handlers.push({
+                compartment: handler.compartment,
+                actorType: handler.actorType
+            });
+        }
+
+        return createPersistenceSuite(options);
     }
-
-    const options: IPersistenceServiceOptions = {
-        compartments: [],
-        handlers: []
-    };
-
-    const DEFAULT_SPECIFIER: IPersistenceSpecifierCfg = {
-        specifier: '*',
-        compartment: 'fs.default'
-    };
-
-    for (const spec of [...(env.fetchRaw('specifiers') ?? []), DEFAULT_SPECIFIER]) {
-        options.compartments.push({
-            compartment: spec.compartment,
-            specifier: spec.specifier
-        });
-    }
-
-    const DEFAULT_HANDLER: IPersistenceHandlerCfg = {
-        compartment: 'fs.*',
-        actorType: FS_PERSISTENCE_SERVICE
-    };
-    for (const handler of [...(env.fetchRaw('handlers') ?? []), DEFAULT_HANDLER]) {
-        options.handlers.push({
-            compartment: handler.compartment,
-            actorType: handler.actorType
-        });
-    }
-
-    return createPersistenceSuite(options);
 }

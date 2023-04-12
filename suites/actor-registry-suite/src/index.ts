@@ -33,8 +33,8 @@ export interface IActorRegistryCfg {
     apps?: string[];
 }
 
-export function createActorRegistrySuiteFromConfig(cfg: IConfigEnv<IActorRegistryCfg>, runtimeApps: string[]) {
-    if (cfg.fetchBoolean('enabled') !== false) {
+export function createActorRegistrySuiteFromConfig(cfg: IConfigEnv<IActorRegistryCfg>, runtimeEnabled: boolean, runtimeApps: string[]) {
+    if (cfg.fetchBoolean('enabled') ?? runtimeEnabled) {
         const apps = cfg.fetchStringArray('apps') ?? runtimeApps;
         return createActorRegistrySuite(apps);
     }
