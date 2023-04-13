@@ -3,7 +3,7 @@ import { createEchoSuite } from './echosuite';
 
 async function main() {
     const builder = new ConfigRunnerBuilder();
-    builder.registerSuite( createEchoSuite() );
+    builder.registerSuite( createEchoSuite() );  // <-- Registers the custom actor suite
     const runner = builder.build();
     await runner.run();
 }

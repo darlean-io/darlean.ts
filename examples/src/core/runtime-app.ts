@@ -3,7 +3,7 @@ import { createRuntimeSuiteFromBuilder } from '@darlean/runtime-suite';
 
 async function main() {
     const builder = new ConfigRunnerBuilder();
-    builder.registerSuite(createRuntimeSuiteFromBuilder(builder));
+    builder.registerSuite(createRuntimeSuiteFromBuilder(builder)); // <-- Registers the runtime suite
     const runner = builder.build();
     await runner.run();
 }
