@@ -84,7 +84,7 @@ be active multiple times within the entire cluster.
 ## Suites
 
 Related actors can be grouped together in a suite. So, a suite is just a collection of actor types that together provide one specific bit of functionality, like the
-management of a shopping cart or a user administration.
+management of a shopping cart or user administration.
 
 A suite usually consists of a single creator function that receives configuration parameters as arguments, and then creates, fills in and returns an [IActorSuite](https://docs.darlean.io/latest/IActorSuite.html)
 structure. This structure contains a list of actor definitions. Each definition contains the actor type, the kind (singular or multiplar) and an actor creator function.
@@ -106,7 +106,7 @@ meant to be invoked remotely. These two pieces of information are sufficient for
 ## Applications
 
 When actors are created, grouped into suites and optionally packed into packages, it is necessary to instantiate an [ActorRunner](https://docs.darlean.io/latest/ActorRunner.html) 
-(typically by means of a [ConfigRunnerBuilder](https://docs.darlean.io/latest/ConfigRunnerBuilder.html))to which
+(typically by means of a [ConfigRunnerBuilder](https://docs.darlean.io/latest/ConfigRunnerBuilder.html)) to which
 the suites can be registered. The actor runner takes care of the networking and other administration required to make actors discoverable by other applications and to handle action requests
 to actors that it hosts (that is, that are part of suites that are registered to the runner).
 
