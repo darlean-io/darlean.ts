@@ -74,3 +74,9 @@ const anotherActor = typedPortal.retrieve['id2']);
 ## Elaborative example
 
 The usage of `@darlean/core` is further illustrated by means of an [example](../examples/src/core) of a minimalistic but real, working distributed application.
+
+# Configuration
+
+Darlean apps can be configured by means of JSON/JSON5 files, command-line arguments and environment variables.
+
+More information about how to configure Darlean can be found [here](https://darlean.io/documentation/configuration-options/).
