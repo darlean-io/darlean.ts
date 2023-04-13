@@ -1,10 +1,14 @@
 {
   "name": "@darlean/base",
-  "version": "2.0.0-alpha.6",
+  "version": "2.0.0-alpha.7",
   "description": "Base types and definitions for defining Darlean actors",
   "main": "lib/index.js",
   "homepage": "https://darlean.io",
-  "repository": { "type": "git", "url": "https://gitlab.com/darlean/javascript/repo", "directory": "base" },
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/darlean/javascript/repo",
+    "directory": "base"
+  },
   "types": "lib/index.d.ts",
   "scripts": {
     "build": "tsc",
