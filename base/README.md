@@ -106,7 +106,7 @@ meant to be invoked remotely. These two pieces of information are sufficient for
 ## Applications
 
 When actors are created, grouped into suites and optionally packed into packages, it is necessary to instantiate an [ActorRunner](https://docs.darlean.io/latest/ActorRunner.html) 
-(typically via a [ConfigRunnerBuilder](https://docs.darlean.io/latest/ConfigRunnerBuilder.html))to which
+(typically by means of a [ConfigRunnerBuilder](https://docs.darlean.io/latest/ConfigRunnerBuilder.html))to which
 the suites can be registered. The actor runner takes care of the networking and other administration required to make actors discoverable by other applications and to handle action requests
 to actors that it hosts (that is, that are part of suites that are registered to the runner).
 

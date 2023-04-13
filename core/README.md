@@ -2,6 +2,8 @@
 
 The `@darlean/core` package provides the functionality that is required to create an application that hosts Darlean actors.
 
+* For information on how to create actors and actor suites, see the [@darlean/base](../base/) package.
+
 # Installation
 
 ```
@@ -82,6 +84,7 @@ Darlean apps can be configured by means of JSON/JSON5 files, command-line argume
 More information about how to configure Darlean can be found [here](https://darlean.io/documentation/configuration-options/).
 
 # See also
+* Package [@darlean/base](../base/) which explains how to create actors and actor suites
 * The [Darlean Tutorial](../examples/src/oracle/1_the_basics/) in which we illustrate step by step how to build a real distributed oracle that answers questions like 'How warm is it tomorrow?' and 'What is the price of milk?'.
 * The [Darlean Documentation](https://darlean.io/documentation/) on our website.
 * The [API Documentation](https://docs.darlean.io/latest/@darlean_core.html) for `@darlean/core`.
