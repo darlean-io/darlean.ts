@@ -1,9 +1,10 @@
 /**
  * Provides Darlean core functionality for hosting and invoking local or remote actors.
  *
- * Detailed information about what virtual actors are and how to write them is in the documentation for {@link @darlean/base}.
+ * * Detailed information on how to use this library is in the {@link https://gitlab.com/darlean/javascript/repo/-/blob/main/core/README.md | README}.
+ * * Detailed information about what virtual actors are and how to write them is in the documentation for {@link @darlean/base}.
  *
- *  ## Types for creating an application
+ * ## Types for creating an application
  *
  * The following implementations can be used to **create an application that hosts actors**:
  * * {@link ConfigRunnerBuilder} - Class that construcs an actor runner based on configuration files, command-line
@@ -16,7 +17,7 @@
  * The easiest way to configure Darlean applications is by using the {@link ConfigRunnerBuilder}, which understands
  * configuration files, command-line arguments and environment variables.
  *
- * The configuration settings that are supported by Darlean are found in {@link IApplicationCfg}.
+ * The configuration settings that are supported by Darlean are found in {@link https://darlean.io/documentation/configuration-options/}.
  *
  * ## Actors, instances and wrappers
  *
@@ -40,7 +41,9 @@
  *
  * ## Local actor invocation
  * For local use (that is, when all code and actors live in the same process, divided over 1 or more internal apps), it is possible to use an instance of {@link InProcessTransport}
- * and pass it to the {@link ActorRunnerBuilder.setRemoteAccess} calls of each of the internal apps..
+ * and pass it to the {@link ActorRunnerBuilder.setRemoteAccess} calls of each of the internal apps.
+ * 
+ * > Note: When using the {@link ConfigRunnerBuilder} without specifying runtime nodes, all of this is already taken care of.
  *
  * ## Remote actor invocation
  *
@@ -69,6 +72,11 @@
  * hosted by the current application, and {@link DistributedActorRegistry} provides access to the distributed actor registry that
  * contains actor information from all applications in the cluster.
  *
+ * ## More information
+ * 
+ * For more information on how to use this package, including an elaborative example of a distributed application that uses
+ * {@link @darlean.core}, see the {@link https://gitlab.com/darlean/javascript/repo/-/blob/main/core/README.md | README}.
+ * 
  * @packageDocumentation
  */
 export * from './shared';

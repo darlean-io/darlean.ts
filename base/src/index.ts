@@ -1,9 +1,9 @@
 /**
- * Provides base types and abstractions for defining custom actors.
+ * Provides base types and abstractions for creating custom actor suites.
  *
  * ## Introduction
  *
- * This library provides the types and abstractions that can be used to build custom actors.
+ * This library provides the types and abstractions that can be used to build custom actor suites.
  *
  * An actor is a combination of state (data) and actions (logic), implemented as an object with one or more
  * private fields that contain the state, and one or more asynchronous methods that implement the actions. What
@@ -18,7 +18,7 @@
  * developer by means of interfaces like {@link IPortal} and {@link ITypedPortal} that provide proxies (stubs) that allow the developer to execute
  * actions on a remote actor as if it were a regular local object.
  *
- * The functionality of this library is divided into 3 parts: defining actors; hosting actors; and invoking remote actors,
+ * The functionality of this library is divided into 3 parts: defining actors; exposing actors; and invoking remote actors,
  * that are further described in the sections below.
  *
  * ## Part 1: Defining actors
@@ -77,49 +77,49 @@
  *
  * // The actual actor implementation.
  * class ThermostatActor implements IThermostatActor, IActivatable, IDeactivatable {
- *     protected state: IThermostatState;
- *     protected persistence: IPersistence<IThermostatState>;
+ *     protected state: IPersistable<IThermostatState>;
  *
- *     constructor(persistence: IPersistence<IThermostatState>, initialTemperature?: number) {
- *         this.persistence = persistence;
- *         this.state = {
- *             temperature: initialTemperature ? 16
- *         };
+ *     constructor(persistable: IPersistable<IThermostatState>, initialTemperature?: number) {
+ *         this.state = state;
+ *         this.state.change({ temperature: initialTemperature ?? 16});
  *     }
  *
  *     // Automatically invoked by the framework just before the first action is called
  *     // Typically loads a previously stored state.
  *     public async activate(): Promise<void> {
- *         this.state = await this.persistence.load(['state']) ?? this.state;
+ *         await this.state.load();
  *     }
  *
  *     // Action methods must be decorated to make them accessible for remote invocation
  *     @action()
  *     public async makeWarmer(amount: number): Promise<number> {
- *         this.state.temperature += amount;
- *         return this.temperature;
+ *         if (this.state.value) {
+ *             this.state.value.temperature += amount;
+ *             this.state.change();
+ *             return this.state.value.temperature;
+ *         }
  *     }
  *
  *     // To alter the default behaviour of actions, add options to the decorator
  *     @action({ locking='shared' })
  *     public async getTemperature(): Promise<number> {
- *         return this.temperature;
+ *         return this.state.value.temperature ?? 0;
  *     }
  *
  *     // Automatically invoked when the actor is deactivated.
  *     // Typically stores the latest state.
  *     public async deactivate(): Promise<void> {
- *         await this.persistence.store(['state'], this.state);
+ *         await this.state.store();
  *     }
  * }
  * ```
  *
- * ## Part 2: Hosting actors
+ * ## Part 2: Exposing actors
  *
- * When an actor is defined, it also needs to be hosted (made accessible for remote invocation).
+ * When an actor is defined, it also needs to be exposed (made accessible for remote invocation) by means of a suite.
  *
  * It is recommended practice that together with one or more related defined actor classes, a
- * function is exported that takes actor configuration as its input, and returns an {@link IActorSuite}.
+ * creator function is exported that takes actor configuration as its input, and returns an {@link IActorSuite}.
  * The {@link IActorSuite} provides Darlean with a {@link IActorSuite.getRegistrationOptions} method that tells
  * Darlean which actors are defined and how to host them.
  *
@@ -133,8 +133,9 @@
  *          type: THERMOSTAT_ACTOR,
  *          kind: 'singular',
  *          creator: (context) => {
+ *              const persistence = context.persistence as IPersistence<IThermostatState>;
  *              return new ThermostatActor(
- *                  context.persistence as IPersistence<IThermostatState>,
+ *                  persistence.persistable('state'),
  *                  defaultTemperature
  *              );
  *          }
@@ -143,10 +144,9 @@
  * }
  * ```
  *
- * In addition to that, it is necessary to to create, configure and instantiate an {@link ActorRunner}, typically
- * by means of an {@link ActorRunnerBuilder}, and to register our suite via the builder to the runner, but that
- * is out of scope for this package (which is just about creating actors, not about the details of hosting them,
- * which is in {@link @darlean/core}).
+ * In addition to creating and exporting the suite, it is also necessary to actually run an {@link ActorRunner} and to register
+ * the suite with the runner. That is out of scope for this package (which is just about creating and exposing actors, not about 
+ * the details of hosting them). For the details on actually hosting suites, see package {@link @darlean/core}).
  *
  * This package defines certain generic interfaces that the {@link ActorRunner} depends on for doing
  * its job. The interfaces that play a role in the hosting of actors are {@link IInstanceContainer} and {@link IInstanceWrapper}.
