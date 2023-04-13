@@ -6,7 +6,7 @@
   "homepage": "https://darlean.io",
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/darlean/javascript/repo",
+    "url": "https://gitlab.com/darlean/javascript/repo.git",
     "directory": "base"
   },
   "types": "lib/index.d.ts",
