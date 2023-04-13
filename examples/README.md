@@ -32,3 +32,7 @@ Can be started (from the root of this monorepo) with:
 Expected reported performance numbers are > 4000 actor invocations per second.
 
 Note that there is no significant performance difference between the 2 deployment setups, because the limiting factor here is the single client node.
+
+# Example 3: Usage of @darlean/core to create Darlean applications
+
+A very simple and minimalistic distributed application shows how the [@darlean/core](https://docs.darlean.io/latest/@darlean_core.html) library can be used to create Darlean applications.
