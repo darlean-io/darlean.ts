@@ -123,7 +123,8 @@ The code is very similar to the previous application. The differences are:
 
 > Note: Instead of having created a separate `runtime-app.ts` application for the runtime, we could also have integrated runtime functionality
 in the `echo-actor.ts` application by adding the line `builder.registerSuite(createRuntimeSuiteFromBuilder(builder));` to `echo-actor.ts`. That
-simplifies the deployment for small applications. For larger applications, it is recommended to place the runtime in its own application.
+simplifies the deployment for small applications because it does not require a separate runtime application. For larger applications, it is 
+recommended to place the runtime in its own application.
 
 ## Creating a client application
 
