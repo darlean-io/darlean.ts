@@ -2,7 +2,7 @@
 
 The `@darlean/core` package provides the functionality that is required to create an application that hosts Darlean actors.
 
-* For information on how to create actors and actor suites, see the @darlean/base ([GitLab](https://gitlab.com/darlean/javascript/repo/-/tree/main/base)|[NPM](https://www.npmjs.com/package/@darlean/base)) package.
+* For information on how to create actors and actor suites, see the @darlean/base package ([GitLab](https://gitlab.com/darlean/javascript/repo/-/tree/main/base)|[NPM](https://www.npmjs.com/package/@darlean/base)).
 
 # Installation
 
