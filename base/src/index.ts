@@ -1,6 +1,8 @@
 /**
  * Provides base types and abstractions for creating custom actor suites.
  *
+ * * Detailed information on how to use this library is in the {@link https://gitlab.com/darlean/javascript/repo/-/blob/main/base/README.md | README}.
+ *
  * ## Introduction
  *
  * This library provides the types and abstractions that can be used to build custom actor suites.
