@@ -12,9 +12,9 @@ $ npm install @darlean/core
 
 # Usage
 
-## Standard usage
+## Use as a server application
 
-The standard usage of `@darlean/core` is as follows:
+The standard usage of `@darlean/core` as a server application is as follows:
 ```ts
 const builder = new ConfigRunnerBuilder();
 builder.registerSuite( createYourSuite() );
@@ -38,9 +38,9 @@ or when application code calls `await runner.stop()`.
 
 ## Use as a client application
 
-Client applications that may want to interact with Darlean actors may not want the runner to wait until the client application is explicitly stopped. They may want the application to stop when their work is ready.
+Client applications that may want to interact with Darlean actors may not want the runner to wait until the client application is explicitly stopped. They may want the application to stop immediately when their work is ready.
 
-For that, replace the last line with the follwing block:
+For that, replace the last line  `await runner.run()` with the follwing block:
 
 ```ts
 await runner.start();
@@ -53,7 +53,7 @@ try {
 
 ## Access to actors
 
-A client can get access to actors (and invoke action methods on them) by means of an [IPortal](https://docs.darlean.io/latest/IPortal.html#) that can be obtained via [ActorRunner.getPortal()](https://docs.darlean.io/latest/ActorRunner.html#getPortal):
+A client application can get access to remote actors (and invoke action methods on them) by means of an [IPortal](https://docs.darlean.io/latest/IPortal.html#) that can be obtained via [ActorRunner.getPortal()](https://docs.darlean.io/latest/ActorRunner.html#getPortal):
 
 ```ts
 const actor = runner.getPortal().retrieve<IActorType>('ActorType', ['the', 'id', 'of', 'the', 'actor']);
