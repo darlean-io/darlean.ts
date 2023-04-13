@@ -47,7 +47,8 @@
     "typescript": "^4.9.4"
   },
   "files": [
-    "lib/**/*"
+    "lib/**/*",
+    "NOTICE"
   ],
   "typedoc": {
     "entryPoint": "./src/index.ts",
