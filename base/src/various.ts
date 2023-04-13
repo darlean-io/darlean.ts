@@ -88,7 +88,6 @@ export interface IPersistence<T> {
 
 //----- Table persistence -------
 
-
 /**
  * Persistence that uses a Darlean Table as underlying storage. The interface is different from the similar
  * {@link IPersistence}, but the returned {@link IPersistable} instances from the {@link persistable} and {@link load}

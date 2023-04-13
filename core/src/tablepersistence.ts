@@ -6,7 +6,7 @@ import {
     ITableSearchItem,
     ITableSearchRequest,
     ITableSearchResponse,
-    ITablesService,
+    ITablesService
 } from '@darlean/base';
 
 /**

@@ -42,7 +42,7 @@
  * ## Local actor invocation
  * For local use (that is, when all code and actors live in the same process, divided over 1 or more internal apps), it is possible to use an instance of {@link InProcessTransport}
  * and pass it to the {@link ActorRunnerBuilder.setRemoteAccess} calls of each of the internal apps.
- * 
+ *
  * > Note: When using the {@link ConfigRunnerBuilder} without specifying runtime nodes, all of this is already taken care of.
  *
  * ## Remote actor invocation
@@ -73,10 +73,10 @@
  * contains actor information from all applications in the cluster.
  *
  * ## More information
- * 
+ *
  * For more information on how to use this package, including an elaborative example of a distributed application that uses
  * {@link @darlean.core}, see the {@link https://gitlab.com/darlean/javascript/repo/-/blob/main/core/README.md | README}.
- * 
+ *
  * @packageDocumentation
  */
 export * from './shared';

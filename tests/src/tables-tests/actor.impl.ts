@@ -5,7 +5,7 @@ import {
     IPersistenceQueryOptions,
     IPersistenceQueryResult,
     ITablePersistence,
-    ITableService,
+    ITablesService,
     TABLES_SERVICE
 } from '@darlean/base';
 import { TablePersistence } from '@darlean/core';
@@ -52,7 +52,7 @@ export function testActorSuite(): IActorSuite {
             type: STORAGE_TEST_ACTOR_TABLE,
             kind: 'singular',
             creator: (context) => {
-                const ts = context.portal.retrieve<ITableService>(TABLES_SERVICE, ['testtable']);
+                const ts = context.portal.retrieve<ITablesService>(TABLES_SERVICE, ['testtable']);
                 const tp = new TablePersistence<ITextState>(
                     ts,
                     (item) => {

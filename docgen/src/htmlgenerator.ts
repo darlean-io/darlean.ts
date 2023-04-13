@@ -695,7 +695,7 @@ export class Generator {
         text?: string
     ) {
         if (typeof id === 'string') {
-            if ((id.startsWith('https://')) || (id.startsWith('http://'))) {
+            if (id.startsWith('https://') || id.startsWith('http://')) {
                 html.link(id, text || name || 'link');
                 return;
             }

@@ -231,16 +231,6 @@ function checkBetween<T>(expectedMin: T, expectedMax: T, actual: T, descr: strin
     }
 }
 
-function checkMoments(expectedValues: number[], moments: number[], descr: string) {
-    const times = moments.map((x) => x - moments[0]);
-    if (expectedValues.length !== moments.length - 1) {
-        check(expectedValues.length, moments.length - 1, `${descr}: Length should be ok`);
-    }
-    for (let idx = 0; idx < expectedValues.length; idx++) {
-        checkBetween(expectedValues[idx], expectedValues[idx] + 150, times[idx + 1], `${descr} (${idx})`);
-    }
-}
-
 function checkIntervals(expectedValues: number[], moments: number[], descr: string) {
     if (expectedValues.length !== moments.length - 1) {
         check(expectedValues.length, moments.length - 1, `${descr}: Length should be ok`);
@@ -251,15 +241,6 @@ function checkIntervals(expectedValues: number[], moments: number[], descr: stri
         const interval = newMoment - moment;
         checkBetween(expectedValues[idx], expectedValues[idx] + 0.9 * INTERVAL, interval, `${descr} (${idx})`);
         moment = newMoment;
-    }
-}
-
-function checkOneOf<T>(expected: T[], actual: T, descr: string) {
-    if (expected.includes(actual)) {
-        console.log(`[passed] ${c()} ${descr} (expected ${JSON.stringify(expected)} includes actual ${actual})`);
-    } else {
-        console.log(`[FAILED] ${c()} ${descr} (expected: one of ${expected}, actual: ${actual})`);
-        process.exitCode = 1;
     }
 }
 

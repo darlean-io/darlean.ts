@@ -64,13 +64,13 @@ export interface IPersistenceHandlerCfg {
 
 /**
  * Creates a new persistence suite from the specified configuration. This is a wrapper around {@link createPersistenceSuite}.
- * 
+ *
  * A default specifier mapping that maps specifier `'*'` to compartment `'fs.default'` is automatically created, but it can
  * be overruled by explicitly providing a different mapping for specifier `'*'`.
- * 
+ *
  * A default handler mapping that maps compartments `'fs.*'` to the actor type for {@link FS_PERSISTENCE_SERVICE} is automatically
  * created, but it can be overruled by explicitly providing a different mapping for compartment `'fs.*'`.
- * 
+ *
  * @param config The configuration for the suite
  * @param runtimeEnabled Indicates whether the suite is created when the `enabled` config option is undefined.
  * @returns The created suite.

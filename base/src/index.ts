@@ -145,7 +145,7 @@
  * ```
  *
  * In addition to creating and exporting the suite, it is also necessary to actually run an {@link ActorRunner} and to register
- * the suite with the runner. That is out of scope for this package (which is just about creating and exposing actors, not about 
+ * the suite with the runner. That is out of scope for this package (which is just about creating and exposing actors, not about
  * the details of hosting them). For the details on actually hosting suites, see package {@link @darlean/core}).
  *
  * This package defines certain generic interfaces that the {@link ActorRunner} depends on for doing

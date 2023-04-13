@@ -1,4 +1,4 @@
-import { IIndexItem, IPortal, ITableSearchItem, ITableSearchResponse, ITableService, TABLES_SERVICE } from '@darlean/base';
+import { ITableIndexItem, IPortal, ITableSearchItem, ITableSearchResponse, ITablesService, TABLES_SERVICE } from '@darlean/base';
 import { ConfigRunnerBuilder, TablePersistence } from '@darlean/core';
 import { encodeNumber, ITime, parallel, ParallelTask, sleep, Time } from '@darlean/utils';
 import { STORAGE_TEST_ACTOR_TABLE, TableStorageTestActor, testActorSuite } from './actor.impl';
@@ -28,7 +28,7 @@ async function tablepersistence_store_search(actor: TableStorageTestActor, time:
     const stop = time.machineTicks();
     console.log('DURATION', stop - start, ' | ', (1000 * results.results.length) / (stop - start), 'stores/sec');
 
-    const ts = portal.retrieve<ITableService>(TABLES_SERVICE, ['testtable']);
+    const ts = portal.retrieve<ITablesService>(TABLES_SERVICE, ['testtable']);
     const tp = new TablePersistence<string>(ts, () => [], 'indexstoragetest');
 
     await context('Single chunk table search', async () => {
@@ -116,7 +116,7 @@ async function tablepersistence_store_search(actor: TableStorageTestActor, time:
 }
 
 async function table(portal: IPortal) {
-    const service = portal.retrieve<ITableService>(TABLES_SERVICE, ['MyTable']);
+    const service = portal.retrieve<ITablesService>(TABLES_SERVICE, ['MyTable']);
     const item = await service.get({
         keys: ['123', '4'],
         specifier: 'table'
@@ -196,14 +196,14 @@ async function table2(portal: IPortal) {
         album: string;
     }
 
-    function indexer(data: ISong): IIndexItem[] {
+    function indexer(data: ISong): ITableIndexItem[] {
         return [
             { name: 'byArtist', keys: [data.artist], data: { title: data.title } },
             { name: 'byAlbum', keys: [data.album], data: { title: data.title } }
         ];
     }
 
-    const service = portal.retrieve<ITableService>(TABLES_SERVICE, ['SongsTable']);
+    const service = portal.retrieve<ITablesService>(TABLES_SERVICE, ['SongsTable']);
     const specifier = 'table.songs';
     let version = 0;
 

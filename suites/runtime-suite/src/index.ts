@@ -1,8 +1,8 @@
 /**
  * Suite that provides a minimal set of Runtime Suites.
- * 
+ *
  * ## Supported underlying suites
- * 
+ *
  * The suite provides the following underlying suites:
  * * {@link @darlean/actor-lock-suite}
  * * {@link @darlean/actor-registry-suite}
@@ -14,15 +14,15 @@
  * are understood by this suite:
  * * `darlean.appId` - Optional application id.
  * * `darlean.runtimeApps` - List of application id's of runtime apps
- * * `darlean.runtime.enabled` - Indicates whether the runtime functionality is forcibly enabled or disabled. 
+ * * `darlean.runtime.enabled` - Indicates whether the runtime functionality is forcibly enabled or disabled.
  *    Even when disabled, underlying suites are created and activated when their `enabled` flag is `true`. When
  *    not present, runtime functionality is considered enabled when there are no explicit runtime apps configured, or
- *    when the application id is in the list of explicitly configured runtime-apps. 
+ *    when the application id is in the list of explicitly configured runtime-apps.
  * * `darlean.runtime.actorLock.*` - See {@link @darlean/actor-lock-suite}
  * * `darlean.runtime.actorRegistry.*` - See {@link @darlean/actor-registry-suite}
  * * `darlean.runtime.persistence.*` - See {@link @darlean/persistence-suite}
  * * `darlean.runtime.fsPersistence.*` - See {@link @darlean/fs-persistence-suite}
- * 
+ *
  * @packageDocumentation
  */
 
@@ -67,7 +67,6 @@ export interface IRuntimeRuntimeCfg {
      */
     persistence?: IPersistenceCfg;
 
-
     /**
      * Configuration of file system persistence.
      */
@@ -86,9 +85,9 @@ export interface IRuntimeRuntimeCfg {
 
 /**
  * Creates a runtime suite based on configuration.
- * 
+ *
  * Invokes the `*FromConfig` suite creator functions for each of the underlying suites.
- * 
+ *
  * @param config The configuration for this application.
  * @param appId The app-id of this application. Used as fallback when no explicit app-id is configured.
  */
