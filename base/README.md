@@ -36,12 +36,12 @@ class EchoActor implements IEchoActor {
 ```
 
 Some remarks:
-* For creating actors, we no not need the heavy `@darlean/core` library. Just `@darlean/base` is sufficient for this.
+* For creating actors, we no not need the heavy `@darlean/core` library. Just the light-weight `@darlean/base` is sufficient for this.
 * The exported interface `IEchoActor` can be used by code that wants to invoke action methods on our actor without
   requiring a dependency on the implementing class (`EchoActor`). In our simple example this would not matter, because
   the class does not have external dependencies, but when the actor class would depend on a lot of external packages,
   it would be inconvenient and undesirable for code that wants to invoke the actor to also become dependent on these
-  dependencies.
+  dependencies, especially when it is remote code that runs in another process that does not already have these dependencies.
 * The exported string `ECHO_ACTOR = 'demo.EchoActor'` makes it possible for code to retrieve (discover) the actor.
 
 ## Defining a suite
@@ -66,14 +66,15 @@ This creates a new actor suite with the definition of one actor (namely our echo
 has `demo.EchoActor` as actor type, and has a creator function that derives the name of the actor by taking the first
 element of the actor's id, and passing that to the constructor of `EchoActor`.
 
-# Background: Actors, suites, packages and applications
+# Actors, suites, packages and applications
 
 ## Actors
 
 Actors play a key role in Darlean. Actors are objects that can be invoked remotely and that have a private state (often grouped together in one object to simplify persistence) 
-and action methods that perform actions and/or modify the internal state.
+and published (remotely invokable) action methods that perform actions and/or modify the internal state.
 
-Action methods are plain methods decorated with {@link @action} (or, for more advanced use cases, {@link @timer}, {@link @activator} or {@link @deactivator}).
+Action methods are plain methods decorated with [@action](https://docs.darlean.io/latest/@darlean_base.html#action) (or, for more advanced use cases, 
+[@timer](https://docs.darlean.io/latest/@darlean_base.html#timer), [@activator](https://docs.darlean.io/latest/@darlean_base.html#activator) or [@deactivator](https://docs.darlean.io/latest/@darlean_base.html#activator).
 
 Actors have a type (called 'actor type'), which is a string. It is recommended to use a dotted namespace notation to avoid name collisions, like `myorganization.MyActor`.
 
