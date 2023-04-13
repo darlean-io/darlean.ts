@@ -39,7 +39,7 @@ What this very simple program does is:
   echoes back what it receives.
 * It builds the runner
 * It starts the runner and waits until the runner stops running (which is when the application is killed, when the [run file is deleted](https://darlean.io/documentation/starting-and-stopping/)) 
-  or when `await runner.stop()` is invoked from the application code.
+  or when `await runner.stop()` is invoked from the application code).
 
 ## Defining an actor
 
