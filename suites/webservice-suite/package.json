@@ -1,6 +1,6 @@
 {
   "name": "@darlean/webservice-suite",
-  "version": "2.0.0-alpha.3",
+  "version": "2.0.0-alpha.4",
   "description": "Webservice Suite that acts as Web/API Gateway that invokes actors to serve HTTP requests",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -10,7 +10,6 @@
     "url": "https://gitlab.com/darlean/javascript/repo.git",
     "directory": "suites/webservice-suite"
   },
-
   "scripts": {
     "build": "tsc",
     "run": "node lib/index.js",
