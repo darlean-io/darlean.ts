@@ -1,6 +1,6 @@
 {
   "name": "@darlean/actor-registry-suite",
-  "version": "2.0.0-alpha.3",
+  "version": "2.0.0-alpha.4",
   "description": "Actor Registry Suite",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -10,7 +10,6 @@
     "url": "https://gitlab.com/darlean/javascript/repo.git",
     "directory": "suites/actor-registry-suite"
   },
-
   "scripts": {
     "build": "tsc",
     "run": "node lib/index.js",
