@@ -40,7 +40,7 @@ export interface ISummaryItem {
     kind: 'text' | 'code' | 'inline-tag';
     text?: string;
     tag?: string;
-    target?: number;
+    target?: number | string;
 }
 
 export interface ITsDocType {

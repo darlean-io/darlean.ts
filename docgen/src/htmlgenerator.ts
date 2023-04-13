@@ -690,10 +690,17 @@ export class Generator {
         html: Html,
         data: TsDocData | undefined,
         scope: ITsDocNode | undefined,
-        id: number,
+        id: number | string,
         name: string | undefined,
         text?: string
     ) {
+        if (typeof id === 'string') {
+            if ((id.startsWith('https://')) || (id.startsWith('http://'))) {
+                html.link(id, text || name || 'link');
+                return;
+            }
+        }
+
         // @decorator -> decorator
         const normalizedName = name?.startsWith('@') ? name.slice(1) : name || '';
         //const node = id >= 0 ? data?.tryById(id) : name ? data?.tryByName(normalizedName) : undefined;
