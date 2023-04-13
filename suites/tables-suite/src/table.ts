@@ -8,7 +8,7 @@ import {
     eq,
     Expr,
     gte,
-    IIndexItem,
+    ITableIndexItem,
     IPersistenceService,
     IPersistenceStoreBatchOptions,
     ITableGetRequest,
@@ -18,7 +18,7 @@ import {
     ITableSearchItem,
     ITableSearchRequest,
     ITableSearchResponse,
-    ITableService,
+    ITablesService,
     literal,
     lte,
     prefix,
@@ -49,7 +49,7 @@ interface IBaseItem {
 
 type Operator = 'none' | 'exact' | 'prefix' | 'lte' | 'gte' | 'between';
 
-export class TableActor implements ITableService {
+export class TableActor implements ITablesService {
     private id: string[];
     private internalId: string[];
     private persistence: IPersistenceService;
@@ -415,7 +415,7 @@ export class TableActor implements ITableService {
         }
     }
 
-    protected calculateHash(item: IIndexItem) {
+    protected calculateHash(item: ITableIndexItem) {
         const hash = crypto.createHash('sha1');
         for (const key of item.keys) {
             hash.update(key);
