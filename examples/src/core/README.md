@@ -43,7 +43,7 @@ What this very simple program does is:
 
 ## Defining an actor
 
-The above snippet contains a reference to the `createEchoSuite` function in `./echosuite`. A simple implementation is shown here:
+The above snippet contains a reference to the `createEchoSuite` function in `./echosuite.ts`. A simple implementation is shown here:
 
 `echosuite.ts`:
 ```ts
