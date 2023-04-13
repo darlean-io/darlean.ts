@@ -4,6 +4,13 @@
   "description": "Webservice Suite that acts as Web/API Gateway that invokes actors to serve HTTP requests",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "homepage": "https://darlean.io",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/darlean/javascript/repo.git",
+    "directory": "suites/webservice-suite"
+  },
+
   "scripts": {
     "build": "tsc",
     "run": "node lib/index.js",

@@ -4,6 +4,13 @@
   "description": "Timers Suite that provides persistent timer functionality",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "homepage": "https://darlean.io",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/darlean/javascript/repo.git",
+    "directory": "suites/timers-suite"
+  },
+
   "scripts": {
     "build": "tsc",
     "run": "node lib/index.js",

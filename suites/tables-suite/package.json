@@ -4,6 +4,13 @@
   "description": "Tables Suite that provides fast, indexed access to structured data",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "homepage": "https://darlean.io",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/darlean/javascript/repo.git",
+    "directory": "suites/tables-suite"
+  },
+
   "scripts": {
     "build": "tsc",
     "run": "node lib/index.js",

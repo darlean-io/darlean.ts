@@ -4,6 +4,13 @@
   "description": "Persistence Suite that provides the generic Persistence Service that can be used to persist data",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "homepage": "https://darlean.io",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/darlean/javascript/repo.git",
+    "directory": "suites/persistence-suite"
+  },
+
   "scripts": {
     "build": "tsc",
     "run": "node lib/index.js",

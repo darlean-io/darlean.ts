@@ -4,6 +4,13 @@
   "description": "Darlean core functionality for creating applicatins that define, expose and host actors",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "homepage": "https://darlean.io",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/darlean/javascript/repo.git",
+    "directory": "core"
+  },
+
   "scripts": {
     "test": "npm run test:all",
     "test:all": "jest --verbose --runInBand --config jestconfig.json",

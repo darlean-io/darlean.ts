@@ -4,6 +4,13 @@
   "description": "File System Persistence Suite that uses a physical or shared file system to persist data.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "homepage": "https://darlean.io",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/darlean/javascript/repo.git",
+    "directory": "suites/fs-persistence-suite"
+  },
+
   "scripts": {
     "build": "tsc",
     "run": "node lib/index.js",

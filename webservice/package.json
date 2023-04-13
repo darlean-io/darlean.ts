@@ -4,6 +4,12 @@
   "description": "Webservice library for Darlean",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "homepage": "https://darlean.io",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/darlean/javascript/repo.git",
+    "directory": "webservice"
+  },
   "scripts": {
     "test:all": "jest --verbose --runInBand --config jestconfig.json",
     "build": "tsc",

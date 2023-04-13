@@ -4,6 +4,13 @@
   "description": "Actor Registry Suite",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "homepage": "https://darlean.io",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/darlean/javascript/repo.git",
+    "directory": "suites/actor-registry-suite"
+  },
+
   "scripts": {
     "build": "tsc",
     "run": "node lib/index.js",

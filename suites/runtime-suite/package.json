@@ -4,6 +4,13 @@
   "description": "Suite that bundles a reasonably minimal set of actor suites that should be registered in order to run a Darlean cluster",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "homepage": "https://darlean.io",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/darlean/javascript/repo.git",
+    "directory": "suites/runtime-suite"
+  },
+
   "scripts": {
     "build": "tsc",
     "run": "node lib/index.js",
