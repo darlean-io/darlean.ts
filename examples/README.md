@@ -35,4 +35,4 @@ Note that there is no significant performance difference between the 2 deploymen
 
 # Example 3: Usage of @darlean/core to create Darlean applications
 
-A very simple and minimalistic distributed application shows how the [@darlean/core](https://docs.darlean.io/latest/@darlean_core.html) library can be used to create Darlean applications.
+A very [simple and minimalistic distributed application](src/core) shows how the @darlean/core library ([API doc](https://docs.darlean.io/latest/@darlean_core.html)) library can be used to create Darlean applications.
