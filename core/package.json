@@ -1,6 +1,6 @@
 {
   "name": "@darlean/core",
-  "version": "2.0.0-alpha.6",
+  "version": "2.0.0-alpha.7",
   "description": "Darlean core functionality for creating applicatins that define, expose and host actors",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
