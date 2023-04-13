@@ -80,3 +80,7 @@ The usage of `@darlean/core` is further illustrated by means of an [elaborative 
 Darlean apps can be configured by means of JSON/JSON5 files, command-line arguments and environment variables.
 
 More information about how to configure Darlean can be found [here](https://darlean.io/documentation/configuration-options/).
+
+# See also
+* The [Darlean Tutorial](../examples/src/oracle/1_the_basics/) in which we illustrate step by step how to build a real distributed oracle that answers questions like 'How warm is it tomorrow?' and 'What is the price of milk?'.
+* The [Darlean Documentation](https://darlean.io/documentation/) on our website.
