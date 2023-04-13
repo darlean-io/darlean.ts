@@ -4,14 +4,10 @@
  * @packageDocumentation
  */
 
-import { ActorSuite } from '@darlean/base';
+import { ACTOR_LOCK_SERVICE, ActorSuite } from '@darlean/base';
 import { IConfigEnv } from '@darlean/utils';
 import { ActorLockActor } from './actor.impl';
 import { ActorLockService } from './service.impl';
-
-export * from './intf';
-
-export const ACTOR_LOCK_SERVICE = 'io.darlean.ActorLockService';
 
 const ACTOR_LOCK_ACTOR = 'io.darlean.ActorLockActor';
 

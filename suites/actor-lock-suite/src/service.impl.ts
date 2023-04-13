@@ -1,13 +1,5 @@
-import { action, ITypedPortal } from '@darlean/base';
+import { action, IActorLockService, IActorLockService_Acquire_Request, IActorLockService_Acquire_Response, IActorLockService_GetLockHolders_Request, IActorLockService_GetLockHolders_Response, IActorLockService_Release_Request, ITypedPortal } from '@darlean/base';
 import { currentScope, parallel, ParallelTask } from '@darlean/utils';
-import {
-    IActorLockService,
-    IActorLockService_Acquire_Request,
-    IActorLockService_Acquire_Response,
-    IActorLockService_GetLockHolders_Request,
-    IActorLockService_GetLockHolders_Response,
-    IActorLockService_Release_Request
-} from './intf';
 import * as uuid from 'uuid';
 import { ActorLockActor, IActorLockActor_GetLockHolder_Response } from './actor.impl';
 import * as crypto from 'crypto';

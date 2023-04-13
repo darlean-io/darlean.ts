@@ -217,6 +217,8 @@ export * from './remoteinvocation';
 export * from './running';
 export * from './decorations';
 export * from './various';
+export * from './services/actorlock';
+export * from './services/actorregistry';
 export * from './services/persistence';
 export * from './services/fspersistence';
 export * from './services/tables';

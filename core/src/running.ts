@@ -13,9 +13,13 @@ import { InstanceContainer, MultiTypeInstanceContainer, VolatileTimer } from './
 import { ActorRegistry, ExponentialBackOff, PlacementCache, RemotePortal } from './remoteinvocation';
 import { TransportRemote } from './transportremote';
 import {
+    ACTOR_LOCK_SERVICE,
+    ACTOR_REGISTRY_SERVICE,
     IActorCreateContext,
+    IActorLockService,
     IActorPlacement,
     IActorRegistrationOptions,
+    IActorRegistryService,
     IActorSuite,
     IBackOff,
     IMultiTypeInstanceContainer,
@@ -29,11 +33,9 @@ import {
     PERSISTENCE_SERVICE,
     TABLES_SERVICE
 } from '@darlean/base';
-import { ACTOR_LOCK_SERVICE, IActorLockService } from '@darlean/actor-lock-suite';
 import { DistributedActorLock, IActorLock } from './distributedactorlock';
 import { InProcessTransport } from './infra/inprocesstransport';
 import { DistributedActorRegistry } from './distributedactorregistry';
-import { ACTOR_REGISTRY_SERVICE, IActorRegistryService } from '@darlean/actor-registry-suite';
 import { DistributedPersistence } from './distributedpersistence';
 import { normalizeActorType } from './shared';
 import { TablePersistence } from './tablepersistence';

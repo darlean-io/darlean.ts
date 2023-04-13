@@ -1,10 +1,5 @@
-import { action, IDeactivatable } from '@darlean/base';
+import { action, IActorLockService_Acquire_Response, IActorLockService_GetLockHolders_Request, IActorLockService_Release_Request, IDeactivatable } from '@darlean/base';
 import { currentScope, encodeKeyFast, ITime } from '@darlean/utils';
-import {
-    IActorLockService_Acquire_Response,
-    IActorLockService_GetLockHolders_Request,
-    IActorLockService_Release_Request
-} from './intf';
 
 export interface IActorLockActor_Acquire_Request {
     id: string[];

@@ -1,14 +1,6 @@
-import { action, deactivator, IDeactivatable } from '@darlean/base';
+import { action, deactivator, IActorRegistryActorInfo, IActorRegistryService, IActorRegistryService_Obtain_Request, IActorRegistryService_Obtain_Response, IActorRegistryService_Push_Request, IDeactivatable } from '@darlean/base';
 import { currentScope, PollController } from '@darlean/utils';
 import * as uuid from 'uuid';
-
-import {
-    IActorRegistryActorInfo,
-    IActorRegistryService,
-    IActorRegistryService_Obtain_Request,
-    IActorRegistryService_Obtain_Response,
-    IActorRegistryService_Push_Request
-} from './intf';
 
 export class ActorRegistryService implements IActorRegistryService, IDeactivatable {
     protected byActorType: Map<string, IActorRegistryActorInfo>;

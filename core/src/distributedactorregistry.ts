@@ -1,5 +1,4 @@
-import { IActorRegistryService, IActorRegistryService_Push_Request } from '@darlean/actor-registry-suite';
-import { IAbortable } from '@darlean/base';
+import { IAbortable, IActorRegistryService, IActorRegistryService_Push_Request } from '@darlean/base';
 import { Aborter, currentScope, ITime, ITimer } from '@darlean/utils';
 import { ActorRegistry, IActorRegistry, IActorTypeInfo } from './remoteinvocation';
 import { normalizeActorType } from './shared';

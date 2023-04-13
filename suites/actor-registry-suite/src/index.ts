@@ -7,13 +7,9 @@
  * @packageDocumentation
  */
 
-import { ActorSuite } from '@darlean/base';
+import { ACTOR_REGISTRY_SERVICE, ActorSuite } from '@darlean/base';
 import { IConfigEnv } from '@darlean/utils';
 import { ActorRegistryService } from './service.impl';
-
-export * from './intf';
-
-export const ACTOR_REGISTRY_SERVICE = 'io.darlean.ActorRegistryService';
 
 export function createActorRegistrySuite(hosts: string[]) {
     return new ActorSuite([
