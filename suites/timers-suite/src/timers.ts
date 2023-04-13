@@ -123,7 +123,7 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
                     let breaking = false;
                     const trigger = currentTimer.remainingTriggers[0];
                     try {
-                        // TODO: Invoke callback
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const actor = this.portal.retrieve(currentTimer.callbackActorType, currentTimer.callbackActorId) as any;
                         await actor[currentTimer.callbackActionName]();
 
