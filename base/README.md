@@ -7,8 +7,66 @@ The `@darlean/base` package provides the types that are required to create and e
 ```
 $ npm install @darlean/base
 ```
+# Usage
 
-# Actors, suites, packages and applications
+## Defining an actor
+
+A simple actor with only one action method that just echoes back the received message can be created as follows:
+```ts
+import { action, ActorSuite, IActorSuite } from '@darlean/base';
+
+export const ECHO_ACTOR = 'demo.EchoActor';
+
+export interface IEchoActor {
+    echo(value: string): Promise<string>;
+}
+
+class EchoActor implements IEchoActor {
+    private name: string;
+
+    constructor(name: string) {
+        this.name = name;
+    }
+
+    @action()
+    public async echo(value: string): Promise<string> {
+        return `${this.name} echoes: ${value}`;
+    }
+}
+```
+
+Some remarks:
+* For creating actors, we no not need the heavy `@darlean/core` library. Just `@darlean/base` is sufficient for this.
+* The exported interface `IEchoActor` can be used by code that wants to invoke action methods on our actor without
+  requiring a dependency on the implementing class (`EchoActor`). In our simple example this would not matter, because
+  the class does not have external dependencies, but when the actor class would depend on a lot of external packages,
+  it would be inconvenient and undesirable for code that wants to invoke the actor to also become dependent on these
+  dependencies.
+* The exported string `ECHO_ACTOR = 'demo.EchoActor'` makes it possible for code to retrieve (discover) the actor.
+
+## Defining a suite
+
+Related actors are grouped together into suites. Based on the above actor, it is trivial to define the corresponding suite:
+```ts
+export function createEchoSuite(): IActorSuite {
+    return new ActorSuite([
+        {
+            type: ECHO_ACTOR,
+            kind: 'singular',
+            creator: (context) => {
+                const name = context.id[0];
+                return new EchoActor(name);
+            }
+        }
+    ]);
+}
+```
+
+This creates a new actor suite with the definition of one actor (namely our echo actor), which is defined as a singular,
+has `demo.EchoActor` as actor type, and has a creator function that derives the name of the actor by taking the first
+element of the actor's id, and passing that to the constructor of `EchoActor`.
+
+# Background: Actors, suites, packages and applications
 
 ## Actors
 
@@ -54,64 +112,7 @@ The creation of such applications is *not* part of this library, because it woul
 
 To read more about creating Darlean applications that host registered actor suites, see the [@darlean/core](../core/) package.
 
-# Usage
 
-## Defining an actor
-
-A simple actor with only one action method that just echoes back the received message can be created as follows:
-```ts
-import { action, ActorSuite, IActorSuite } from '@darlean/base';
-
-export const ECHO_ACTOR = 'demo.EchoActor';
-
-export interface IEchoActor {
-    echo(value: string): Promise<string>;
-}
-
-class EchoActor implements IEchoActor {
-    private name: string;
-
-    constructor(name: string) {
-        this.name = name;
-    }
-
-    @action()
-    public async echo(value: string): Promise<string> {
-        return `${this.name} echoes: ${value}`;
-    }
-}
-```
-
-Some remarks:
-* For creating actors, we no not need `@darlean/core`. Just `@darlean/base` is sufficient for this simple case.
-* The exported interface `IEchoActor` can be used by code that wants to invoke action methods on our actor without
-  requiring a dependency on the implementing class (`EchoActor`). In our simple example this would not matter, because
-  the class does not have external dependencies, but when the actor class would depend on a lot of external packages,
-  it would be inconvenient and undesirable for code that wants to invoke the actor to also become dependent on these
-  dependencies.
-* The exported string `ECHO_ACTOR = 'demo.EchoActor'` makes it possible for code to retrieve (discover) the actor.
-
-## Defining a suite
-
-Based on the above actor, it is trivial to define the corresponding suite:
-```ts
-export function createEchoSuite(): IActorSuite {
-    return new ActorSuite([
-        {
-            type: ECHO_ACTOR,
-            kind: 'singular',
-            creator: (context) => {
-                const name = context.id[0];
-                return new EchoActor(name);
-            }
-        }
-    ]);
-}
-```
-
-This creates a new actor suite with the definition of one actor (namely our echo actor), which is defined as a singular,
-has `demo.EchoActor` as actor type, and has a creator function that derives the name of the actor by taking the first
-element of the actor's id, and passing that to the constructor of `EchoActor`.
 
 # See also
 * Package [@darlean/core](../core/) which explains how to create Darlean applications that host exported actor suites
