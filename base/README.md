@@ -12,7 +12,8 @@ $ npm install @darlean/base
 
 ## Actors
 
-Actors play a key role in Darlean. Actors are objects that have state (often grouped together in one object to simplify persistence) and action methods.
+Actors play a key role in Darlean. Actors are objects that can be invoked remotely and that have a private state (often grouped together in one object to simplify persistence) 
+and action methods that perform actions and/or modify the internal state.
 
 Action methods are plain methods decorated with {@link @action} (or, for more advanced use cases, {@link @timer}, {@link @activator} or {@link @deactivator}).
 
@@ -31,8 +32,8 @@ structure. This structure contains a list of actor definitions. Each definition 
 
 The actor creator function is responsible for creating new actor instances. It is basically a factory function for actors.
 
-Because the logic of creating actor instances is contained within the returned `IActorSuite`, it is not necessary to export the actors. Just exporting the suite creator function is
-sufficient for other parts of the application to use your actors.
+Because the logic of creating actor instances is contained within the returned `IActorSuite`, it is not necessary to export the actors themselves (they can be "private" to the module). 
+Just exporting the suite creator function is sufficient for other parts of the application to use your actors.
 
 ## Packages
 
