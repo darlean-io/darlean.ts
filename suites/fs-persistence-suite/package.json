@@ -1,7 +1,7 @@
 {
   "name": "@darlean/fs-persistence-suite",
   "version": "2.0.0-alpha.6",
-  "description": "File System Persistence Suite",
+  "description": "File System Persistence Suite that uses a physical or shared file system to persist data.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {

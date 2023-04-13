@@ -1,7 +1,7 @@
 {
   "name": "@darlean/base",
   "version": "2.0.0-alpha.5",
-  "description": "Darlean base types and definitions for defining actors",
+  "description": "Base types and definitions for defining Darlean actors",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {

@@ -1,7 +1,7 @@
 {
   "name": "@darlean/timers-suite",
   "version": "2.0.0-alpha.0",
-  "description": "Timers Suite",
+  "description": "Timers Suite that provides persistent timer functionality",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
