@@ -63,17 +63,17 @@ why the second like works. The `retrieve` expects the actor type (in this exampl
 
 ## Typed actors
 
-When application code needs access to multiple actors of the same type, it is recommended to use a [ITypedPortal](https://docs.darlean.io/latest/ITypedPortal.html#):
+When application code needs access to multiple actors of the same type, it is recommended to use an [ITypedPortal](https://docs.darlean.io/latest/ITypedPortal.html#):
 
 ```ts
 const typedPortal = runner.getPortal().typed<IActorType>('ActorType');
 const oneActor = typedPortal.retrieve(['id1']);
-const anotherActor = typedPortal.retrieve['id2']);
+const anotherActor = typedPortal.retrieve(['id2']);
 ```
 
 ## Elaborative example
 
-The usage of `@darlean/core` is further illustrated by means of an [example](../examples/src/core) of a minimalistic but real, working distributed application.
+The usage of `@darlean/core` is further illustrated by means of an [elaborative example](../examples/src/core) of a minimalistic but real, working distributed application.
 
 # Configuration
 
