@@ -12,7 +12,7 @@ $ npm install @darlean/core
 
 ## Standard usage
 
-The standard usage patttern of `@darlean/core` is as follows:
+The standard usage of `@darlean/core` is as follows:
 ```ts
 const builder = new ConfigRunnerBuilder();
 builder.registerSuite( createYourSuite() );
@@ -47,6 +47,6 @@ try {
 }
 ```
 
-## Example
+## Exhaustive example
 
 The usage of `@darlean/core` is further illustrated by means of an [example](../examples/src/core) of a minimalistic but real, working distributed application.
