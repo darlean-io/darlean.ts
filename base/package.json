@@ -1,7 +1,7 @@
 {
   "name": "@darlean/base",
   "version": "2.0.0-alpha.8",
-  "description": "Base types and definitions for defining Darlean actors",
+  "description": "Base types and definitions for creating Darlean actors and suites",
   "main": "lib/index.js",
   "homepage": "https://darlean.io",
   "repository": {
