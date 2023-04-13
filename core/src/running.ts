@@ -24,7 +24,7 @@ import {
     IPortal,
     IRemote,
     ITablePersistenceOptions,
-    ITableService,
+    ITablesService,
     IVolatileTimer,
     PERSISTENCE_SERVICE,
     TABLES_SERVICE
@@ -483,7 +483,7 @@ export class ActorRunnerBuilder {
                     throw new Error('No portal');
                 }
                 const tableId = options.id ?? [type, id.length.toString(), ...id];
-                const service = this.portal.retrieve<ITableService>(TABLES_SERVICE, tableId);
+                const service = this.portal.retrieve<ITablesService>(TABLES_SERVICE, tableId);
                 return new TablePersistence(service, options.indexer ?? (() => []), options.specifier);
             },
             time,

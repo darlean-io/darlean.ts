@@ -1,7 +1,8 @@
 import { ITime } from '@darlean/utils';
 import { IInstanceContainer } from './instances';
 import { IActorPlacement, IPortal } from './remoteinvocation';
-import { IIndexItem, IPersistence, ITablePersistence, IVolatileTimer } from './various';
+import { ITableIndexItem } from './services/tables';
+import { IPersistence, ITablePersistence, IVolatileTimer } from './various';
 
 export interface IStartAction {
     name: string;
@@ -88,7 +89,7 @@ export interface IActorRegistrationOptions<T extends object> {
 
 export interface ITablePersistenceOptions<T> {
     id?: string[];
-    indexer?: (item: T) => IIndexItem[];
+    indexer?: (item: T) => ITableIndexItem[];
     specifier?: string;
 }
 

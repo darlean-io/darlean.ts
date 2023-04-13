@@ -1,12 +1,12 @@
 import {
-    IIndexItem,
     IPersistable,
+    ITableIndexItem,
     ITablePersistence,
     ITablePutResponse,
     ITableSearchItem,
     ITableSearchRequest,
     ITableSearchResponse,
-    ITableService
+    ITablesService,
 } from '@darlean/base';
 
 /**
@@ -84,11 +84,11 @@ class TablePersistable<T> implements IPersistable<T> {
  * different. One such difference is that it only understands "just keys", not "partition" or "sort" keys.
  */
 export class TablePersistence<T> implements ITablePersistence<T> {
-    private service: ITableService;
+    private service: ITablesService;
     private specifier: string | undefined;
-    private indexer: (item: T) => IIndexItem[];
+    private indexer: (item: T) => ITableIndexItem[];
 
-    constructor(service: ITableService, indexer: (item: T) => IIndexItem[], specifier?: string) {
+    constructor(service: ITablesService, indexer: (item: T) => ITableIndexItem[], specifier?: string) {
         this.service = service;
         this.specifier = specifier;
         this.indexer = indexer;

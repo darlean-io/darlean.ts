@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { IInstanceWrapper } from './instances';
-import { IPersistenceQueryOptions, IPersistenceQueryResult } from './persistence';
+import { IPersistenceQueryOptions, IPersistenceQueryResult } from './services/persistence';
+import { ITableSearchItem, ITableSearchRequest, ITableSearchResponse } from './services/tables';
+
+//----- Standard persistence -------
 
 /**
- * Represents a persistable value.
+ * Represents a value that can be loaden, changed and persisted.
  */
 export interface IPersistable<T> {
     /**
@@ -69,15 +72,57 @@ export interface IPersistence<T> {
     load(partitionKey?: string[], sortKey?: string[]): Promise<IPersistable<T>>;
 
     /**
-     * Returns a new sub-persistence interface with the provided partition key and sort key added
-     * to the partition and sort key of the current instance.
+     * Returns a new sub-persistence interface with the provided partition key added
+     * to the partition of the current instance.
      * @param partitionKey The partition key fields that will be added to the existing partition key fields.
      * Must be `undefined` or `[]` when the current instance already has a sort key assigned.
      */
     sub(partitionKey?: string[]): IPersistence<T>;
 
+    /**
+     * Performs a query with the provided options.
+     * @param options
+     */
     query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<T>>;
 }
+
+//----- Table persistence -------
+
+
+/**
+ * Persistence that uses a Darlean Table as underlying storage. The interface is different from the similar
+ * {@link IPersistence}, but the returned {@link IPersistable} instances from the {@link persistable} and {@link load}
+ * methods are compatible.
+ */
+export interface ITablePersistence<T> {
+    /**
+     * Searches in the underlying table with the provided options.
+     */
+    search(options: ITableSearchRequest): Promise<ITableSearchResponse>;
+    /**
+     * Convenience wrapper around {@link search} that returns an asynchronous iterator that can be used
+     * to iterate over the result chunks.
+     */
+    searchChunks(options: ITableSearchRequest): AsyncGenerator<ITableSearchResponse, void>;
+    /**
+     * Convenience wrapper around {@link search} that returns an asynchronous iterator that can be used
+     * to iterate over the individual result items.
+     */
+    searchItems(options: ITableSearchRequest): AsyncGenerator<ITableSearchItem, void>;
+    /**
+     * Returns a new {@link IPersistable} instance with the key and initial value.
+     * @remarks This method just returns a new {@link IPersistence} with an optional default value set; it does
+     * *not* perform and loading of the data from the persistence store. For that, use {@link load} or {@link IPersistable.load}.
+     */
+    persistable(key: string[], value: T | undefined): IPersistable<T>;
+    /**
+     * Creates a new {@link Ipersistable} instance with the provided key, and
+     * loads the most recent value from the persistence store.
+     */
+    load(key: string[]): Promise<IPersistable<T>>;
+}
+
+//----- Volatile timers -------
 
 export interface IVolatileTimerHandle {
     cancel(): void;
@@ -90,123 +135,4 @@ export type VolatileTimerFactory<T extends object> = (wrapper: IInstanceWrapper<
 export interface IVolatileTimer {
     once(handler: Function, delay: number, args?: unknown): IVolatileTimerHandle;
     repeat(handler: Function, interval: number, delay?: number, nrRepeats?: number, args?: unknown): IVolatileTimerHandle;
-}
-
-export interface ITablePutRequest {
-    id: string[];
-    data?: { [key: string]: unknown };
-    specifier?: string;
-    version: string;
-    baseline?: string;
-    indexes: IIndexItem[];
-}
-
-export const APPLICATION_ERROR_TABLE_ERROR = 'TABLE_ERROR';
-
-export interface ITablePutResponse {
-    baseline?: string;
-}
-
-export interface ITableGetRequest {
-    keys: string[];
-    specifier?: string;
-    projection?: string[];
-}
-
-export interface ITableGetResponse {
-    baseline?: string;
-    version: string;
-    data?: { [key: string]: unknown };
-}
-
-export interface IFilter {
-    expression: unknown[];
-}
-
-export interface IIndexItem {
-    name: string;
-    keys: string[];
-    data?: { [key: string]: unknown };
-}
-
-export interface IKeyConstraint {
-    operator: 'eq' | 'lte' | 'gte' | 'prefix' | 'between' | 'contains' | 'containsni';
-    value: string;
-    value2?: string;
-}
-
-export type Indexer = (data?: { [key: string]: unknown }) => IIndexItem[];
-
-export interface ITableService {
-    put(request: ITablePutRequest): Promise<ITablePutResponse>;
-    get(request: ITableGetRequest): Promise<ITableGetResponse>;
-    search(request: ITableSearchRequest): Promise<ITableSearchResponse>;
-}
-
-export interface ITableSearchRequest {
-    index?: string;
-    keys?: IKeyConstraint[];
-    keysOrder?: 'ascending' | 'descending';
-    filter?: IFilter;
-    specifier?: string;
-    tableProjection?: string[];
-    indexProjection?: string[];
-    continuationToken?: string;
-    maxItems?: number;
-}
-
-export interface ITableSearchItem {
-    keys?: string[];
-    tableFields?: { [key: string]: unknown };
-    indexFields?: { [key: string]: unknown };
-    id: string[];
-}
-
-export interface ITableSearchResponse {
-    items: ITableSearchItem[];
-    continuationToken?: string;
-}
-
-export interface ITablePersistence<T> {
-    search(options: ITableSearchRequest): Promise<ITableSearchResponse>;
-    searchChunks(options: ITableSearchRequest): AsyncGenerator<ITableSearchResponse, void>;
-    searchItems(options: ITableSearchRequest): AsyncGenerator<ITableSearchItem, void>;
-    persistable(key: string[], value: T | undefined): IPersistable<T>;
-    load(key: string[]): Promise<IPersistable<T>>;
-}
-
-export interface ITimerTrigger {
-    // Moment (in milliseconds since January 1, 1970 00:00:00 UTC). Either interval or moment should be specified.
-    moment?: number;
-    // Interval (in milliseconds) since the firing of the previous trigger. Either interval or moment should be specified.
-    interval?: number;
-    // Allowed amount of jitter (in milliseconds). A random amount of jitter between 0 and the specified jitter is explicitly added
-    // to the moment or interval. Note that even in the absense of jitter (or jitter = 0), triggers may fire later than the specified
-    // moment or interval.
-    jitter?: number;
-    // Number of times this trigger will repeat. Set to 0 for indefinately. Default is 1.
-    repeatCount?: number;
-    // Indicates what should happen when the callback results in an error. Continue with the next trigger, or break the chain.
-    error: 'continue' | 'break';
-    // Indicates what should happen when the callback is successful. Continue with the next trigger, or break the chain.
-    success: 'continue' | 'break';
-}
-
-export interface ITimerOptions {
-    id: string;
-    // Array of moments that the timer should fire
-    triggers: ITimerTrigger[];
-    callbackActorType: string;
-    callbackActorId: string[];
-    callbackActionName: string;
-    callbackActionArgs?: unknown[];
-}
-
-export interface ITimerCancelOptions {
-    id: string;
-}
-
-export interface ITimersService {
-    schedule(options: ITimerOptions): Promise<void>;
-    cancel(options: ITimerCancelOptions): Promise<void>;
 }
