@@ -112,13 +112,13 @@ to actors that it hosts (that is, that are part of suites that are registered to
 
 The creation of such applications is *not* part of this library, because it would add a lot of dependencies to this base library that are not required for just writing actor suites.
 
-To read more about creating Darlean applications that host registered actor suites, see the [@darlean/core](../core/) package.
+To read more about creating Darlean applications that host registered actor suites, see the @darlean/core ([GitLab](https://gitlab.com/darlean/javascript/repo/-/tree/main/core)|[NPM](https://www.npmjs.com/package/@darlean/core)) package.
 
 
 
 # See also
-* Package [@darlean/core](../core/) which explains how to create Darlean applications that host exported actor suites
-* A minimalistic [example application](../examples/src/core/) that uses the above mentioned echo actor.
-* The [Darlean Tutorial](../examples/src/oracle/1_the_basics/) in which we illustrate step by step how to build a real distributed oracle that answers questions like 'How warm is it tomorrow?' and 'What is the price of milk?'.
+* Package @darlean/core ([GitLab](https://gitlab.com/darlean/javascript/repo/-/tree/main/core)|[NPM](https://www.npmjs.com/package/@darlean/core)) which explains how to create Darlean applications that host exported actor suites
+* A minimalistic [example application](https://gitlab.com/darlean/javascript/repo/-/tree/main/examples/src/core/) that uses the above mentioned echo actor.
+* The [Darlean Tutorial](https://gitlab.com/darlean/javascript/repo/-/tree/main/examples/src/oracle/1_the_basics/) in which we illustrate step by step how to build a real distributed oracle that answers questions like 'How warm is it tomorrow?' and 'What is the price of milk?'.
 * The [Darlean Documentation](https://darlean.io/documentation/) on our website.
 * The [API Documentation](https://docs.darlean.io/latest/@darlean_base.html) for `@darlean/base`.

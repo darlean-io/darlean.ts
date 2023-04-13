@@ -2,7 +2,7 @@
 
 The `@darlean/core` package provides the functionality that is required to create an application that hosts Darlean actors.
 
-* For information on how to create actors and actor suites, see the @darlean/base [GitLab](https://gitlab.com/darlean/javascript/repo/-/tree/main/base)|[NPM](https://www.npmjs.com/package/@darlean/base) package.
+* For information on how to create actors and actor suites, see the @darlean/base ([GitLab](https://gitlab.com/darlean/javascript/repo/-/tree/main/base)|[NPM](https://www.npmjs.com/package/@darlean/base)) package.
 
 # Installation
 
@@ -28,7 +28,7 @@ command-line arguments and/or that is present via environment variables. Click [
 about configuring Darlean and all the configuration options that are available.
 
 The second line registers the actor suite(s) that contain the actors that should be hosted by the application. This can be custom-made actor suites that contain
-project-specific functionality, or it can be standard (out-of-the-box) actor suites provided by Darlean or other parties (including the @darlean/runtime-suite [GitLab](https://gitlab.com/darlean/javascript/repo/-/tree/main/suites/runtime-suite)|[NPM](https://www.npmjs.com/package/@darlean/runtime-suite))
+project-specific functionality, or it can be standard (out-of-the-box) actor suites provided by Darlean or other parties (including the @darlean/runtime-suite ([GitLab](https://gitlab.com/darlean/javascript/repo/-/tree/main/suites/runtime-suite)|[NPM](https://www.npmjs.com/package/@darlean/runtime-suite)))
 which is a bundle that contains a minimal set of suites that together provide runtime functionality).
 
 The third line uses the configuration options and the registered suites to build an [ActorRunner](https://docs.darlean.io/latest/ActorRunner.html#) instance.
@@ -84,7 +84,8 @@ Darlean apps can be configured by means of JSON/JSON5 files, command-line argume
 More information about how to configure Darlean can be found [here](https://darlean.io/documentation/configuration-options/).
 
 # See also
-* Package @darlean/base [GitLab](https://gitlab.com/darlean/javascript/repo/-/tree/main/base)|[NPM](https://www.npmjs.com/package/@darlean/base) which explains how to create actors and actor suites
-* The [Darlean Tutorial](../examples/src/oracle/1_the_basics/) in which we illustrate step by step how to build a real distributed oracle that answers questions like 'How warm is it tomorrow?' and 'What is the price of milk?'.
+* Package @darlean/base ([GitLab](https://gitlab.com/darlean/javascript/repo/-/tree/main/base)|[NPM](https://www.npmjs.com/package/@darlean/base)) which explains how to create actors and actor suites
+* A minimalistic [example application](https://gitlab.com/darlean/javascript/repo/-/tree/main/examples/src/core/) that uses the above mentioned echo actor.
+* The [Darlean Tutorial](https://gitlab.com/darlean/javascript/repo/-/tree/main/examples/src/oracle/1_the_basics/) in which we illustrate step by step how to build a real distributed oracle that answers questions like 'How warm is it tomorrow?' and 'What is the price of milk?'.
 * The [Darlean Documentation](https://darlean.io/documentation/) on our website.
 * The [API Documentation](https://docs.darlean.io/latest/@darlean_core.html) for `@darlean/core`.
