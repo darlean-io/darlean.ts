@@ -38,8 +38,8 @@ What this very simple program does is:
 * It registers the actors from the 'echo suite'. The echo suite is an actor suite for which we show the source code below. It contains an actor that simple
   echoes back what it receives.
 * It builds the runner
-* It starts the runner and waits until the runner stops running (which is when the application is killed, when the [run file is deleted](https://darlean.io/documentation/starting-and-stopping/)) 
-  or when `await runner.stop()` is invoked from the application code).
+* It starts the runner and waits until the runner stops running (which is when the application is killed, when the [run file is deleted](https://darlean.io/documentation/starting-and-stopping/)
+  or when application code calls `await runner.stop()`.
 
 ## Defining an actor
 
