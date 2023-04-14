@@ -152,10 +152,10 @@ export class ConfigEnv<T> implements IConfigEnv<T> {
     }
 
     private toEnvName(name: string): string {
-        return replaceAll(this.scope + '.' + name.toUpperCase(), '.', '_');
+        return replaceAll(this.scope + '.' + name, '.', '_').toUpperCase();
     }
 
     private toArgName(name: string): string {
-        return replaceAll('--' + this.scope + '.' + name.toLowerCase(), '.', '-');
+        return replaceAll('--' + this.scope + '.' + name, '.', '-').toLowerCase();
     }
 }
