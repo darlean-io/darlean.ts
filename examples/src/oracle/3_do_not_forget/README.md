@@ -52,7 +52,7 @@ later, used by the `OracleActor` to indicate what kind of data it want to store)
 
 To activate this configuration, we have to set the `--darlean-config` command line argument in `package.json`:
 ```
-"example:oracle:3": "npx rimraf ./persistence && node lib/oracle/3_do_not_forget/index.js --darlean-config=config/oracle/allinone/config-persistence.json5",
+"example:oracle:3": "shx rm -r ./persistence && node lib/oracle/3_do_not_forget/index.js --darlean-config=config/oracle/allinone/config-persistence.json5",
 ```
 
 ### Even simpler configuration

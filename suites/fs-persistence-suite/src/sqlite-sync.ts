@@ -113,14 +113,14 @@ export class Statement {
     }
 
     public get<T>(params?: unknown): T {
-        return this.statement.get(params ?? []);
+        return this.statement.get(params ?? []) as T;
     }
 
     public all<T>(params?: unknown): T[] {
-        return this.statement.all(params ?? []);
+        return this.statement.all(params ?? []) as T[];
     }
 
     public iterate<T>(params: unknown | undefined): IterableIterator<T> {
-        return this.statement.iterate(params ?? []);
+        return this.statement.iterate(params ?? []) as IterableIterator<T>;
     }
 }
