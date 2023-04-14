@@ -46,14 +46,16 @@ export class WebServiceHostActor implements IActivatable, IDeactivatable {
     }
 
     public async deactivate(): Promise<void> {
-        await new Promise<void>((resolve, error) => {
-            this.server.close((err) => {
-                if (err) {
-                    error(err);
-                }
-                resolve();
+        if (this.port) {
+            await new Promise<void>((resolve, error) => {
+                this.server.close((err) => {
+                    if (err) {
+                        error(err);
+                    }
+                    resolve();
+                });
             });
-        });
+        }
         notifier().info('io.darlean.webservice.StoppedListening', 'Web service [Name] stopped listening on port [Port]', () => ({
             Name: this.config.name,
             Port: this.port
