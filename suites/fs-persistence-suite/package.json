@@ -33,7 +33,6 @@
   "author": "Theo van der Donk",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@darlean/persistence-suite": "^2.0.0-alpha.0",
     "@types/better-sqlite3": "^7.6.3",
     "@types/jest": "^29.2.4",
     "@types/node": "^18.11.17",
