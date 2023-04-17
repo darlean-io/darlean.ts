@@ -38,12 +38,14 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
                     };
                     for (const handler of gatewaycfg.handlers ?? []) {
                         const actorType = handler.actorType ?? gatewaycfg.actorType;
-                        if (!actorType) {
-                            throw new Error(`No actor type configured for Web Gateway handler`);
-                        }
                         const actionName = handler.actionName;
-                        if (!actionName) {
-                            throw new Error('No action name configured for WebGateway handler');
+                        if (!handler.flow) {
+                            if (!actorType) {
+                                throw new Error(`No actor type configured for Web Gateway handler`);
+                            }
+                            if (!actionName) {
+                                throw new Error('No action name configured for WebGateway handler');
+                            }
                         }
                         const actorId = handler.actorId ?? gatewaycfg.actorId ?? [];
 
@@ -51,9 +53,11 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
                             method: handler.method,
                             path: handler.path,
                             action: async (req) => {
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                const actor = context.portal.retrieve(actorType, actorId) as any;
-                                return await actor[actionName](req);
+                                if (actorType && actionName) {
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    const actor = context.portal.retrieve(actorType, actorId) as any;
+                                    return await actor[actionName](req);
+                                }
                             },
                             flow: handler.flow
                         };
