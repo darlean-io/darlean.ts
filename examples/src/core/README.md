@@ -1,6 +1,6 @@
 # Example: Usage of @darlean/core
 
-We illustrate the usage of `@darlean/core` by means of a minimal distributed application that provides
+We illustrate the usage of `@darlean/core` by means of a minimal distributed application that provides:
 * An echo application that hosts an `EchoActor` that simply echoes back messages that it receives
 * A Darlean runtime application (which provides functionality like the actor lock and actor registry). Darlean cannot work without runtime functionality.
   In this example, we create the runtime as a separate application, but for simple applications it is also possible to include the runtime functionality
