@@ -89,16 +89,16 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
                 }
 
                 if (handler.flow) {
-                    switch(handler.flow.action) {
-                      case 'continue': {
-                        continue;
-                      }
-                      case 'break': {
-                        res.statusCode = handler.flow.statusCode ?? 404;
-                        res.statusMessage = handler.flow.statusMessage ?? 'File not Found';
-                        res.end();
-                        return;
-                      }
+                    switch (handler.flow.action) {
+                        case 'continue': {
+                            continue;
+                        }
+                        case 'break': {
+                            res.statusCode = handler.flow.statusCode ?? 404;
+                            res.statusMessage = handler.flow.statusMessage ?? 'File not Found';
+                            res.end();
+                            return;
+                        }
                     }
                 }
                 const buffers = [];

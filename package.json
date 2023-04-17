@@ -9,7 +9,7 @@
 		"./suites/persistence-suite",
 		"./suites/fs-persistence-suite",
 		"./suites/tables-suite",
-		"./suites/webgatewats-suite",
+		"./suites/webgateways-suite",
 		"./suites/timers-suite",
 		"./suites/runtime-suite",
 		"./core",

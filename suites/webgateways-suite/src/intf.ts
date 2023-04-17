@@ -23,6 +23,7 @@ export interface IGatewayCfg {
 }
 
 export interface IWebGatewaysCfg {
+    enabled?: boolean;
     gateways?: IGatewayCfg[];
     // Port for the first gateway
     port?: number;

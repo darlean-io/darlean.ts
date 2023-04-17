@@ -8,6 +8,8 @@
  * * {@link @darlean/actor-registry-suite}
  * * {@link @darlean/persistence-suite}
  * * {@link @darlean/fs-persistence-suite}
+ * * {@link @darlean/tables-suite}
+ * * {@link @darlean/webgateways-suite}
  *
  * ## Configuration
  * Assuming that the `config` provided to {@link createActorLockSuiteFromConfig} function has `darlean` as its scope, the following config options
@@ -22,6 +24,8 @@
  * * `darlean.runtime.actorRegistry.*` - See {@link @darlean/actor-registry-suite}
  * * `darlean.runtime.persistence.*` - See {@link @darlean/persistence-suite}
  * * `darlean.runtime.fsPersistence.*` - See {@link @darlean/fs-persistence-suite}
+ * * `darlean.runtime.tables.*` - See {@link @darlean/tables-suite}
+ * * `darlean.runtime.webGateways.*` - See {@link @darlean/webgateways-suite}
  *
  * @packageDocumentation
  */
@@ -32,6 +36,8 @@ import { ActorSuite } from '@darlean/base';
 import { createPersistenceSuiteFromConfig, IPersistenceCfg } from '@darlean/persistence-suite';
 import { IConfigEnv } from '@darlean/utils';
 import { createFsPersistenceSuiteFromConfig, IFileSystemPersistenceCfg } from '../../fs-persistence-suite/lib';
+import { createWebGatewaysSuiteFromConfig, IWebGatewaysCfg } from '@darlean/webgateways-suite';
+import { createTablesSuiteFromConfig } from '@darlean/tables-suite';
 
 /**
  * Root configuration object for the configuration of a Darlean application with only those fields
@@ -81,6 +87,11 @@ export interface IRuntimeRuntimeCfg {
      * Configuration of the actor registry.
      */
     actorRegistry?: IActorRegistryCfg;
+
+    /**
+     * Configuration for web gateways
+     */
+    webGateways?: IWebGatewaysCfg;
 }
 
 /**
@@ -106,6 +117,8 @@ export function createRuntimeSuiteFromConfig(config: IConfigEnv<IRuntimeApplicat
     suite.addSuite(createActorRegistrySuiteFromConfig(runtime.sub('actorRegistry'), runtimeEnabled, runtimeApps));
     suite.addSuite(createPersistenceSuiteFromConfig(runtime.sub<IPersistenceCfg>('persistence'), runtimeEnabled));
     suite.addSuite(createFsPersistenceSuiteFromConfig(runtime.sub('fsPersistence'), runtimeEnabled));
+    suite.addSuite(createTablesSuiteFromConfig(runtimeEnabled));
+    suite.addSuite(createWebGatewaysSuiteFromConfig(runtime.sub('webGateways'), runtimeEnabled, appId));
 
     return suite;
 }

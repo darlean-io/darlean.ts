@@ -60,6 +60,8 @@
     "@darlean/base": "^2.0.0-alpha.0",
     "@darlean/fs-persistence-suite": "^2.0.0-alpha.6",
     "@darlean/persistence-suite": "^2.0.0-alpha.4",
-    "@darlean/utils": "^2.0.0-alpha.0"
+    "@darlean/tables-suite": "^2.0.0-alpha.6",
+    "@darlean/utils": "^2.0.0-alpha.0",
+    "@darlean/webgateways-suite": "^2.0.0-alpha.5"
   }
 }

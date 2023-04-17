@@ -67,26 +67,28 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
     ]);
 }
 
-export function createWebGatewaysSuiteFromConfig(config: IConfigEnv<IWebGatewaysCfg>, appId: string) {
-    const options: IWebGatewaysCfg = {
-        gateways: []
-    };
+export function createWebGatewaysSuiteFromConfig(config: IConfigEnv<IWebGatewaysCfg>, runtimeEnabled: boolean, appId: string) {
+    if (config.fetchBoolean('enabled') ?? runtimeEnabled) {
+        const options: IWebGatewaysCfg = {
+            gateways: []
+        };
 
-    const gateways = config.fetchRaw('gateways');
+        const gateways = config.fetchRaw('gateways');
 
-    let first = true;
-    for (const gateway of gateways ?? []) {
-        const port = first ? config.fetchNumber('port') ?? gateway.port : gateway.port;
-        options.gateways?.push({
-            id: gateway.id,
-            port,
-            actorId: gateway.actorId,
-            actorType: gateway.actorType,
-            handlers: gateway.handlers
-        });
+        let first = true;
+        for (const gateway of gateways ?? []) {
+            const port = first ? config.fetchNumber('port') ?? gateway.port : gateway.port;
+            options.gateways?.push({
+                id: gateway.id,
+                port,
+                actorId: gateway.actorId,
+                actorType: gateway.actorType,
+                handlers: gateway.handlers
+            });
 
-        first = false;
+            first = false;
+        }
+
+        return createWebGatewaysSuite(options, appId);
     }
-
-    return createWebGatewaysSuite(options, appId);
 }

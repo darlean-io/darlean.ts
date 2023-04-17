@@ -23,3 +23,9 @@ export function createTablesSuite() {
         }
     ]);
 }
+
+export function createTablesSuiteFromConfig(runtimeEnabled: boolean) {
+    if (runtimeEnabled) {
+        return createTablesSuite();
+    }
+}

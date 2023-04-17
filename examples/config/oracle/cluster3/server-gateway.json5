@@ -1,0 +1,30 @@
+{
+    runtimeApps: ['server01', 'server02', 'server03'],
+    runtime: {
+        persistence: {
+            specifiers: [{ specifier: 'oracle.fact.*', compartment: 'fs.oracle-fact' }],
+            fs: {
+                compartments: [
+                    { compartment: '*', basePath: './persistence', shardCount: 1 },
+                    { compartment: 'fs.oracle-fact', basePath: './persistence/oracle/fact' }
+                ]
+            }
+        },
+        webGateways: {
+            gateways: [
+                {
+                    id: 'default',
+                    port: 8080,
+                    actorType: 'WebApiService',
+                    handlers: [
+                        { path: '/ask/*/', actionName: 'ask' },
+                        { path: '/teach', actionName: 'teach' },
+                        { path: '/*', actionName: 'file' }
+                    ]
+                }
+            ]
+        }
+
+    }
+}
+
