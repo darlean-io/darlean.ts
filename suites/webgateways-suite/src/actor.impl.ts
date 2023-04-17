@@ -4,6 +4,7 @@ import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import url from 'url';
 import querystring from 'querystring';
 import { IWebServiceRequest, IWebServiceResponse } from '@darlean/webservice';
+import { IGatewayFlowCfg } from './intf';
 
 const MAX_BODY_LENGTH = 100 * 1000;
 
@@ -12,20 +13,21 @@ export interface IHandler {
     path?: string;
     action: (req: IWebServiceRequest) => Promise<IWebServiceResponse>;
     placeholders?: string[];
+    flow?: IGatewayFlowCfg;
 }
 
-export interface IHost {
+export interface IGateway {
     name: string;
     port: number;
     handlers: IHandler[];
 }
 
-export class WebServiceHostActor implements IActivatable, IDeactivatable {
+export class WebGatewayActor implements IActivatable, IDeactivatable {
     protected server: Server;
-    protected config: IHost;
+    protected config: IGateway;
     protected port?: number;
 
-    constructor(config: IHost) {
+    constructor(config: IGateway) {
         this.config = config;
         const server = createServer((req, res) => {
             setImmediate(async () => {
@@ -39,7 +41,7 @@ export class WebServiceHostActor implements IActivatable, IDeactivatable {
         const port = this.config.port ?? 80;
         this.port = port;
         this.server.listen(port);
-        notifier().info('io.darlean.webservice.Listening', 'Web service [Name] is now listening on port [Port]', () => ({
+        notifier().info('io.darlean.webgateways.Listening', 'Web gateway [Name] is now listening on port [Port]', () => ({
             Name: this.config.name,
             Port: port
         }));
@@ -56,7 +58,7 @@ export class WebServiceHostActor implements IActivatable, IDeactivatable {
                 });
             });
         }
-        notifier().info('io.darlean.webservice.StoppedListening', 'Web service [Name] stopped listening on port [Port]', () => ({
+        notifier().info('io.darlean.webgateways.StoppedListening', 'Web gateway [Name] stopped listening on port [Port]', () => ({
             Name: this.config.name,
             Port: this.port
         }));
@@ -86,6 +88,19 @@ export class WebServiceHostActor implements IActivatable, IDeactivatable {
                     }
                 }
 
+                if (handler.flow) {
+                    switch(handler.flow.action) {
+                      case 'continue': {
+                        continue;
+                      }
+                      case 'break': {
+                        res.statusCode = handler.flow.statusCode ?? 404;
+                        res.statusMessage = handler.flow.statusMessage ?? 'File not Found';
+                        res.end();
+                        return;
+                      }
+                    }
+                }
                 const buffers = [];
                 let len = 0;
                 for await (const data of req) {
@@ -169,12 +184,12 @@ export class WebServiceHostActor implements IActivatable, IDeactivatable {
             }
 
             res.statusCode = 404;
-            res.statusMessage = 'File not Dound';
+            res.statusMessage = 'File not Found';
             res.end();
         } catch (e) {
             notifier().warning(
-                'io.darlean.webservice.ProcessingFailed',
-                'An error occurred during processing of web service request: [Error]',
+                'io.darlean.webgateways.ProcessingFailed',
+                'An error occurred during processing of web gateway request: [Error]',
                 () => ({ Error: e })
             );
             res.statusCode = 500;

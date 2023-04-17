@@ -37,7 +37,7 @@
 		    "path": "suites/tables-suite"
 		},		
 		{
-		    "path": "suites/webservice-suite"
+		    "path": "suites/webgateways-suite"
 		},		
 		{
 		    "path": "suites/timers-suite"
