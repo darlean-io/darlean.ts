@@ -1,6 +1,6 @@
 {
   "name": "@darlean/runtime-suite",
-  "version": "2.0.0-alpha.3",
+  "version": "2.0.0-alpha.4",
   "description": "Suite that bundles a reasonably minimal set of actor suites that should be registered in order to run a Darlean cluster",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
