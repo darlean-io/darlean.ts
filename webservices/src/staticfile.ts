@@ -1,7 +1,7 @@
 import * as fs from 'fs';
-import { IWebServiceRequest, IWebServiceResponse } from './types';
 import { Response } from './wrapper';
 import mime from 'mime-types';
+import { IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
 
 export interface IStaticFileHandlerOptions {
     /**
@@ -46,7 +46,7 @@ export class StaticFileHandler {
         this.recurseUp = options.recurseUp ?? false;
     }
 
-    public async handle(req: IWebServiceRequest): Promise<IWebServiceResponse> {
+    public async handle(req: IWebGatewayRequest): Promise<IWebGatewayResponse> {
         const resp = new Response(req);
         const path = req.placeholders?.['*'] ?? '';
         const parts = path.split('/').filter((x) => x !== '.' && x !== '..');

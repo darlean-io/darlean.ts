@@ -1,7 +1,7 @@
 {
-  "name": "@darlean/webservice",
+  "name": "@darlean/webservices",
   "version": "2.0.0-alpha.3",
-  "description": "Webservice library for Darlean",
+  "description": "Library for building actor-based webservices via the Darlean Web Gateways service",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "homepage": "https://darlean.io",
@@ -19,8 +19,8 @@
     "prepublish": "npm run build",
     "prepublishOnly": "npm run build && npm run lint",
     "preversion": "npm run format && npm install && npm run lint && npm run build",
-    "version": "git add -A src && git add package.json && git add ../package-lock.json && git -C .. tag webservice-%npm_package_version%",
-    "postversion": "git commit -m \"Version upgrade to webservice-%npm_package_version%\" && git push && git push --tags",
+    "version": "git add -A src && git add package.json && git add ../package-lock.json && git -C .. tag webservices-%npm_package_version%",
+    "postversion": "git commit -m \"Version upgrade to webservices-%npm_package_version%\" && git push && git push --tags",
     "precommit": "npm run format && npm run lint && npm run build",
     "npm:version:alpha": "npm version prerelease --preid=alpha --git-tag-version=false",
     "npm:publish": "npm publish --access=public",
@@ -28,7 +28,7 @@
   },
   "keywords": [
     "Darlean",
-    "Webservice"
+    "Webservices"
   ],
   "author": "Theo van der Donk",
   "license": "Apache-2.0",
@@ -56,6 +56,7 @@
     "tsconfig": "./tsconfig.json"
   },
   "dependencies": {
+    "@darlean/base": "^2.0.0-alpha.10",
     "ajv": "^8.12.0",
     "mime-types": "^2.1.35"
   }

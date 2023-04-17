@@ -223,4 +223,5 @@ export * from './services/persistence';
 export * from './services/fspersistence';
 export * from './services/tables';
 export * from './services/timers';
+export * from './services/webgateways';
 export * from './expressions';

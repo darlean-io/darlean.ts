@@ -1,6 +1,6 @@
 import Ajv, { JTDParser, JTDSchemaType } from 'ajv/dist/jtd';
-import { IWebServiceRequest, IWebServiceResponse } from './types';
 import { Request, Response } from './wrapper';
+import { IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
 
 export class JsonRequestParser<T, D extends Record<string, unknown> = Record<string, never>> {
     protected parser: JTDParser<T>;
@@ -10,7 +10,7 @@ export class JsonRequestParser<T, D extends Record<string, unknown> = Record<str
         this.parser = a.compileParser(schema);
     }
 
-    public async parse(request: Request | IWebServiceRequest): Promise<T> {
+    public async parse(request: Request | IWebGatewayRequest): Promise<T> {
         if (!(request instanceof Request)) {
             request = new Request(request);
         }
@@ -37,7 +37,7 @@ export class JsonResponseEncoder<T, D extends Record<string, unknown> = Record<s
         this.serializer = a.compileSerializer(schema);
     }
 
-    public async pushAndEnd(value: T, response: Response): Promise<IWebServiceResponse> {
+    public async pushAndEnd(value: T, response: Response): Promise<IWebGatewayResponse> {
         response.setHeader('content-type', 'application/json');
         const text = this.serializer(value);
         await response.push(Buffer.from(text, 'utf-8'));

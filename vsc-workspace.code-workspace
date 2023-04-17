@@ -19,7 +19,7 @@
 			"path": "utils"
 		},
 		{
-			"path": "webservice"
+			"path": "webservices"
 		},
 		{
 		    "path": "suites/actor-lock-suite"

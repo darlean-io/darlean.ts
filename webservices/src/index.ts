@@ -3,7 +3,6 @@
  *
  * @packageDocumentation
  */
-export * from './types';
 export * from './json';
 export * from './staticfile';
 export * from './wrapper';

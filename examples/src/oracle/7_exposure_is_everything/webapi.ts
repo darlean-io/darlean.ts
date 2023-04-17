@@ -1,14 +1,7 @@
-import { action, ActorSuite } from '@darlean/base';
-import {
-    IWebServiceRequest,
-    IWebServiceResponse,
-    JsonRequestParser,
-    JsonResponseEncoder,
-    StaticFileHandler
-} from '@darlean/webservice';
-import { Request, Response } from '@darlean/webservice';
+import { action, ActorSuite, IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 import * as htmlEntities from 'html-entities';
+import { JsonRequestParser, JsonResponseEncoder, StaticFileHandler, Request, Response } from '@darlean/webservices';
 
 export const WEB_API_SERVICE = 'WebApiService';
 
@@ -46,7 +39,7 @@ export class WebApiService {
     }
 
     @action({ locking: 'shared' })
-    public async ask(req: IWebServiceRequest): Promise<IWebServiceResponse> {
+    public async ask(req: IWebGatewayRequest): Promise<IWebGatewayResponse> {
         const resp = new Response(req);
         const topic = req.placeholders?.['*'];
         const question = req.searchParams?.question[0];
@@ -71,7 +64,7 @@ export class WebApiService {
     }
 
     @action({ locking: 'exclusive' })
-    public async teach(req: IWebServiceRequest): Promise<IWebServiceResponse> {
+    public async teach(req: IWebGatewayRequest): Promise<IWebGatewayResponse> {
         const r = new Request(req);
         const resp = new Response(req);
 
@@ -88,7 +81,7 @@ export class WebApiService {
     }
 
     @action({ locking: 'shared' })
-    public async file(req: IWebServiceRequest): Promise<IWebServiceResponse> {
+    public async file(req: IWebGatewayRequest): Promise<IWebGatewayResponse> {
         return this.staticFileHandler.handle(req);
     }
 }

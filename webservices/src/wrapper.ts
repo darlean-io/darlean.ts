@@ -1,9 +1,9 @@
-import { IWebServiceRequest, IWebServiceResponse } from './types';
+import { IWebGatewayRequest, IWebGatewayResponse } from "@darlean/base";
 
 export class Request {
-    protected request: IWebServiceRequest;
+    protected request: IWebGatewayRequest;
 
-    constructor(request: IWebServiceRequest) {
+    constructor(request: IWebGatewayRequest) {
         this.request = request;
     }
 
@@ -25,12 +25,12 @@ export class Request {
 }
 
 export class Response {
-    protected request: IWebServiceRequest;
-    protected response: IWebServiceResponse;
+    protected request: IWebGatewayRequest;
+    protected response: IWebGatewayResponse;
     protected headersSent = false;
     protected bodyParts: Buffer[];
 
-    constructor(request: IWebServiceRequest) {
+    constructor(request: IWebGatewayRequest) {
         this.request = request;
         this.response = {
             statusCode: 200,
@@ -40,7 +40,7 @@ export class Response {
         this.bodyParts = [];
     }
 
-    public async endWithStatusCode(statusCode: number, statusMessage: string): Promise<IWebServiceResponse> {
+    public async endWithStatusCode(statusCode: number, statusMessage: string): Promise<IWebGatewayResponse> {
         if (this.headersSent) {
             throw new Error('Headers are already sent');
         }
@@ -93,7 +93,7 @@ export class Response {
         await this.push(Buffer.from(value, 'utf-8'));
     }
 
-    public async end(): Promise<IWebServiceResponse> {
+    public async end(): Promise<IWebGatewayResponse> {
         this.response.body = Buffer.concat(this.bodyParts);
         return this.response;
     }

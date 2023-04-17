@@ -62,7 +62,6 @@
   },
   "dependencies": {
     "@darlean/base": "^2.0.0-alpha.0",
-    "@darlean/utils": "^2.0.0-alpha.0",
-    "@darlean/webservice": "^2.0.0-alpha.0"
+    "@darlean/utils": "^2.0.0-alpha.0"
   }
 }

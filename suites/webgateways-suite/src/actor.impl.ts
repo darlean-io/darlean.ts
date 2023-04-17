@@ -1,9 +1,8 @@
-import { action, IActivatable, IDeactivatable } from '@darlean/base';
+import { action, IActivatable, IDeactivatable, IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
 import { notifier, wildcardMatch } from '@darlean/utils';
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import url from 'url';
 import querystring from 'querystring';
-import { IWebServiceRequest, IWebServiceResponse } from '@darlean/webservice';
 import { IGatewayFlowCfg } from './intf';
 
 const MAX_BODY_LENGTH = 100 * 1000;
@@ -11,7 +10,7 @@ const MAX_BODY_LENGTH = 100 * 1000;
 export interface IHandler {
     method?: string;
     path?: string;
-    action: (req: IWebServiceRequest) => Promise<IWebServiceResponse>;
+    action: (req: IWebGatewayRequest) => Promise<IWebGatewayResponse>;
     placeholders?: string[];
     flow?: IGatewayFlowCfg;
 }
@@ -115,7 +114,7 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
                 }
                 const finalBuffer = Buffer.concat(buffers);
 
-                const request: IWebServiceRequest = {
+                const request: IWebGatewayRequest = {
                     url: req.url ?? '',
                     hostname: decodeURIComponent(urlobj.hostname),
                     port: parseInt(urlobj.port),

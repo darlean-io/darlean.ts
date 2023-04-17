@@ -3,7 +3,7 @@
 		"./utils",
 		"./docgen",
 		"./base",
-		"./webservice",
+		"./webservices",
 		"./suites/actor-lock-suite",
 		"./suites/actor-registry-suite",
 		"./suites/persistence-suite",
@@ -17,7 +17,7 @@
 		"./examples"
 	],
 	"scripts": {
-		"install-workspaces": "npm install -w utils && npm install -w docgen && npm install -w base && npm install -w webservice && npm install -w suites/actor-lock-suite && npm install -w suites/actor-registry-suite && npm install -w suites/persistence-suite && npm install -w suites/fs-persistence-suite && npm install -w suites/tables-suite && npm install -w suites/webgateways-suite && npm install -w suites/timers-suite && npm install -w suites/runtime-suite && npm install -w core && npm install -w tests && npm install -w examples", 
+		"install-workspaces": "npm install -w utils && npm install -w docgen && npm install -w base && npm install -w webservices && npm install -w suites/actor-lock-suite && npm install -w suites/actor-registry-suite && npm install -w suites/persistence-suite && npm install -w suites/fs-persistence-suite && npm install -w suites/tables-suite && npm install -w suites/webgateways-suite && npm install -w suites/timers-suite && npm install -w suites/runtime-suite && npm install -w core && npm install -w tests && npm install -w examples", 
 		"doc:scan": "npx typedoc --skipErrorChecking --json typedoc-out.json",
 		"doc:generate": "npx docgen typedoc-out.json ./docs/",
 		"doc": "npm run doc:scan & npm run doc:generate"
