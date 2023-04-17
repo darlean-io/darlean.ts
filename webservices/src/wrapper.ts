@@ -1,4 +1,4 @@
-import { IWebGatewayRequest, IWebGatewayResponse } from "@darlean/base";
+import { IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
 
 export class Request {
     protected request: IWebGatewayRequest;
