@@ -52,6 +52,8 @@ export function createTimersSuite() {
             creator: (context) => {
                 const tablePersistence = context.tablePersistence<ITimerState>({
                     specifier: 'io.darlean.timers',
+                    id: [],
+                    scope: 'actor',
                     indexer: (d) => [{ name: TIMER_MOMENT_INDEX, keys: [encodeNumber(d.nextMoment)] }]
                 });
 
