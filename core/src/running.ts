@@ -484,7 +484,7 @@ export class ActorRunnerBuilder {
                 if (!this.portal) {
                     throw new Error('No portal');
                 }
-                const tableId = options.scope === 'actor' ? [type, options.id.length.toString(), ...options.id] : options.id;
+                const tableId = options.scope === 'actor' ? [type, id.length.toString(), ...id, options.id.length.toString(), ...options.id] : options.id;
                 const service = this.portal.retrieve<ITablesService>(TABLES_SERVICE, tableId);
                 return new TablePersistence(service, options.indexer ?? (() => []), options.specifier);
             },
