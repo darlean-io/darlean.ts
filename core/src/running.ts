@@ -484,6 +484,12 @@ export class ActorRunnerBuilder {
                 if (!this.portal) {
                     throw new Error('No portal');
                 }
+                if (!options.id) {
+                    throw new Error('Table persistence options must specify the "id" field');
+                }
+                if (!options.scope) {
+                    throw new Error('Table persistence options must specify the "scope" field');
+                }
                 const tableId =
                     options.scope === 'actor'
                         ? [type, id.length.toString(), ...id, options.id.length.toString(), ...options.id]
