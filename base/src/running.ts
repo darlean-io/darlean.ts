@@ -88,7 +88,18 @@ export interface IActorRegistrationOptions<T extends object> {
 }
 
 export interface ITablePersistenceOptions<T> {
-    id?: string[];
+    /**
+     * The id of the table. Depending on scope, the provided id must be unique within the entire cluster
+     * (when scope is `'cluster'`) or just within the actor for which the table is created (when scope is `'actor'`).
+     */
+    id: string[];
+    /**
+     * The scope of the table. The scope determines whether the provided `id` is automatically prefixed with the
+     * action type and id to make it unique amongst actors (when scope is `'actor'`) or whether the provided `id`
+     * is taken literally without any prefixing (when scope is `'cluster'`). In the latter case, the provided id must
+     * be unique within the entire cluster.
+     */
+    scope: 'actor' | 'cluster';
     indexer?: (item: T) => ITableIndexItem[];
     specifier?: string;
 }
