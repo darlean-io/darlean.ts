@@ -1,5 +1,5 @@
 /**
- * Suite that provides the WebGateways service that makes it possible to handle HTTP requests with actors.
+ * Suite that provides the WebGateways service that makes it possible to have actors handle HTTP requests.
  *
  * @packageDocumentation
  */
