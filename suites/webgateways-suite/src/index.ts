@@ -13,6 +13,10 @@ export const WEBGATEWAY_HOST_ACTOR = 'io.darlean.WebGatewayHostActor';
 export * from './actor.impl';
 export * from './intf';
 
+// Set to 2.5 minutes, as caddy has a default of 2 minutes and nginx 75 seconds
+// It is expected that darlean runs behind such a proxy so this is a reasonable default.
+const DEFAULT_KEEPALIVETIMEOUT = 150 * 1000;
+
 export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
     const startActions: IStartAction[] = [];
     for (const host of config.gateways ?? []) {
@@ -34,7 +38,8 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
                     const cfg: IGateway = {
                         name: gatewaycfg.id ?? 'default',
                         port: gatewaycfg.port ?? 80,
-                        handlers: []
+                        handlers: [],
+                        keepAliveTimeout: gatewaycfg.keepAliveTimeout ?? config.keepAliveTimeout ?? DEFAULT_KEEPALIVETIMEOUT
                     };
                     for (const handler of gatewaycfg.handlers ?? []) {
                         const actorType = handler.actorType ?? gatewaycfg.actorType;
@@ -74,7 +79,8 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
 export function createWebGatewaysSuiteFromConfig(config: IConfigEnv<IWebGatewaysCfg>, runtimeEnabled: boolean, appId: string) {
     if (config.fetchBoolean('enabled') ?? runtimeEnabled) {
         const options: IWebGatewaysCfg = {
-            gateways: []
+            gateways: [],
+            keepAliveTimeout: config.fetchNumber('keepAliveTimeout')
         };
 
         const gateways = config.fetchRaw('gateways');
@@ -87,7 +93,8 @@ export function createWebGatewaysSuiteFromConfig(config: IConfigEnv<IWebGateways
                 port,
                 actorId: gateway.actorId,
                 actorType: gateway.actorType,
-                handlers: gateway.handlers
+                handlers: gateway.handlers,
+                keepAliveTimeout: gateway.keepAliveTimeout
             });
 
             first = false;

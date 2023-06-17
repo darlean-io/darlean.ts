@@ -19,6 +19,7 @@ export interface IGateway {
     name: string;
     port: number;
     handlers: IHandler[];
+    keepAliveTimeout: number;
 }
 
 export class WebGatewayActor implements IActivatable, IDeactivatable {
@@ -33,6 +34,7 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
                 await this.handleRequest(req, res);
             });
         });
+        server.keepAliveTimeout = config.keepAliveTimeout;
         this.server = server;
     }
 
