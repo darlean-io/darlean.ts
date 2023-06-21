@@ -20,3 +20,4 @@ export * from './tracetofile';
 export * from './config';
 export * from './deser';
 export * from './bsondeser';
+export * from './remotestreaming';
