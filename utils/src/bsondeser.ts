@@ -31,7 +31,7 @@ export class BsonDeSer implements IDeSer {
         if (buffer.byteLength < 5) {
             return false;
         }
-        const size = buffer[0] | buffer[1] << 8 | buffer[2] << 16 | buffer[3] << 24;
+        const size = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
         if (size < 5 || size > buffer.byteLength) {
             return false;
         }
@@ -95,7 +95,7 @@ export class BsonDeSer implements IDeSer {
     }
 
     public deserializeTyped<T>(buffer: BufferOf<T>): T {
-      return this.deserialize(buffer) as T;  
+        return this.deserialize(buffer) as T;
     }
 }
 

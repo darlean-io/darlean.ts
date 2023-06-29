@@ -1,4 +1,4 @@
-import { BufferOf } from "@darlean/utils";
+import { BufferOf } from '@darlean/utils';
 
 /**
  * Actor type for the Tables Service

@@ -7,7 +7,6 @@ import { MimeDeSer } from './mimedeser';
  * The default encoding is MIME.
  */
 export class MultiDeSer implements IDeSer {
-    
     private bsonDeSer: BsonDeSer;
     private mimeDeSer: MimeDeSer;
     private serialization: 'mime' | 'bson';
@@ -36,6 +35,6 @@ export class MultiDeSer implements IDeSer {
     }
 
     public deserializeTyped<T>(buffer: BufferOf<T>): T {
-        return this.deserialize(buffer) as T;  
+        return this.deserialize(buffer) as T;
     }
 }

@@ -220,7 +220,7 @@ export class FsPersistenceWorker {
                     this.lastSeqNr = seqnr;
 
                     const value = Buffer.from(await item.value.arrayBuffer());
-        
+
                     const values: Array<string | Buffer | number> = this.makeKeyValues(item.partitionKey, item.sortKey);
                     values.push(value);
                     values.push(SOURCE);

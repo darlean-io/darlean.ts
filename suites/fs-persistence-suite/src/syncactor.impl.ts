@@ -74,7 +74,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             return {
                 version: loadResult.version,
                 value: loadResult.value ? Buffer.from(await loadResult.value.arrayBuffer()) : undefined
-            }
+            };
         } finally {
             conn.mutex.release();
         }
@@ -96,7 +96,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             for (const item of queryResults.items) {
                 result.items.push({
                     sortKey: item.sortKey,
-                    value: item.value ? Buffer.from(await item.value.arrayBuffer()): undefined
+                    value: item.value ? Buffer.from(await item.value.arrayBuffer()) : undefined
                 });
             }
             return this.deser.serialize(result);
@@ -115,7 +115,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         try {
             // TODO: Check assumption that worker performs internal synchronization (only one task at a time)
             const options2: IPersistenceStoreBatchOptions<Blob> = {
-                items: options.items.map( (item) => ({
+                items: options.items.map((item) => ({
                     identifier: item.identifier,
                     partitionKey: item.partitionKey,
                     version: item.version,
@@ -123,7 +123,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
                     specifier: item.specifier,
                     value: item.value ? new Blob([item.value]) : undefined
                 }))
-            }
+            };
             return (await conn.worker.storeBatch(options2)) as unknown as Promise<void>;
         } finally {
             conn.mutex.release();

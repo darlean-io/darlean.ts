@@ -1,6 +1,6 @@
 import { BsonDeSer } from '../bsondeser';
 import { IDeSer } from '../deser';
-import { MimeDeSer} from '../mimedeser';
+import { MimeDeSer } from '../mimedeser';
 import { MultiDeSer } from '../multideser';
 
 // Originally, caching was enabled by default. But, sometimes when you receive data (like when
@@ -174,7 +174,7 @@ describe('DeserWithoutCaching', () => {
         // the original data object. We expect that the buffer contents is used
         // for deserialization.
         const deserialized2 = deser.deserialize(serialized2) as typeof data;
-        
+
         expect(deserialized2.Hello).toBe('World');
 
         // Cross check: when we corrupt the contents of yet another copy of the
@@ -295,10 +295,10 @@ describe('DeserWithoutCaching', () => {
     const performanceinput = {
         Hello: Array(n).fill('World'),
         Temperatures: Array(n).fill(123),
-        Floats: Array(n).fill(1.23),
+        Floats: Array(n).fill(1.23)
     };
     test.each(desers)(`%p Performance (${q}x) without buffer (${n} elements)`, (_name, deser) => {
-        for (let i=0; i<q; i++) {
+        for (let i = 0; i < q; i++) {
             deser.deserialize(deser.serialize(performanceinput));
         }
     });
@@ -310,7 +310,7 @@ describe('DeserWithoutCaching', () => {
         Buffer: Buffer.alloc(n).fill('X')
     };
     test.each(desers)(`%p Performance (${q}x) with buffer (${n} elements)`, (_name, deser) => {
-        for (let i=0; i<q; i++) {
+        for (let i = 0; i < q; i++) {
             deser.deserialize(deser.serialize(performanceinputWithBuf));
         }
     });
@@ -323,7 +323,7 @@ describe('DeserWithoutCaching', () => {
         })
     };
     test.each(desers)(`%p Performance (${q}x) with sub objects (${n} elements)`, (_name, deser) => {
-        for (let i=0; i<q; i++) {
+        for (let i = 0; i < q; i++) {
             deser.deserialize(deser.serialize(performanceinputWithSubObjects));
         }
     });
@@ -331,10 +331,10 @@ describe('DeserWithoutCaching', () => {
     const performanceinputSimple = {
         Hello: 'World',
         Temperature: 123,
-        Float: 1.23,
+        Float: 1.23
     };
     test.each(desers)(`%p Performance (${q}x) simple object without arrays`, (_name, deser) => {
-        for (let i=0; i<q; i++) {
+        for (let i = 0; i < q; i++) {
             deser.deserialize(deser.serialize(performanceinputSimple));
         }
     });
@@ -342,20 +342,19 @@ describe('DeserWithoutCaching', () => {
     const performanceInputSeparateValues = new Array(n).fill('abc');
     const performanceInputConcatenatedValues = performanceInputSeparateValues.join(',');
     test.each(desers)(`%p Performance (${q}x) separate values`, (_name, deser) => {
-        for (let i=0; i<q; i++) {
+        for (let i = 0; i < q; i++) {
             deser.deserialize(deser.serialize(performanceInputSeparateValues));
         }
     });
     test.each(desers)(`%p Performance (${q}x) pre-concatenated values`, (_name, deser) => {
-        for (let i=0; i<q; i++) {
+        for (let i = 0; i < q; i++) {
             deser.deserialize(deser.serialize(performanceInputConcatenatedValues));
         }
     });
     test.each(desers)(`%p Performance (${q}x) realtime-concatenated values`, (_name, deser) => {
-        for (let i=0; i<q; i++) {
+        for (let i = 0; i < q; i++) {
             const concatenated = performanceInputSeparateValues.join(',');
             (deser.deserialize(deser.serialize(concatenated)) as string).split(',');
-
         }
     });
 
@@ -366,5 +365,5 @@ describe('DeserWithoutCaching', () => {
         const serialized = bsonDeser.serialize(data);
         const deserialized = multiDeser.deserialize(serialized);
         expect((deserialized as typeof data).Hello).toBe('World');
-    })
+    });
 });

@@ -8,19 +8,19 @@ const NEWLINE = '\r\n';
 const BUF_NEWLINE = Buffer.from('\r\n');
 
 export interface IMultiPart {
-    headers?: {[header: string]: string};
+    headers?: { [header: string]: string };
     body: Buffer;
 }
 
 export class MultipartParser {
-    public parse(buffer: Buffer): {parts: IMultiPart[], boundary?: string} {
-        const headers: {[header: string]: string} = {};
+    public parse(buffer: Buffer): { parts: IMultiPart[]; boundary?: string } {
+        const headers: { [header: string]: string } = {};
         const headersEnd = parseMimeHeaders(buffer, headers);
 
         let boundaryText: string | undefined;
         let boundary: Buffer | undefined;
         let endBoundary: Buffer | undefined;
-        
+
         const contentType = headers['content-type'];
         if (!contentType) {
             throw new Error('Invalid multipart data: Header does not contain a multipart/* content-type');
@@ -38,7 +38,7 @@ export class MultipartParser {
         } else {
             // Assume regular (non multipart) encoding of a single part.
             const partBody = buffer.subarray(headersEnd);
-            const parts = [{headers: headers, body: partBody}];
+            const parts = [{ headers: headers, body: partBody }];
             return { parts };
         }
 
@@ -53,30 +53,30 @@ export class MultipartParser {
                     throw new Error('No boundary finalizer');
                 }
                 const part = buffer.subarray(start + boundary.byteLength, veryEnd);
-                const partHeaders: {[header: string]: string} = {};
+                const partHeaders: { [header: string]: string } = {};
                 const partHeadersEnd = parseMimeHeaders(part, partHeaders);
                 const body = part.subarray(partHeadersEnd);
-                const partHeaders2 = {...headers, ...partHeaders};
-                multiparts.push({headers: partHeaders2, body});
+                const partHeaders2 = { ...headers, ...partHeaders };
+                multiparts.push({ headers: partHeaders2, body });
                 start = end;
                 if (end < 0) {
                     break;
                 }
             }
         }
-        return { parts: multiparts, boundary: boundaryText};
+        return { parts: multiparts, boundary: boundaryText };
     }
 }
 
 export class MultiPartGenerator {
-    public generate(parts: IMultiPart[], boundary?: string, headers?: {[header: string]: string}) {
+    public generate(parts: IMultiPart[], boundary?: string, headers?: { [header: string]: string }) {
         if (parts.length === 1) {
-            const headers2 = {...headers ?? {}, ...parts[0].headers ?? {}};
+            const headers2 = { ...(headers ?? {}), ...(parts[0].headers ?? {}) };
             const headerBuf = mimeHeadersToBuf(headers2);
             return Buffer.concat([headerBuf, parts[0].body]);
         }
 
-        const headers2 = headers ? {...headers} : {};
+        const headers2 = headers ? { ...headers } : {};
         boundary = boundary ?? uuid.v4();
         headers2['content-type'] = `multipart/mixed; boundary=${boundary}`;
         const headerBuf = mimeHeadersToBuf(headers2);
@@ -100,11 +100,11 @@ export class MultiPartGenerator {
     }
 }
 
-export function parseMimeHeaders(buffer: Buffer, headers: {[header: string]: string}): number {
+export function parseMimeHeaders(buffer: Buffer, headers: { [header: string]: string }): number {
     let start = 0;
     while (true) {
         const end = buffer.indexOf(BUF_NEWLINE, start);
-        const line = (end >= 0) ? buffer.toString('utf-8', start, end).trim() : '';
+        const line = end >= 0 ? buffer.toString('utf-8', start, end).trim() : '';
         if (line.length === 0) {
             return end + BUF_NEWLINE.byteLength;
         }
@@ -118,8 +118,14 @@ export function parseMimeHeaders(buffer: Buffer, headers: {[header: string]: str
     }
 }
 
-export function mimeHeadersToBuf(headers?: {[header: string]: string}) {
-    const headerString = headers ? Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join(NEWLINE) + NEWLINE + NEWLINE : NEWLINE;
+export function mimeHeadersToBuf(headers?: { [header: string]: string }) {
+    const headerString = headers
+        ? Object.entries(headers)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(NEWLINE) +
+          NEWLINE +
+          NEWLINE
+        : NEWLINE;
     const headerBuf = Buffer.from(headerString, 'utf-8');
     return headerBuf;
 }

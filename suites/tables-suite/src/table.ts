@@ -270,7 +270,6 @@ export class TableActor implements ITablesService {
 
             for (const item of result.items) {
                 if (item.value) {
-                    
                     const value = this.deser.deserialize(item.value) as IIndexEntry;
 
                     const resultItem: ITableSearchItem = {
@@ -304,7 +303,7 @@ export class TableActor implements ITablesService {
                     idx++;
                     if (result.result) {
                         if (request.tableRepresentation === 'buffer') {
-                            response.items[idx].tableBuffer = result.result.dataBuffer
+                            response.items[idx].tableBuffer = result.result.dataBuffer;
                         } else {
                             response.items[idx].tableFields = result.result.data;
                         }
@@ -438,7 +437,7 @@ export class TableActor implements ITablesService {
             const baseItem = this.deser.deserialize(result.value) as IBaseItem;
             return {
                 version: result.version ?? '',
-                data: request.representation !== 'buffer' ?  this.extractDataFields(baseItem.data) : undefined,
+                data: request.representation !== 'buffer' ? this.extractDataFields(baseItem.data) : undefined,
                 dataBuffer: request.representation === 'buffer' ? this.extractDataBuffer(baseItem.data) : undefined,
                 baseline: this.encodeBaseline(baseItem.baseline)
             };

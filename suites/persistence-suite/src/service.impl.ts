@@ -85,7 +85,9 @@ export class PersistenceService implements IPersistenceService {
     }
 
     @action({ locking: 'shared' })
-    public async storeBatchBuffer(options: BufferOf<IPersistenceStoreBatchOptions<Buffer>>): Promise<BufferOf<IPersistenceStoreBatchResult>> {
+    public async storeBatchBuffer(
+        options: BufferOf<IPersistenceStoreBatchOptions<Buffer>>
+    ): Promise<BufferOf<IPersistenceStoreBatchResult>> {
         return this.deser.serialize(await this.storeBatchImpl(this.deser.deserializeTyped(options)));
     }
 
