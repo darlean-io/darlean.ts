@@ -7,7 +7,6 @@ import {
 } from '@darlean/base';
 import fs from 'fs';
 import {
-    BsonDeSer,
     decodeKeyReadable,
     encodeKeyReadable,
     filterStructure,
@@ -16,6 +15,7 @@ import {
     ITime,
     parseMultiFilter,
     SharedExclusiveLock,
+    MultiDeSer,
     Time
 } from '@darlean/utils';
 import { Filterer, IFilterContext } from './filtering';
@@ -72,7 +72,7 @@ export class FsPersistenceWorker {
         this.deser = deser;
     }
 
-    public load(options: IPersistenceLoadOptions): IPersistenceLoadResult {
+    public load(options: IPersistenceLoadOptions): IPersistenceLoadResult<Blob> {
         const pool = this.connection?.poolLoad;
         if (!pool) {
             throw new Error('No statement pool');
@@ -87,8 +87,9 @@ export class FsPersistenceWorker {
                 const buffer = result.value;
 
                 const projection = options.projectionFilter ? parseMultiFilter(options.projectionFilter) : undefined;
+                const value = projection ? this.project(projection, buffer, options.projectionBases ?? []) : buffer;
                 return {
-                    value: projection ? this.project(projection, buffer) : buffer,
+                    value: value ? new Blob([value]) : undefined,
                     version: result[FIELD_VERSION]
                 };
             }
@@ -98,7 +99,7 @@ export class FsPersistenceWorker {
         }
     }
 
-    public query(options: IPersistenceQueryOptions): IPersistenceQueryResult<Buffer> {
+    public query(options: IPersistenceQueryOptions): IPersistenceQueryResult<Blob> {
         const direction = options.sortKeyOrder ?? 'ascending';
 
         const pool = direction === 'descending' ? this.connection?.poolQueryDesc : this.connection?.poolQueryAsc;
@@ -118,7 +119,7 @@ export class FsPersistenceWorker {
             limiter = ct.sk;
         }
 
-        const result: IPersistenceQueryResult<Buffer> = {
+        const result: IPersistenceQueryResult<Blob> = {
             items: []
         };
 
@@ -157,7 +158,8 @@ export class FsPersistenceWorker {
                         options.filterSortKeyOffset
                     )
                 ) {
-                    const value = projection ? this.project(projection, data[FIELD_VALUE]) : data[FIELD_VALUE];
+                    const deserFields = options.filterFieldBase ? [options.filterFieldBase] : [];
+                    const value = projection ? this.project(projection, data[FIELD_VALUE], deserFields) : data[FIELD_VALUE];
                     length += value?.length ?? 0;
                     if (length > MAX_RESPONSE_LENGTH) {
                         if (result.items.length === 0) {
@@ -170,7 +172,7 @@ export class FsPersistenceWorker {
                     }
                     result.items.push({
                         sortKey: decode(data.sk ?? ''),
-                        value
+                        value: value ? new Blob([value]) : undefined
                     });
                     lastSK = data.sk;
                 }
@@ -187,7 +189,7 @@ export class FsPersistenceWorker {
         }
     }
 
-    public storeBatch(options: IPersistenceStoreBatchOptions): void {
+    public async storeBatch(options: IPersistenceStoreBatchOptions<Blob>): Promise<void> {
         this.connection?.db.run('BEGIN TRANSACTION');
         try {
             for (const item of options.items) {
@@ -217,12 +219,14 @@ export class FsPersistenceWorker {
                     const seqnr = this.lastSeqNr + 1;
                     this.lastSeqNr = seqnr;
 
+                    const value = Buffer.from(await item.value.arrayBuffer());
+        
                     const values: Array<string | Buffer | number> = this.makeKeyValues(item.partitionKey, item.sortKey);
-                    values.push(item.value);
+                    values.push(value);
                     values.push(SOURCE);
                     values.push(seqnr);
                     values.push(version);
-                    values.push(item.value);
+                    values.push(value);
                     values.push(SOURCE);
                     values.push(seqnr);
                     values.push(version);
@@ -241,7 +245,7 @@ export class FsPersistenceWorker {
         }
     }
 
-    protected project(config: IMultiFilter, data: Buffer | undefined) {
+    protected project(config: IMultiFilter, data: Buffer | undefined, deserFields: string[]) {
         if (!data) {
             return undefined;
         }
@@ -249,6 +253,13 @@ export class FsPersistenceWorker {
         const parsed = this.deser.deserialize(data) as { [key: string]: unknown };
         if (!parsed) {
             return undefined;
+        }
+
+        for (const field of deserFields) {
+            const value = parsed[field];
+            if (value && Buffer.isBuffer(value)) {
+                parsed[field] = this.deser.deserialize(value);
+            }
         }
 
         const filtered = filterStructure(config, parsed, '');
@@ -274,7 +285,11 @@ export class FsPersistenceWorker {
                 if (data[FIELD_VALUE]) {
                     const d = this.deser.deserialize(data[FIELD_VALUE]) as { [key: string]: unknown };
                     if (base) {
-                        const d2 = d ? (d[base] as typeof data2) ?? {} : {};
+                        let dBase = d?.[base];
+                        if (Buffer.isBuffer(dBase)) {
+                            dBase = this.deser.deserialize(dBase) as typeof data2;
+                        }
+                        const d2 = (dBase as typeof data2) ?? {};
                         data2 = d2;
                         return d2;
                     }
@@ -432,7 +447,7 @@ export class FsPersistenceWorker {
     }
 }
 
-const worker = new FsPersistenceWorker(new Time(), new Filterer(), new BsonDeSer());
+const worker = new FsPersistenceWorker(new Time(), new Filterer(), new MultiDeSer());
 
 /*
 export interface IFsPersistenceWorker {
@@ -456,7 +471,7 @@ const workerdef = {
     query: (options: IPersistenceQueryOptions) => {
         return worker.query(options);
     },
-    storeBatch: (options: IPersistenceStoreBatchOptions) => {
+    storeBatch: (options: IPersistenceStoreBatchOptions<Blob>) => {
         return worker.storeBatch(options);
     }
 };

@@ -14,6 +14,7 @@ import {
 } from '@darlean/base';
 import { FsPersistenceActor } from './syncactor.impl';
 import * as crypto from 'crypto';
+import { BufferOf, IDeSer } from '@darlean/utils';
 
 export interface IFsPersistenceServiceOptions {
     shardCount: number;
@@ -23,7 +24,7 @@ export interface IFsPersistenceServiceOptions {
 export class FsPersistenceService implements IPersistenceService, IActivatable {
     private shards: { node: string; id: string[]; actor: FsPersistenceActor }[];
 
-    constructor(options: IFsPersistenceServiceOptions, actorPortal: ITypedPortal<FsPersistenceActor>) {
+    constructor(options: IFsPersistenceServiceOptions, actorPortal: ITypedPortal<FsPersistenceActor>, private deser: IDeSer) {
         this.shards = [];
 
         for (let i = 0; i < options.shardCount; i++) {
@@ -48,16 +49,46 @@ export class FsPersistenceService implements IPersistenceService, IActivatable {
     }
 
     @action({ locking: 'shared' })
-    public store(options: IPersistenceStoreOptions): Promise<void> {
+    public store(options: IPersistenceStoreOptions<Buffer>): Promise<void> {
         const shardIdx = this.deriveShardIdx(options.partitionKey);
         const shard = this.shards[shardIdx];
         return shard.actor.store(options);
     }
 
     @action({ locking: 'shared' })
-    public async storeBatch(options: IPersistenceStoreBatchOptions): Promise<IPersistenceStoreBatchResult> {
+    public storeBatch(options: IPersistenceStoreBatchOptions<Buffer>): Promise<IPersistenceStoreBatchResult> {
+        return this.storeBatchImpl(options);
+    }
+
+    @action({ locking: 'shared' })
+    public async storeBatchBuffer(options: BufferOf<IPersistenceStoreBatchOptions<Buffer>>): Promise<BufferOf<IPersistenceStoreBatchResult>> {
+        return this.deser.serialize(await this.storeBatchImpl(this.deser.deserializeTyped(options)));
+    }
+
+    @action({ locking: 'shared' })
+    public load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult<Buffer>> {
+        const shardIdx = this.deriveShardIdx(options.partitionKey);
+        const shard = this.shards[shardIdx];
+        return shard.actor.load(options);
+    }
+
+    @action({ locking: 'shared' })
+    public async query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>> {
+        const shardIdx = this.deriveShardIdx(options.partitionKey);
+        const shard = this.shards[shardIdx];
+        return this.deser.deserializeTyped(await shard.actor.queryBuffer(options));
+    }
+
+    @action({ locking: 'shared' })
+    public queryBuffer(options: IPersistenceQueryOptions): Promise<BufferOf<IPersistenceQueryResult<Buffer>>> {
+        const shardIdx = this.deriveShardIdx(options.partitionKey);
+        const shard = this.shards[shardIdx];
+        return shard.actor.queryBuffer(options);
+    }
+
+    protected async storeBatchImpl(options: IPersistenceStoreBatchOptions<Buffer>): Promise<IPersistenceStoreBatchResult> {
         const results: IPersistenceStoreBatchResult = { unprocessedItems: [] };
-        const shardBatches: Map<number, IPersistenceStoreBatchOptions> = new Map();
+        const shardBatches: Map<number, IPersistenceStoreBatchOptions<Buffer>> = new Map();
         for (const item of options.items) {
             const shardIdx = this.deriveShardIdx(item.partitionKey);
             let sb = shardBatches.get(shardIdx);
@@ -73,7 +104,7 @@ export class FsPersistenceService implements IPersistenceService, IActivatable {
         for (const [shardIdx, batch] of shardBatches.entries()) {
             const shard = this.shards[shardIdx];
             try {
-                await shard.actor.storeBatch(batch);
+                await shard.actor.storeBatchBuffer(this.deser.serialize(batch));
             } catch (e) {
                 for (const item of batch.items) {
                     results.unprocessedItems.push({ identifier: item.identifier, error: toApplicationError(e) });
@@ -81,20 +112,6 @@ export class FsPersistenceService implements IPersistenceService, IActivatable {
             }
         }
         return results;
-    }
-
-    @action({ locking: 'shared' })
-    public load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult> {
-        const shardIdx = this.deriveShardIdx(options.partitionKey);
-        const shard = this.shards[shardIdx];
-        return shard.actor.load(options);
-    }
-
-    @action({ locking: 'shared' })
-    public query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>> {
-        const shardIdx = this.deriveShardIdx(options.partitionKey);
-        const shard = this.shards[shardIdx];
-        return shard.actor.query(options);
     }
 
     protected deriveShardIdx(partitionKey: string[]): number {

@@ -1,7 +1,7 @@
 import { ITransport, NatsTransport } from './infra';
 import {
     ApplicationStopHandler,
-    BsonDeSer,
+    MultiDeSer,
     IDeSer,
     ITime,
     notifier,
@@ -155,6 +155,7 @@ export class ActorRunnerBuilder {
     protected multiContainer?: MultiTypeInstanceContainer;
     protected transportMechanism: '' | 'nats' = '';
     protected distributedRegistry?: DistributedActorRegistry;
+    protected deser?: IDeSer;
 
     constructor() {
         this.appId = DEFAULT_LOCAL_APP_ID;
@@ -245,8 +246,9 @@ export class ActorRunnerBuilder {
         this.multiContainer = multiContainer;
         const portal = this.createPortal(backoff, this.transport, time, multiContainer);
         this.portal = portal;
+        this.deser = new MultiDeSer();
         if (!this.persistenceFactory) {
-            this.persistenceFactory = this.createPersistence(portal, new BsonDeSer());
+            this.persistenceFactory = this.createPersistence(portal, this.deser);
         }
         const ar = new ActorRunner(portal);
         this.configurePortal(ar);
@@ -431,7 +433,7 @@ export class ActorRunnerBuilder {
         transport?: ITransport
     ): IRemote {
         if (!transport) {
-            const deser = new BsonDeSer();
+            const deser = new MultiDeSer();
             if (mechanism === 'nats') {
                 transport = new NatsTransport(deser);
             } else {
@@ -495,14 +497,17 @@ export class ActorRunnerBuilder {
                         ? [type, id.length.toString(), ...id, options.id.length.toString(), ...options.id]
                         : options.id;
                 const service = this.portal.retrieve<ITablesService>(TABLES_SERVICE, tableId);
-                return new TablePersistence(service, options.indexer ?? (() => []), options.specifier);
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                return new TablePersistence(service, options.indexer ?? (() => []), this.deser!, options.specifier);
             },
             time,
             newVolatileTimer: () => {
                 const timer = new VolatileTimer<object>(time);
                 timers.push(timer);
                 return timer as IVolatileTimer;
-            }
+            },
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            deser: this.deser!
         };
     }
 
@@ -537,7 +542,7 @@ export class ActorRunnerBuilder {
                                 notifier().info('io.darlean.runner.AutoStopping', `Starting [Name]...`, () => ({ Name: h.name }));
                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 await h.handler(ar.getPortal(), time);
-                                notifier().info('io.darlean.runner.AutoStopped', `Started [Name]`, () => ({ Name: h.name }));
+                                notifier().info('io.darlean.runner.AutoStopped', `Stopped [Name]`, () => ({ Name: h.name }));
                             }
                         }
                     }

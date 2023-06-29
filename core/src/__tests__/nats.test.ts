@@ -1,6 +1,6 @@
 import { TransportRemote } from '../transportremote';
 import { NatsTransport } from '../infra/natstransport';
-import { BsonDeSer, Time } from '@darlean/utils';
+import { MultiDeSer, Time } from '@darlean/utils';
 import { InstanceContainer, MultiTypeInstanceContainer } from '../instances';
 import { ActorRegistry, ExponentialBackOff, RemotePortal } from '../remoteinvocation';
 import { NatsServer } from '../infra/natsserver';
@@ -11,7 +11,7 @@ describe('Nats', () => {
     test('Remote via Nats', async () => {
         const time = new Time();
         const backoff = new ExponentialBackOff(time, 10, 4);
-        const deser = new BsonDeSer();
+        const deser = new MultiDeSer();
 
         const natsserver = new NatsServer();
         natsserver.start();

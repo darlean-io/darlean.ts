@@ -10,4 +10,9 @@ export interface IDeSer {
      *  or to serialize the resulting value.
      */
     deserialize(buffer: Buffer): unknown;
+
+    deserializeTyped<T>(buffer: BufferOf<T>): T;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unused-vars
+export interface BufferOf<T> extends Buffer {}

@@ -1,3 +1,5 @@
+import { BufferOf } from "@darlean/utils";
+
 /**
  * Actor type for the Tables Service
  */
@@ -22,12 +24,14 @@ export interface ITableGetRequest {
     keys: string[];
     specifier?: string;
     projection?: string[];
+    representation?: 'fields' | 'buffer';
 }
 
 export interface ITableGetResponse {
     baseline?: string;
     version: string;
     data?: { [key: string]: unknown };
+    dataBuffer?: Buffer;
 }
 
 export interface ITableItemFilter {
@@ -52,6 +56,7 @@ export interface ITablesService {
     put(request: ITablePutRequest): Promise<ITablePutResponse>;
     get(request: ITableGetRequest): Promise<ITableGetResponse>;
     search(request: ITableSearchRequest): Promise<ITableSearchResponse>;
+    searchBuffer(request: ITableSearchRequest): Promise<BufferOf<ITableSearchResponse>>;
 }
 
 export interface ITableSearchRequest {
@@ -64,12 +69,16 @@ export interface ITableSearchRequest {
     indexProjection?: string[];
     continuationToken?: string;
     maxItems?: number;
+    tableRepresentation?: 'fields' | 'buffer';
+    indexRepresentation?: 'fields' | 'buffer';
 }
 
 export interface ITableSearchItem {
     keys?: string[];
     tableFields?: { [key: string]: unknown };
     indexFields?: { [key: string]: unknown };
+    tableBuffer?: Buffer;
+    indexBuffer?: Buffer;
     id: string[];
 }
 

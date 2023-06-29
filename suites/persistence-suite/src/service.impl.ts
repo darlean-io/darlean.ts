@@ -11,7 +11,7 @@ import {
     IPersistenceStoreOptions,
     IPortal
 } from '@darlean/base';
-import { replaceAll, wildcardMatch } from '@darlean/utils';
+import { BufferOf, IDeSer, replaceAll, wildcardMatch } from '@darlean/utils';
 
 const MAX_BATCH_SIZE = 500000;
 
@@ -31,7 +31,7 @@ export interface IPersistenceServiceOptions {
 }
 
 interface IBatchedItem {
-    options: IPersistenceStoreOptions;
+    options: IPersistenceStoreOptions<Buffer>;
     resolve: () => void;
     reject: (err: unknown) => void;
 }
@@ -42,14 +42,14 @@ export class PersistenceService implements IPersistenceService {
     protected batched: IBatchedItem[];
     protected scheduled = false;
 
-    constructor(options: IPersistenceServiceOptions, portal: IPortal) {
+    constructor(options: IPersistenceServiceOptions, portal: IPortal, private deser: IDeSer) {
         this.options = options;
         this.portal = portal;
         this.batched = [];
     }
 
     @action({ locking: 'shared' })
-    public store(options: IPersistenceStoreOptions): Promise<void> {
+    public store(options: IPersistenceStoreOptions<Buffer>): Promise<void> {
         return new Promise((resolve, reject) => {
             this.batched.push({ options, resolve, reject });
             if (!this.scheduled) {
@@ -80,12 +80,17 @@ export class PersistenceService implements IPersistenceService {
     }
 
     @action({ locking: 'shared' })
-    public storeBatch(options: IPersistenceStoreBatchOptions): Promise<IPersistenceStoreBatchResult> {
+    public storeBatch(options: IPersistenceStoreBatchOptions<Buffer>): Promise<IPersistenceStoreBatchResult> {
         return this.storeBatchImpl(options);
     }
 
     @action({ locking: 'shared' })
-    public load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult> {
+    public async storeBatchBuffer(options: BufferOf<IPersistenceStoreBatchOptions<Buffer>>): Promise<BufferOf<IPersistenceStoreBatchResult>> {
+        return this.deser.serialize(await this.storeBatchImpl(this.deser.deserializeTyped(options)));
+    }
+
+    @action({ locking: 'shared' })
+    public load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult<Buffer>> {
         const compartment = this.deriveCompartment(options.specifier || '');
         const handler = this.deriveHandler(compartment);
         const p = this.portal.retrieve<IPersistenceService>(handler.actorType, [compartment]);
@@ -93,20 +98,30 @@ export class PersistenceService implements IPersistenceService {
     }
 
     @action({ locking: 'shared' })
-    public query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>> {
+    public async query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>> {
+        const results = await this.queryBufferImpl(options);
+        return this.deser.deserializeTyped(results);
+    }
+
+    @action({ locking: 'shared' })
+    public queryBuffer(options: IPersistenceQueryOptions): Promise<BufferOf<IPersistenceQueryResult<Buffer>>> {
+        return this.queryBufferImpl(options);
+    }
+
+    protected async queryBufferImpl(options: IPersistenceQueryOptions): Promise<BufferOf<IPersistenceQueryResult<Buffer>>> {
         const compartment = this.deriveCompartment(options.specifier || '');
         const handler = this.deriveHandler(compartment);
         const p = this.portal.retrieve<IPersistenceService>(handler.actorType, [compartment]);
-        return p.query(options);
+        return p.queryBuffer(options);
     }
 
-    protected async storeBatchImpl(options: IPersistenceStoreBatchOptions): Promise<IPersistenceStoreBatchResult> {
+    protected async storeBatchImpl(options: IPersistenceStoreBatchOptions<Buffer>): Promise<IPersistenceStoreBatchResult> {
         const results: IPersistenceStoreBatchResult = { unprocessedItems: [] };
 
-        const batches: Map<string, IPersistenceStoreBatchOptions> = new Map();
+        const batches: Map<string, IPersistenceStoreBatchOptions<Buffer>> = new Map();
         for (const item of options.items) {
             const compartment = this.deriveCompartment(item.specifier || '');
-            let b: IPersistenceStoreBatchOptions | undefined = batches.get(compartment);
+            let b: IPersistenceStoreBatchOptions<Buffer> | undefined = batches.get(compartment);
             if (!b) {
                 b = { items: [] };
                 batches.set(compartment, b);
@@ -119,12 +134,12 @@ export class PersistenceService implements IPersistenceService {
         for (const [compartment, batch] of batches.entries()) {
             const handler = this.deriveHandler(compartment);
             const p = this.portal.retrieve<IPersistenceService>(handler.actorType, [compartment]);
-            let limitedBatch: IPersistenceStoreBatchOptions = { items: [] };
+            let limitedBatch: IPersistenceStoreBatchOptions<Buffer> = { items: [] };
             let limitedLength = 0;
             for (const item of batch.items) {
                 const itemSize = item.value?.length ?? 0;
                 if (limitedLength + itemSize > MAX_BATCH_SIZE) {
-                    const result = await p.storeBatch(limitedBatch);
+                    const result = this.deser.deserializeTyped(await p.storeBatchBuffer(this.deser.serialize(limitedBatch)));
                     for (const unprocessed of result.unprocessedItems) {
                         results.unprocessedItems.push(unprocessed);
                     }
@@ -135,7 +150,7 @@ export class PersistenceService implements IPersistenceService {
                 }
             }
             if (limitedBatch.items.length > 0) {
-                const result = await p.storeBatch(limitedBatch);
+                const result = this.deser.deserializeTyped(await p.storeBatchBuffer(this.deser.serialize(limitedBatch)));
                 for (const unprocessed of result.unprocessedItems) {
                     results.unprocessedItems.push(unprocessed);
                 }

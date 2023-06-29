@@ -1,4 +1,4 @@
-import { BsonDeSer } from '@darlean/utils';
+import { MultiDeSer } from '@darlean/utils';
 import { extractEnvelopeChild, IEnvelope, serializeEnvelope } from '../infra/envelope';
 
 interface IHelloEnvelope extends IEnvelope {
@@ -11,7 +11,7 @@ interface IFooEnvelope extends IEnvelope {
 
 describe('Envelope', () => {
     test('Basic', () => {
-        const deser = new BsonDeSer();
+        const deser = new MultiDeSer();
 
         const env: IHelloEnvelope = {
             hello: 'World'
@@ -23,7 +23,7 @@ describe('Envelope', () => {
     });
 
     test('With object child', () => {
-        const deser = new BsonDeSer();
+        const deser = new MultiDeSer();
 
         const child: IFooEnvelope = {
             foo: 42
@@ -45,7 +45,7 @@ describe('Envelope', () => {
     });
 
     test('With buffer child', () => {
-        const deser = new BsonDeSer();
+        const deser = new MultiDeSer();
 
         const child: IFooEnvelope = {
             foo: 42

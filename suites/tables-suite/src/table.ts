@@ -24,12 +24,12 @@ import {
     prefix,
     sk
 } from '@darlean/base';
-import { IDeSer, parallel, ParallelTask } from '@darlean/utils';
+import { BufferOf, IDeSer, parallel, ParallelTask } from '@darlean/utils';
 import * as crypto from 'crypto';
 
 interface IIndexEntry {
     id: string[];
-    data?: { [key: string]: unknown };
+    data?: { [key: string]: unknown } | Buffer;
 }
 
 interface IIndexReference {
@@ -43,7 +43,7 @@ interface IBaseLine {
 }
 
 interface IBaseItem {
-    data?: { [key: string]: unknown };
+    data?: { [key: string]: unknown } | Buffer;
     baseline: IBaseLine;
 }
 
@@ -81,7 +81,7 @@ export class TableActor implements ITablesService {
 
         const itemKey = JSON.stringify(request.id);
 
-        const batch: IPersistenceStoreBatchOptions = { items: [] };
+        const batch: IPersistenceStoreBatchOptions<Buffer> = { items: [] };
 
         if (!isDelete) {
             // Persist new or changed index values
@@ -93,7 +93,7 @@ export class TableActor implements ITablesService {
                 if (!bli || bli.hash !== hash) {
                     const entry: IIndexEntry = {
                         id: request.id,
-                        data: index.data
+                        data: this.deser.serialize(index.data)
                     };
 
                     batch.items.push({
@@ -116,7 +116,7 @@ export class TableActor implements ITablesService {
 
         // Persist the actual data.
         const baseItem: IBaseItem = {
-            data: request.data,
+            data: this.deser.serialize(request.data),
             baseline: newBaseline
         };
         batch.items.push({
@@ -161,7 +161,16 @@ export class TableActor implements ITablesService {
     }
 
     @action({ locking: 'shared' })
-    public async search(request: ITableSearchRequest): Promise<ITableSearchResponse> {
+    public search(request: ITableSearchRequest): Promise<ITableSearchResponse> {
+        return this.searchImpl(request);
+    }
+
+    @action({ locking: 'shared' })
+    public async searchBuffer(request: ITableSearchRequest): Promise<BufferOf<ITableSearchResponse>> {
+        return this.deser.serialize(await this.searchImpl(request));
+    }
+
+    private async searchImpl(request: ITableSearchRequest): Promise<ITableSearchResponse> {
         let operator: Operator = 'none';
         const sortKey: string[] = [];
         let sortKey2: string[] = [];
@@ -261,13 +270,15 @@ export class TableActor implements ITablesService {
 
             for (const item of result.items) {
                 if (item.value) {
+                    
                     const value = this.deser.deserialize(item.value) as IIndexEntry;
 
                     const resultItem: ITableSearchItem = {
                         id: value.id,
                         // Remove 'index' + name at beginning and itemkey+hash that are added at the end
                         keys: item.sortKey.slice(2, -2),
-                        indexFields: value.data
+                        indexFields: request.indexRepresentation !== 'buffer' ? this.extractDataFields(value.data) : undefined,
+                        indexBuffer: request.indexRepresentation === 'buffer' ? this.extractDataBuffer(value.data) : undefined
                     };
 
                     response.items.push(resultItem);
@@ -282,7 +293,8 @@ export class TableActor implements ITablesService {
                         return this.getImpl({
                             keys: id,
                             projection: request.tableProjection ? this.enhanceProjection(request.tableProjection) : undefined,
-                            specifier: request.specifier // TODO: Get rid of this. This is index specifiers, not base table specifiers!
+                            specifier: request.specifier, // TODO: Get rid of this. This is index specifiers, not base table specifiers!
+                            representation: request.tableRepresentation
                         });
                     });
                 }
@@ -291,7 +303,11 @@ export class TableActor implements ITablesService {
                 for (const result of tableResults.results) {
                     idx++;
                     if (result.result) {
-                        response.items[idx].tableFields = result.result.data;
+                        if (request.tableRepresentation === 'buffer') {
+                            response.items[idx].tableBuffer = result.result.dataBuffer
+                        } else {
+                            response.items[idx].tableFields = result.result.data;
+                        }
                     }
                 }
             }
@@ -329,7 +345,8 @@ export class TableActor implements ITablesService {
 
                     const resultItem: ITableSearchItem = {
                         id: item.sortKey.slice(1),
-                        tableFields: value.data
+                        tableFields: request.tableRepresentation !== 'buffer' ? this.extractDataFields(value.data) : undefined,
+                        tableBuffer: request.tableRepresentation === 'buffer' ? this.extractDataBuffer(value.data) : undefined
                     };
 
                     response.items.push(resultItem);
@@ -338,6 +355,23 @@ export class TableActor implements ITablesService {
 
             return response;
         }
+    }
+
+    protected extractDataFields(data?: { [key: string]: unknown } | Buffer): { [key: string]: unknown } | undefined {
+        if (Buffer.isBuffer(data)) {
+            return this.deser.deserialize(data) as { [key: string]: unknown };
+        }
+        return data;
+    }
+
+    protected extractDataBuffer(data?: { [key: string]: unknown } | Buffer): Buffer | undefined {
+        if (data === undefined) {
+            return undefined;
+        }
+        if (Buffer.isBuffer(data)) {
+            return data;
+        }
+        return this.deser.serialize(data);
     }
 
     protected deriveKeyInfo(
@@ -397,13 +431,15 @@ export class TableActor implements ITablesService {
             partitionKey: ['Table', ...this.internalId, this.shard.toString()],
             sortKey: ['base', ...request.keys],
             specifier: request.specifier,
-            projectionFilter: request.projection ? this.enhanceProjection(request.projection) : undefined
+            projectionFilter: request.projection ? this.enhanceProjection(request.projection) : undefined,
+            projectionBases: ['data']
         });
         if (result.value) {
             const baseItem = this.deser.deserialize(result.value) as IBaseItem;
             return {
                 version: result.version ?? '',
-                data: baseItem.data,
+                data: request.representation !== 'buffer' ?  this.extractDataFields(baseItem.data) : undefined,
+                dataBuffer: request.representation === 'buffer' ? this.extractDataBuffer(baseItem.data) : undefined,
                 baseline: this.encodeBaseline(baseItem.baseline)
             };
         } else {

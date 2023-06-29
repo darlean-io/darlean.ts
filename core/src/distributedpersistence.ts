@@ -94,7 +94,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
     }
 
     public async query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<T>> {
-        const intermediate = await this.service.query({
+        const intermediate = this.deser.deserializeTyped(await this.service.queryBuffer({
             specifier: this.specifier,
             partitionKey: options.partitionKey,
             sortKeyFrom: options.sortKeyFrom,
@@ -103,7 +103,7 @@ export class DistributedPersistence<T> implements IPersistence<T> {
             maxItems: options.maxItems,
             continuationToken: options.continuationToken,
             sortKeyOrder: options.sortKeyOrder
-        });
+        }));
 
         const results: IPersistenceQueryResult<T> = {
             continuationToken: intermediate.continuationToken,

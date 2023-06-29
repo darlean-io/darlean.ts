@@ -5,9 +5,7 @@
  */
 
 import { ActorSuite, IPersistenceService, PERSISTENCE_SERVICE, TABLES_SERVICE } from '@darlean/base';
-import { BsonDeSer } from '@darlean/utils';
 import { TableActor } from './table';
-
 export * from './table';
 
 export function createTablesSuite() {
@@ -18,7 +16,7 @@ export function createTablesSuite() {
             creator: (context) => {
                 const id = context.id;
                 const p = context.portal.retrieve<IPersistenceService>(PERSISTENCE_SERVICE, []);
-                return new TableActor(p, new BsonDeSer(), id, 0);
+                return new TableActor(p, context.deser, id, 0);
             }
         }
     ]);

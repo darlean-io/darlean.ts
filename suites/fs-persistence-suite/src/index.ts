@@ -75,7 +75,7 @@ export function createFsPersistenceSuite(options: IFsPersistenceOptions) {
                 const shard = context.id[context.id.length - 2];
                 const shardCount = opts.shardCount ?? DEFAULT_SHARD_COUNT;
                 const path = [opts.basePath, opts.subPath, compartment, shardCount, shard, boundNode].join('/');
-                return new FsPersistenceActor(path);
+                return new FsPersistenceActor(path, context.deser);
             }
         },
         {
@@ -90,7 +90,8 @@ export function createFsPersistenceSuite(options: IFsPersistenceOptions) {
                         nodes: opts.nodes ?? [],
                         shardCount: opts.shardCount ?? DEFAULT_SHARD_COUNT
                     },
-                    portal
+                    portal,
+                    context.deser
                 );
             }
         }

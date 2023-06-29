@@ -9,7 +9,7 @@ import {
     IPersistenceStoreBatchOptions,
     IPersistenceStoreOptions
 } from '@darlean/base';
-import { Mutex } from '@darlean/utils';
+import { BufferOf, IDeSer, Mutex } from '@darlean/utils';
 import { ModuleThread, spawn, Thread, Worker } from 'threads';
 import { WorkerDef } from './worker';
 
@@ -26,7 +26,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
     private basePath: string;
     private lastConnIdx = 0;
 
-    constructor(basePath: string) {
+    constructor(basePath: string, private deser: IDeSer) {
         this.basePath = basePath;
         this.connections = [];
     }
@@ -51,44 +51,61 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
     }
 
     @action({ locking: 'shared' })
-    public async store(options: IPersistenceStoreOptions): Promise<void> {
+    public async store(options: IPersistenceStoreOptions<Buffer>): Promise<void> {
         return this.storeBatchImpl({ items: [{ ...options, identifier: undefined }] });
     }
 
     @action({ locking: 'shared' })
-    public async storeBatch(options: IPersistenceStoreBatchOptions): Promise<void> {
-        return this.storeBatchImpl(options);
+    public async storeBatchBuffer(options: BufferOf<IPersistenceStoreBatchOptions<Buffer>>): Promise<void> {
+        return this.storeBatchImpl(this.deser.deserializeTyped(options));
     }
 
     @action({ locking: 'shared' })
-    public async load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult> {
+    public async load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult<Buffer>> {
         const conn = this.getConnection('readonly');
         if (!conn) {
             throw new Error('No connection');
         }
         conn.mutex.tryAcquire() || (await conn.mutex.acquire());
         try {
-            return await conn.worker.load(options);
+            const loadResult = await conn.worker.load(options);
+            // Because of thread boundaries, the Buffer value in loadResult is replaced
+            // with a byte-array. So, create a new Buffer around this.
+            return {
+                version: loadResult.version,
+                value: loadResult.value ? Buffer.from(await loadResult.value.arrayBuffer()) : undefined
+            }
         } finally {
             conn.mutex.release();
         }
     }
 
     @action({ locking: 'shared' })
-    public async query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>> {
+    public async queryBuffer(options: IPersistenceQueryOptions): Promise<BufferOf<IPersistenceQueryResult<Buffer>>> {
         const conn = this.getConnection('readonly');
         if (!conn) {
             throw new Error('No connection');
         }
         conn.mutex.tryAcquire() || (await conn.mutex.acquire());
         try {
-            return await conn.worker.query(options);
+            const queryResults = await conn.worker.query(options);
+            const result: IPersistenceQueryResult<Buffer> = {
+                items: [],
+                continuationToken: queryResults.continuationToken
+            };
+            for (const item of queryResults.items) {
+                result.items.push({
+                    sortKey: item.sortKey,
+                    value: item.value ? Buffer.from(await item.value.arrayBuffer()): undefined
+                });
+            }
+            return this.deser.serialize(result);
         } finally {
             conn.mutex.release();
         }
     }
 
-    protected async storeBatchImpl(options: IPersistenceStoreBatchOptions): Promise<void> {
+    protected async storeBatchImpl(options: IPersistenceStoreBatchOptions<Buffer>): Promise<void> {
         // TODO: Combine multiple batches internally
         const conn = this.getConnection('writable');
         if (!conn) {
@@ -97,7 +114,17 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         conn.mutex.tryAcquire() || (await conn.mutex.acquire());
         try {
             // TODO: Check assumption that worker performs internal synchronization (only one task at a time)
-            return (await conn.worker.storeBatch(options)) as unknown as Promise<void>;
+            const options2: IPersistenceStoreBatchOptions<Blob> = {
+                items: options.items.map( (item) => ({
+                    identifier: item.identifier,
+                    partitionKey: item.partitionKey,
+                    version: item.version,
+                    sortKey: item.sortKey,
+                    specifier: item.specifier,
+                    value: item.value ? new Blob([item.value]) : undefined
+                }))
+            }
+            return (await conn.worker.storeBatch(options2)) as unknown as Promise<void>;
         } finally {
             conn.mutex.release();
         }

@@ -20,7 +20,7 @@ export function createPersistenceSuite(options: IPersistenceServiceOptions) {
             type: PERSISTENCE_SERVICE,
             kind: 'multiplar',
             creator: (context) => {
-                return new PersistenceService(options, context.portal);
+                return new PersistenceService(options, context.portal, context.deser);
             }
         }
     ]);

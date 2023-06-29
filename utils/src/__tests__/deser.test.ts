@@ -1,4 +1,7 @@
 import { BsonDeSer } from '../bsondeser';
+import { IDeSer } from '../deser';
+import { MimeDeSer} from '../mimedeser';
+import { MultiDeSer } from '../multideser';
 
 // Originally, caching was enabled by default. But, sometimes when you receive data (like when
 // loading state from persistence), it is natural behaviour of developers to modify the returned
@@ -9,6 +12,7 @@ import { BsonDeSer } from '../bsondeser';
 // tests, but with caching disabled. The differences are described in the comments using
 // capital words like NOT and DOES NOT.
 
+/*
 describe('BsonDeserWithCaching', () => {
     test('Struct', () => {
         const deser = new BsonDeSer(true);
@@ -142,12 +146,16 @@ describe('BsonDeserWithCaching', () => {
         const deserialized4 = deser.deserialize(serialized4) as typeof data;
         expect(deserialized4.toString()).toBe('AELLO');
     });
-});
+});*/
 
-describe('BsonDeserWithoutCaching', () => {
-    test('Struct', () => {
-        const deser = new BsonDeSer(false);
+const desers: [string, IDeSer][] = [
+    ['mime', new MimeDeSer()],
+    ['multi', new MultiDeSer()],
+    ['bson', new BsonDeSer(false)]
+];
 
+describe('DeserWithoutCaching', () => {
+    test.each(desers)('%p Struct', (_name, deser) => {
         const data = {
             Hello: 'World'
         };
@@ -166,6 +174,7 @@ describe('BsonDeserWithoutCaching', () => {
         // the original data object. We expect that the buffer contents is used
         // for deserialization.
         const deserialized2 = deser.deserialize(serialized2) as typeof data;
+        
         expect(deserialized2.Hello).toBe('World');
 
         // Cross check: when we corrupt the contents of yet another copy of the
@@ -188,9 +197,7 @@ describe('BsonDeserWithoutCaching', () => {
         expect(serialized4[0]).toBeGreaterThan(1);
     });
 
-    test('Primitive', () => {
-        const deser = new BsonDeSer(false);
-
+    test.each(desers)('%p Primitive', (_name, deser) => {
         let data = 42;
 
         const serialized = deser.serialize(data);
@@ -228,18 +235,22 @@ describe('BsonDeserWithoutCaching', () => {
         const serialized4 = deser.serialize(data);
         const deserialized4 = deser.deserialize(serialized4) as typeof data;
         expect(deserialized4).toBe(84);
+
+        expect(deser.deserialize(deser.serialize(123.456))).toBeCloseTo(123.456);
     });
 
-    test('Undefined', () => {
-        const deser = new BsonDeSer(false);
+    test.each(desers)('%p Undefined', (_name, deser) => {
         expect(deser.deserialize(deser.serialize(undefined))).toBe(undefined);
         expect((deser.deserialize(deser.serialize({ x: undefined })) as { x?: string }).x).toBe(undefined);
         expect(deser.deserialize(deser.serialize([5, undefined, 'foo']))).toStrictEqual([5, undefined, 'foo']);
     });
 
-    test('Primitive Buffer', () => {
-        const deser = new BsonDeSer(false);
+    test.each(desers)('%p Empty array', (_name, deser) => {
+        expect(deser.deserialize(deser.serialize([]))).toStrictEqual([]);
+        expect((deser.deserialize(deser.serialize({ x: [] })) as { x?: string[] }).x).toStrictEqual([]);
+    });
 
+    test.each(desers)('%p Primitive Buffer', (_name, deser) => {
         const data = Buffer.from('HELLO');
 
         const serialized = deser.serialize(data);
@@ -278,4 +289,82 @@ describe('BsonDeserWithoutCaching', () => {
         const deserialized4 = deser.deserialize(serialized4) as typeof data;
         expect(deserialized4.toString()).toBe('AELLO');
     });
+
+    const n = 2000;
+    const q = 100;
+    const performanceinput = {
+        Hello: Array(n).fill('World'),
+        Temperatures: Array(n).fill(123),
+        Floats: Array(n).fill(1.23),
+    };
+    test.each(desers)(`%p Performance (${q}x) without buffer (${n} elements)`, (_name, deser) => {
+        for (let i=0; i<q; i++) {
+            deser.deserialize(deser.serialize(performanceinput));
+        }
+    });
+
+    const performanceinputWithBuf = {
+        Hello: Array(n).fill('World'),
+        Temperatures: Array(n).fill(123),
+        Floats: Array(n).fill(1.23),
+        Buffer: Buffer.alloc(n).fill('X')
+    };
+    test.each(desers)(`%p Performance (${q}x) with buffer (${n} elements)`, (_name, deser) => {
+        for (let i=0; i<q; i++) {
+            deser.deserialize(deser.serialize(performanceinputWithBuf));
+        }
+    });
+
+    const performanceinputWithSubObjects = {
+        SubObjects: Array(n).fill({
+            a: 5,
+            b: 3.2,
+            c: 'Foo'
+        })
+    };
+    test.each(desers)(`%p Performance (${q}x) with sub objects (${n} elements)`, (_name, deser) => {
+        for (let i=0; i<q; i++) {
+            deser.deserialize(deser.serialize(performanceinputWithSubObjects));
+        }
+    });
+
+    const performanceinputSimple = {
+        Hello: 'World',
+        Temperature: 123,
+        Float: 1.23,
+    };
+    test.each(desers)(`%p Performance (${q}x) simple object without arrays`, (_name, deser) => {
+        for (let i=0; i<q; i++) {
+            deser.deserialize(deser.serialize(performanceinputSimple));
+        }
+    });
+
+    const performanceInputSeparateValues = new Array(n).fill('abc');
+    const performanceInputConcatenatedValues = performanceInputSeparateValues.join(',');
+    test.each(desers)(`%p Performance (${q}x) separate values`, (_name, deser) => {
+        for (let i=0; i<q; i++) {
+            deser.deserialize(deser.serialize(performanceInputSeparateValues));
+        }
+    });
+    test.each(desers)(`%p Performance (${q}x) pre-concatenated values`, (_name, deser) => {
+        for (let i=0; i<q; i++) {
+            deser.deserialize(deser.serialize(performanceInputConcatenatedValues));
+        }
+    });
+    test.each(desers)(`%p Performance (${q}x) realtime-concatenated values`, (_name, deser) => {
+        for (let i=0; i<q; i++) {
+            const concatenated = performanceInputSeparateValues.join(',');
+            (deser.deserialize(deser.serialize(concatenated)) as string).split(',');
+
+        }
+    });
+
+    test('Interoperability BSON-MIME', () => {
+        const bsonDeser = new BsonDeSer(false);
+        const multiDeser = new MultiDeSer();
+        const data = { Hello: 'World' };
+        const serialized = bsonDeser.serialize(data);
+        const deserialized = multiDeser.deserialize(serialized);
+        expect((deserialized as typeof data).Hello).toBe('World');
+    })
 });

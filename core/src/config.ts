@@ -1,5 +1,5 @@
 import { IActorRegistrationOptions, IActorSuite } from '@darlean/base';
-import { BsonDeSer, ConfigEnv, IConfigEnv, notifier, onApplicationStop, sleep } from '@darlean/utils';
+import { MultiDeSer, ConfigEnv, IConfigEnv, notifier, onApplicationStop, sleep } from '@darlean/utils';
 import { InProcessTransport, NatsTransport } from './infra';
 import { NatsServer } from './infra/natsserver';
 import { ActorRunner, ActorRunnerBuilder } from './running';
@@ -266,14 +266,14 @@ export class ConfigRunnerBuilder {
                     for (let idx = 0; idx < hosts.length; idx++) {
                         seedUrls.push(hosts[idx] + ':' + (basePort + offsets[idx]).toString());
                     }
-                    builder.setRemoteAccess(appId, new NatsTransport(new BsonDeSer(), seedUrls));
+                    builder.setRemoteAccess(appId, new NatsTransport(new MultiDeSer(), seedUrls));
                     transportSet = true;
                 }
             }
         }
 
         if (!transportSet) {
-            builder.setRemoteAccess(appId, new InProcessTransport(new BsonDeSer()));
+            builder.setRemoteAccess(appId, new InProcessTransport(new MultiDeSer()));
         }
     }
 

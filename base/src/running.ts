@@ -1,4 +1,4 @@
-import { ITime } from '@darlean/utils';
+import { IDeSer, ITime } from '@darlean/utils';
 import { IInstanceContainer } from './instances';
 import { IActorPlacement, IPortal } from './remoteinvocation';
 import { ITableIndexItem } from './services/tables';
@@ -152,6 +152,11 @@ export interface IActorCreateContext {
      * is deactivated.
      */
     newVolatileTimer(): IVolatileTimer;
+
+    /**
+     * A Serializer/Deserializer that can be used for serialization/deserialization of data.
+     */
+    deser: IDeSer;
 }
 
 export interface IActorSuite {

@@ -1,4 +1,4 @@
-import { IDeSer } from './deser';
+import { BufferOf, IDeSer } from './deser';
 import * as bson from 'bson';
 import { isObject } from './util';
 
@@ -24,6 +24,21 @@ export class BsonDeSer implements IDeSer {
 
     constructor(caching = false) {
         this.caching = caching;
+    }
+
+    public detect(buffer: Buffer): boolean {
+        // check size
+        if (buffer.byteLength < 5) {
+            return false;
+        }
+        const size = buffer[0] | buffer[1] << 8 | buffer[2] << 16 | buffer[3] << 24;
+        if (size < 5 || size > buffer.byteLength) {
+            return false;
+        }
+        if (buffer[size - 1] !== 0x00) {
+            return false;
+        }
+        return true;
     }
 
     public serialize(value: unknown): Buffer {
@@ -77,6 +92,10 @@ export class BsonDeSer implements IDeSer {
         }
         cleanup(10, value);
         return value;
+    }
+
+    public deserializeTyped<T>(buffer: BufferOf<T>): T {
+      return this.deserialize(buffer) as T;  
     }
 }
 

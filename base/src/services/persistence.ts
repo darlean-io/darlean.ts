@@ -1,3 +1,4 @@
+import { BufferOf } from '@darlean/utils';
 import { IActionError } from '../shared';
 
 /**
@@ -15,7 +16,7 @@ export interface IPersistenceService {
      * @see
      * * {@link IPersistenceStoreOptions} for the options.
      */
-    store(options: IPersistenceStoreOptions): Promise<void>;
+    store(options: IPersistenceStoreOptions<Buffer>): Promise<void>;
 
     /**
      * Stores a batch of data items.
@@ -28,7 +29,9 @@ export interface IPersistenceService {
      * @see
      * * {@link IPersistenceStoreOptions} for the options.
      */
-    storeBatch(options: IPersistenceStoreBatchOptions): Promise<IPersistenceStoreBatchResult>;
+    storeBatch(options: IPersistenceStoreBatchOptions<Buffer>): Promise<IPersistenceStoreBatchResult>;
+
+    storeBatchBuffer(options: BufferOf<IPersistenceStoreBatchOptions<Buffer>>): Promise<BufferOf<IPersistenceStoreBatchResult>>;
 
     /**
      * Loads a piece of data.
@@ -36,7 +39,7 @@ export interface IPersistenceService {
      * When the item does not exist (anymore), the {@link IPersistenceLoadResult.value} field is `undefined`. Depending on the cleanup policy of
      * the underlying store, the {@link IPersistenceLoadResult.version} is either `undefined`, or set to the version at which the item was deleted.
      */
-    load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult>;
+    load(options: IPersistenceLoadOptions): Promise<IPersistenceLoadResult<Buffer>>;
 
     /**
      * Queries for data items given a set of constraints.
@@ -45,19 +48,27 @@ export interface IPersistenceService {
      * * {@link IPersistenceQueryOptions} for a description of the options.
      */
     query(options: IPersistenceQueryOptions): Promise<IPersistenceQueryResult<Buffer>>;
+
+    /**
+     * Queries for data items given a set of constraints.
+     *
+     * @see
+     * * {@link IPersistenceQueryOptions} for a description of the options.
+     */
+    queryBuffer(options: IPersistenceQueryOptions): Promise<BufferOf<IPersistenceQueryResult<Buffer>>>;
 }
 
 /**
  * Options for storing a batch of items.
  */
-export interface IPersistenceStoreBatchOptions {
+export interface IPersistenceStoreBatchOptions<T extends Buffer | Blob> {
     /**
      * List of items that should be stored.
      *
      * Items must include an `identifier` field (which can be undefined, and does not have to be unique) that is returned as
      * {@link IUnprocessedItem.identifier} in a {@link IPersistenceStoreBatchResult}.
      */
-    items: Array<IPersistenceStoreOptions & { identifier: unknown }>;
+    items: Array<IPersistenceStoreOptions<T> & { identifier: unknown }>;
 }
 
 /**
@@ -81,7 +92,7 @@ export interface IPersistenceStoreBatchResult {
 /**
  * Options for storing an item to persistence.
  */
-export interface IPersistenceStoreOptions {
+export interface IPersistenceStoreOptions<T extends Buffer | Blob> {
     /**
      * An optional specifier that is used to determine in which compartment the data is to be stored.
      */
@@ -102,7 +113,7 @@ export interface IPersistenceStoreOptions {
      * It is up to the application developer to choose the format, but BSON is the only format that is understood by Darlean itself and for which advanced querying functionality
      * (like projection filters and item filters) is available.
      */
-    value?: Buffer;
+    value?: T;
     /**
      * The mandatory version of the data.
      *
@@ -137,18 +148,19 @@ export interface IPersistenceLoadOptions {
      * * {@link filterStructure} which is the function that performs the projection filtering.
      */
     projectionFilter?: string[];
+    projectionBases?: string[];
 }
 
 /**
  * The result of loading an item.
  */
-export interface IPersistenceLoadResult {
+export interface IPersistenceLoadResult<T extends Buffer | Blob> {
     /**
      * The value of the item, or `undefined` when the item was not found.
      *
      * When a projectionFilter is applied, value contains a BSON encoded object with the projection fields.
      */
-    value?: Buffer;
+    value?: T;
 
     /**
      * The version of the item.

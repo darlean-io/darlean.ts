@@ -8,6 +8,7 @@ import {
     ITableSearchResponse,
     ITablesService
 } from '@darlean/base';
+import { IDeSer } from '@darlean/utils';
 
 /**
  * For internal use. Helper class for {@link TablePersistence}.
@@ -88,7 +89,7 @@ export class TablePersistence<T> implements ITablePersistence<T> {
     private specifier: string | undefined;
     private indexer: (item: T) => ITableIndexItem[];
 
-    constructor(service: ITablesService, indexer: (item: T) => ITableIndexItem[], specifier?: string) {
+    constructor(service: ITablesService, indexer: (item: T) => ITableIndexItem[], private deser: IDeSer, specifier?: string) {
         this.service = service;
         this.specifier = specifier;
         this.indexer = indexer;
@@ -105,16 +106,19 @@ export class TablePersistence<T> implements ITablePersistence<T> {
                 specifier: this.specifier,
                 tableProjection: options.tableProjection,
                 continuationToken: options.continuationToken,
-                maxItems: options.maxItems
+                maxItems: options.maxItems,
+                indexRepresentation: options.indexRepresentation,
+                tableRepresentation: options.tableRepresentation
             };
 
-            const results = await this.service.search(opts2);
+            const results = this.deser.deserializeTyped(await this.service.searchBuffer(opts2));
             const response: ITableSearchResponse = { items: [], continuationToken: results.continuationToken };
 
             for (const item of results.items) {
                 response.items.push({
                     id: item.id,
-                    tableFields: item.tableFields
+                    tableFields: item.tableFields,
+                    tableBuffer: item.tableBuffer
                 });
             }
             return response;
@@ -130,10 +134,12 @@ export class TablePersistence<T> implements ITablePersistence<T> {
                 tableProjection: options.tableProjection,
                 indexProjection: options.indexProjection,
                 continuationToken: options.continuationToken,
-                maxItems: options.maxItems
+                maxItems: options.maxItems,
+                tableRepresentation: options.tableRepresentation,
+                indexRepresentation: options.indexRepresentation
             };
 
-            const results = await this.service.search(opts2);
+            const results = this.deser.deserializeTyped(await this.service.searchBuffer(opts2));
             const response: ITableSearchResponse = { items: [], continuationToken: results.continuationToken };
 
             for (const item of results.items) {
@@ -183,7 +189,8 @@ export class TablePersistence<T> implements ITablePersistence<T> {
     ): Promise<[value: T | undefined, version: string | undefined, baseline: string | undefined]> {
         const result = await this.service.get({
             specifier: this.specifier,
-            keys: key
+            keys: key,
+            representation: 'fields'
         });
 
         const value = result.data as T;

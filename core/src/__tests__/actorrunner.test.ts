@@ -1,5 +1,5 @@
 import { ActorRunnerBuilder, DEFAULT_LOCAL_APP_ID } from '../running';
-import { BsonDeSer, sleep } from '@darlean/utils';
+import { MultiDeSer, sleep } from '@darlean/utils';
 import { action, IPersistence, ITypedPortal } from '@darlean/base';
 import { MemoryPersistence } from '../various';
 import { EchoActor, IEchoActor } from '../testing';
@@ -159,7 +159,7 @@ describe('Actor runner & builder', () => {
             apps: ['my-app']
         });
 
-        const transport = new InProcessTransport(new BsonDeSer());
+        const transport = new InProcessTransport(new MultiDeSer());
         builder.setRemoteAccess('my-app', transport);
         const app = builder.build();
 

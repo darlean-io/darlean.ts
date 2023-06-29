@@ -1,4 +1,4 @@
-import { BsonDeSer, sleep, Time } from '@darlean/utils';
+import { MultiDeSer, sleep, Time } from '@darlean/utils';
 import { InProcessTransport } from '../infra/inprocesstransport';
 import { InstanceContainer, MultiTypeInstanceContainer } from '../instances';
 import { ActorRegistry, ExponentialBackOff, RemotePortal } from '../remoteinvocation';
@@ -13,7 +13,7 @@ describe('Local portal', () => {
         const time = new Time();
         const backoff = new ExponentialBackOff(time, 1, 4);
         const mc = new MultiTypeInstanceContainer();
-        const deser = new BsonDeSer();
+        const deser = new MultiDeSer();
         const transport = new InProcessTransport(deser);
         const registry = new ActorRegistry();
         const remote = new TransportRemote('local', transport, mc);
@@ -44,7 +44,7 @@ describe('Local portal', () => {
         const time = new Time();
         const backoff = new ExponentialBackOff(time, 1, 4);
         const mc = new MultiTypeInstanceContainer();
-        const deser = new BsonDeSer();
+        const deser = new MultiDeSer();
         const transport = new InProcessTransport(deser);
         const registry = new ActorRegistry();
         const remote = new TransportRemote('local', transport, mc);

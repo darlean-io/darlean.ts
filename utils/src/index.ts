@@ -21,3 +21,6 @@ export * from './config';
 export * from './deser';
 export * from './bsondeser';
 export * from './remotestreaming';
+export * from './mimedeser';
+export * from './multipart';
+export * from './multideser';
