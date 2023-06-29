@@ -3,10 +3,10 @@
  * ReadableStreamProducer     <---readChunk----  (Sequantial)WritableStreamConsumer
  * WritableStreamConsumer     <---writeChunk---  (Sequantial)WritableStreamProducer
  */
-import { Readable, Writable } from "stream";
-import { Mutex } from ".";
+import { Readable, Writable } from 'stream';
+import { Mutex } from '.';
 
-const DEFAULT_CHUNK_SIZE = 500*1000;
+const DEFAULT_CHUNK_SIZE = 500 * 1000;
 
 export interface IChunk {
     /**
@@ -50,7 +50,7 @@ export class SequentialReadableRemoteStreamConsumer {
 
     public readable() {
         return Readable.from(this.consume());
-    } 
+    }
 }
 
 /**
@@ -65,7 +65,7 @@ export class ReadableRemoteStreamProducer implements IReadableRemoteStream {
     private finalized: boolean;
     private mutex: Mutex<void>;
     private onEnd?: () => void;
-    
+
     constructor(private input: Readable, private chunkSize: number) {
         this.nextChunkIndex = 0;
         this.finalized = false;
@@ -77,7 +77,7 @@ export class ReadableRemoteStreamProducer implements IReadableRemoteStream {
     }
 
     public async readChunk(): Promise<IChunk> {
-        this.mutex.tryAcquire() || await this.mutex.acquire();
+        this.mutex.tryAcquire() || (await this.mutex.acquire());
         try {
             if (this.finalized) {
                 return { index: this.nextChunkIndex };
@@ -91,11 +91,11 @@ export class ReadableRemoteStreamProducer implements IReadableRemoteStream {
                 return { index, data };
             } else {
                 const status = await new Promise<'readable' | 'ended'>((resolve) => {
-                    this.input.once('readable', () =>  resolve('readable'));
+                    this.input.once('readable', () => resolve('readable'));
                     this.onEnd = () => resolve('ended');
                 });
                 if (status === 'ended') {
-                    return { index: this.nextChunkIndex }
+                    return { index: this.nextChunkIndex };
                 }
                 const available = this.input.readableLength;
                 const amount = Math.min(available, this.chunkSize);
@@ -122,15 +122,15 @@ export class SequentialWritableRemoteStreamProducer {
     private mutex: Mutex<void>;
     private nextWriteIndex: number;
     private buffers: Buffer[];
-    
-    constructor (private sink: IWritableRemoteStream, private chunkSize: number) {
+
+    constructor(private sink: IWritableRemoteStream, private chunkSize: number) {
         this.mutex = new Mutex();
         this.nextWriteIndex = 0;
         this.buffers = [];
     }
 
     public async write(data: Buffer) {
-        this.mutex.tryAcquire() || await this.mutex.tryAcquire();
+        this.mutex.tryAcquire() || (await this.mutex.tryAcquire());
         try {
             await this.writeImpl(data, false);
         } finally {
@@ -139,7 +139,7 @@ export class SequentialWritableRemoteStreamProducer {
     }
 
     public async flush() {
-        this.mutex.tryAcquire() || await this.mutex.tryAcquire();
+        this.mutex.tryAcquire() || (await this.mutex.tryAcquire());
         try {
             await this.writeImpl(undefined, true);
         } finally {
@@ -148,7 +148,7 @@ export class SequentialWritableRemoteStreamProducer {
     }
 
     public async end() {
-        this.mutex.tryAcquire() || await this.mutex.tryAcquire();
+        this.mutex.tryAcquire() || (await this.mutex.tryAcquire());
         try {
             await this.writeImpl(undefined, true);
             await this.sink.writeChunk({
@@ -158,15 +158,15 @@ export class SequentialWritableRemoteStreamProducer {
             this.mutex.release();
         }
     }
-    
+
     private async writeImpl(data: Buffer | undefined, immediately = false) {
         const len = this.buffers.reduce((prev, curr) => prev + curr.length, 0) + (data?.length ?? 0);
-        if ( (immediately) || (len >= this.chunkSize)) {
+        if (immediately || len >= this.chunkSize) {
             const buffer = data ? Buffer.concat([...this.buffers, data]) : Buffer.concat([...this.buffers]);
             this.buffers = [];
             let offset = 0;
             while (offset < buffer.length) {
-                const slice = buffer.subarray(offset, offset+this.chunkSize);
+                const slice = buffer.subarray(offset, offset + this.chunkSize);
                 if (slice.length < this.chunkSize) {
                     if (!immediately) {
                         this.buffers.push(slice);
@@ -199,16 +199,16 @@ export class WritableRemoteStreamConsumer {
     private nextWriteIndex: number;
     private cache: ICachedChunk[];
     private processCache?: () => void;
-    
+
     constructor(private sink: Writable) {
         this.finalized = false;
         this.nextWriteIndex = 0;
         this.cache = [];
-        setImmediate( () => this.loop() );
+        setImmediate(() => this.loop());
     }
 
     public async writeChunk(chunk: IChunk) {
-        if (this.finalized || (!this.sink.writable)) {
+        if (this.finalized || !this.sink.writable) {
             throw new Error('STREAM_CLOSED');
         }
 
@@ -227,11 +227,11 @@ export class WritableRemoteStreamConsumer {
     protected async loop() {
         let idx = 0;
         while (true) {
-            if (this.finalized || (!this.sink.writable)) {
+            if (this.finalized || !this.sink.writable) {
                 this.finalized = true;
 
                 for (const cached of this.cache) {
-                    cached.reject( new Error('STREAM_CLOSED') );
+                    cached.reject(new Error('STREAM_CLOSED'));
                 }
                 // Break the loop.
                 return;
@@ -267,7 +267,7 @@ export class WritableRemoteStreamConsumer {
                     continue;
                 }
                 await new Promise<void>((resolve) => {
-                    this.sink.once('drain', () => resolve())
+                    this.sink.once('drain', () => resolve());
                 });
             }
 
@@ -282,6 +282,5 @@ export function createReadableRemoteStreamConsumer(source: IReadableRemoteStream
 }
 
 export function createWritableRemoteStreamProducer(sink: IWritableRemoteStream, chunkSize?: number) {
-    return new SequentialWritableRemoteStreamProducer(sink, chunkSize ?? DEFAULT_CHUNK_SIZE)
+    return new SequentialWritableRemoteStreamProducer(sink, chunkSize ?? DEFAULT_CHUNK_SIZE);
 }
-

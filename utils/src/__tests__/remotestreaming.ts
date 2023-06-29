@@ -1,5 +1,13 @@
 import { Readable, Writable } from 'node:stream';
-import { IChunk, IReadableRemoteStream, IWritableRemoteStream, ReadableRemoteStreamProducer, SequentialReadableRemoteStreamConsumer, SequentialWritableRemoteStreamProducer, WritableRemoteStreamConsumer } from '../remotestreaming';
+import {
+    IChunk,
+    IReadableRemoteStream,
+    IWritableRemoteStream,
+    ReadableRemoteStreamProducer,
+    SequentialReadableRemoteStreamConsumer,
+    SequentialWritableRemoteStreamProducer,
+    WritableRemoteStreamConsumer
+} from '../remotestreaming';
 import { sleep } from '..';
 
 class TestProducerSource implements IReadableRemoteStream {
@@ -41,7 +49,7 @@ function makeBufferReadable(buffer: Buffer): Readable {
             this.push(buffer);
             this.push(null);
         }
-    })
+    });
 }
 
 function makeBufferWritable(buffers: Buffer[], highWaterMark?: number): Writable {
@@ -51,24 +59,20 @@ function makeBufferWritable(buffers: Buffer[], highWaterMark?: number): Writable
             if (chunk.toString() === 'ERROR') {
                 return cb(new Error('TEST_ERROR'));
                 //setTimeout(() => cb(new Error('TEST_ERROR')), 10);
-            } else
-            if (chunk.toString() === 'ASYNC_ERROR') {
+            } else if (chunk.toString() === 'ASYNC_ERROR') {
                 //process.nextTick(() => cb(new Error('ASYNC_TEST_ERROR')));
-                setTimeout( () => cb(new Error('ASYNC ERROR')), 10);
+                setTimeout(() => cb(new Error('ASYNC ERROR')), 10);
             } else {
                 buffers.push(chunk);
                 cb();
             }
         }
-    })
+    });
 }
 
 describe('Streaming - ReadableConsumer', () => {
     test('ReadableConsumer', async () => {
-        const chunks: string[] = [
-            'Hello',
-            'World'
-        ];
+        const chunks: string[] = ['Hello', 'World'];
         const producerSource = new TestProducerSource(chunks);
         const producer = new SequentialReadableRemoteStreamConsumer(producerSource);
 
@@ -83,11 +87,7 @@ describe('Streaming - ReadableConsumer', () => {
     });
 
     test('ReadableConsumerWithError', async () => {
-        const chunks: string[] = [
-            'Hello',
-            'ERROR',
-            'World'
-        ];
+        const chunks: string[] = ['Hello', 'ERROR', 'World'];
         const producerSource = new TestProducerSource(chunks);
         const producer = new SequentialReadableRemoteStreamConsumer(producerSource);
 
@@ -106,7 +106,7 @@ describe('Streaming - ReadableConsumer', () => {
         expect(error).toBeDefined();
     });
 });
-    
+
 describe('Streaming - ReadableProducer', () => {
     test('ReadableProducer', async () => {
         const data = 'HelloWorld';
@@ -136,12 +136,12 @@ describe('Streaming - ReadableProducer', () => {
             const chunk = await producer.readChunk();
             expect(chunk.index).toBe(3);
             expect(chunk.data).toBeUndefined();
-        }        
+        }
     });
 });
 describe('Streaming - WritableProducer', () => {
     test('WritableRemoteStreamProducer', async () => {
-        const sink = new TestWritableRemoteStream();        
+        const sink = new TestWritableRemoteStream();
         const producer = new SequentialWritableRemoteStreamProducer(sink, 4);
         await producer.write(Buffer.from('H'));
         await producer.write(Buffer.from('ello'));
@@ -172,9 +172,9 @@ describe('Streaming - WritableConsumer', () => {
         const buffers: Buffer[] = [];
         const sink = makeBufferWritable(buffers);
         const consumer = new WritableRemoteStreamConsumer(sink);
-        await consumer.writeChunk({index: 0, data: Buffer.from('Hello')});
-        await consumer.writeChunk({index: 1, data: Buffer.from('World')});
-        await consumer.writeChunk({index: 2});
+        await consumer.writeChunk({ index: 0, data: Buffer.from('Hello') });
+        await consumer.writeChunk({ index: 1, data: Buffer.from('World') });
+        await consumer.writeChunk({ index: 2 });
         expect(buffers[0].toString()).toBe('Hello');
         expect(buffers[1].toString()).toBe('World');
         expect(buffers[2]).toBe(undefined);
@@ -187,14 +187,14 @@ describe('Streaming - WritableConsumer', () => {
         const promises = [
             (async () => {
                 await sleep(20);
-                await consumer.writeChunk({index: 0, data: Buffer.from('Hello')});
+                await consumer.writeChunk({ index: 0, data: Buffer.from('Hello') });
             })(),
             (async () => {
                 await sleep(10);
-                await consumer.writeChunk({index: 1, data: Buffer.from('World')});        
+                await consumer.writeChunk({ index: 1, data: Buffer.from('World') });
             })(),
             (async () => {
-                await consumer.writeChunk({index: 2});
+                await consumer.writeChunk({ index: 2 });
             })()
         ];
         await Promise.all(promises);
@@ -207,9 +207,9 @@ describe('Streaming - WritableConsumer', () => {
         const buffers: Buffer[] = [];
         const sink = makeBufferWritable(buffers, 4);
         const consumer = new WritableRemoteStreamConsumer(sink);
-        await consumer.writeChunk({index: 0, data: Buffer.from('Hello')});
-        await consumer.writeChunk({index: 1, data: Buffer.from('World')});
-        await consumer.writeChunk({index: 2});
+        await consumer.writeChunk({ index: 0, data: Buffer.from('Hello') });
+        await consumer.writeChunk({ index: 1, data: Buffer.from('World') });
+        await consumer.writeChunk({ index: 2 });
         expect(buffers[0].toString()).toBe('Hello');
         expect(buffers[1].toString()).toBe('World');
         expect(buffers[2]).toBe(undefined);
@@ -218,12 +218,14 @@ describe('Streaming - WritableConsumer', () => {
     test('WritableRemoteStreamConsumer_WithSyncError', async () => {
         const buffers: Buffer[] = [];
         const sink = makeBufferWritable(buffers);
-        sink.on('error', () => { /* */ });
+        sink.on('error', () => {
+            /* */
+        });
         const consumer = new WritableRemoteStreamConsumer(sink);
-        await consumer.writeChunk({index: 0, data: Buffer.from('Hello')});
+        await consumer.writeChunk({ index: 0, data: Buffer.from('Hello') });
         let error: unknown;
         try {
-            await consumer.writeChunk({index: 1, data: Buffer.from('ERROR')});
+            await consumer.writeChunk({ index: 1, data: Buffer.from('ERROR') });
         } catch (e) {
             error = e;
         }
@@ -238,18 +240,17 @@ describe('Streaming - WritableConsumer', () => {
     test('WritableRemoteStreamConsumer_WithAsyncError', async () => {
         const buffers: Buffer[] = [];
         const sink = makeBufferWritable(buffers);
-        sink.on('error', () => { /* */ });
+        sink.on('error', () => {
+            /* */
+        });
         const consumer = new WritableRemoteStreamConsumer(sink);
-        await consumer.writeChunk({index: 0, data: Buffer.from('Hello')});
-        await consumer.writeChunk({index: 1, data: Buffer.from('ASYNC_ERROR')});
+        await consumer.writeChunk({ index: 0, data: Buffer.from('Hello') });
+        await consumer.writeChunk({ index: 1, data: Buffer.from('ASYNC_ERROR') });
         await sleep(100);
-        
+
         {
             expect(buffers[0].toString()).toBe('Hello');
             expect(buffers[1]).toBe(undefined);
         }
     });
-
-
-
 });
