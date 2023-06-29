@@ -67,6 +67,7 @@ export function testActorSuite(): IActorSuite {
                         }
                         return [];
                     },
+                    context.deser,
                     'indexstoragetest'
                 );
                 return new TableStorageTestActor(tp);

@@ -1,6 +1,6 @@
 import { ITableIndexItem, IPortal, ITableSearchItem, ITableSearchResponse, ITablesService, TABLES_SERVICE } from '@darlean/base';
 import { ConfigRunnerBuilder, TablePersistence } from '@darlean/core';
-import { encodeNumber, ITime, parallel, ParallelTask, sleep, Time } from '@darlean/utils';
+import { encodeNumber, ITime, MultiDeSer, parallel, ParallelTask, sleep, Time } from '@darlean/utils';
 import { STORAGE_TEST_ACTOR_TABLE, TableStorageTestActor, testActorSuite } from './actor.impl';
 
 async function tablepersistence_get_store(actor: TableStorageTestActor) {
@@ -27,9 +27,9 @@ async function tablepersistence_store_search(actor: TableStorageTestActor, time:
     const results = await parallel(tasks, 100000, -1000);
     const stop = time.machineTicks();
     console.log('DURATION', stop - start, ' | ', (1000 * results.results.length) / (stop - start), 'stores/sec');
-
+    const deser = new MultiDeSer();
     const ts = portal.retrieve<ITablesService>(TABLES_SERVICE, ['testtable']);
-    const tp = new TablePersistence<string>(ts, () => [], 'indexstoragetest');
+    const tp = new TablePersistence<string>(ts, () => [], deser, 'indexstoragetest');
 
     await context('Single chunk table search', async () => {
         const results = await tp.search({
