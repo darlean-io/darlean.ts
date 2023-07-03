@@ -1,8 +1,15 @@
 import { ITabularColumn, TabularData } from '../tabulardata';
 
+interface Data {
+    Name?: string;
+    Temperature?: number;
+    Size?: number;
+    Oxygen?: boolean;
+}
+
 describe('Tabular data', () => {
     test.each(['table', 'imported'])('Basic', (kind) => {
-        const columns: ITabularColumn[] = [
+        const columns: ITabularColumn<Data>[] = [
             { name: 'Name', kind: 'text' },
             { name: 'Temperature', kind: 'fixed', precision: 2 },
             { name: 'Size', kind: 'float' },
@@ -20,8 +27,6 @@ describe('Tabular data', () => {
         const exported = table.export();
         const imported = new TabularData(exported);
 
-        console.log(exported);
-
         const tab = kind === 'imported' ? imported : table;
         expect(Array.from(tab.getCursor('Name'))).toStrictEqual(['Earth', 'Moon', 'Unknown']);
         expect(Array.from(tab.getCursor('Temperature'))).toStrictEqual([20.23, -12.34, undefined]);
@@ -30,9 +35,9 @@ describe('Tabular data', () => {
 
         const multi = tab.getMultiCursor(['Name', 'Oxygen']);
         expect(Array.from(multi)).toStrictEqual([
-            ['Earth', true],
-            ['Moon', false],
-            ['Unknown', undefined]
+            { Name: 'Earth', Oxygen: true },
+            { Name: 'Moon', Oxygen: false },
+            { Name: 'Unknown', Oxygen: undefined }
         ]);
     });
 });

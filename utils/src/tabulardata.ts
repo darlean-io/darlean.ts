@@ -3,17 +3,17 @@ import { isObject } from './util';
 const KEY_SEPARATOR = '.';
 const DEFAULT_DELIMITER = '\t';
 
-export interface ITabularExport {
+export interface ITabularExport<T extends object> {
     n: number;
-    columns: ITabularColumn[];
+    columns: ITabularColumn<T>[];
     values: string[];
 }
 
-export type TabularColumnKind = 'text' | 'int' | 'fixed' | 'float' | 'boolean';
+export type TabularColumnKind = 'text' | 'int' | 'fixed' | 'float' | 'boolean' | 'json';
 export type TabularColumnCompression = 'none' | 'rle';
 
-export interface ITabularColumn {
-    name: string;
+export interface ITabularColumn<T extends object> {
+    name: keyof T;
     kind: TabularColumnKind;
     precision?: number;
     compression?: 'none' | 'rle';
@@ -39,12 +39,12 @@ export interface ITabularColumn {
  * or for multiple columns at once ({@link getMultiCursor}). The cursors are just iterators that iterate over
  * all records.
  */
-export class TabularData {
-    private values: Map<string, (string | undefined | number)[]>;
-    private columns: ITabularColumn[];
+export class TabularData<T extends object> {
+    private values: Map<keyof T, (string | undefined | number)[]>;
+    private columns: ITabularColumn<T>[];
     private n: number;
 
-    constructor(source: ITabularColumn[] | ITabularExport) {
+    constructor(source: ITabularColumn<T>[] | ITabularExport<T>) {
         this.values = new Map();
         this.n = 0;
         if (Array.isArray(source)) {
@@ -71,7 +71,7 @@ export class TabularData {
         this.n++;
     }
 
-    public *getCursor(key: string) {
+    public *getCursor<K extends keyof T>(key: K): Generator<T[K] | undefined> {
         const column = this.columns.find((x) => x.name === key);
         const n = this.n;
         if (column) {
@@ -86,7 +86,7 @@ export class TabularData {
                             console.log('V', v);
                             throw new Error('Value type not supported');
                         }
-                        const value = this.decodeValue(v, column.kind);
+                        const value = this.decodeValue(v, column.kind) as T[K];
                         yield value;
                     }
                 }
@@ -96,23 +96,26 @@ export class TabularData {
         throw new Error('Column not found');
     }
 
-    public *getMultiCursor(keys: string[]) {
+    public *getMultiCursor(keys: (keyof T)[]) {
         const cursors = keys.map((key) => this.getCursor(key));
 
         while (true) {
-            const values: (number | string | boolean | undefined)[] = [];
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const result = {} as any;
+            let idx = 0;
             for (const cursor of cursors) {
                 const value = cursor.next();
                 if (value.done) {
                     return;
                 }
-                values.push(value.value);
+                result[keys[idx]] = value.value;
+                idx++;
             }
-            yield values;
+            yield result as T;
         }
     }
 
-    public export(): ITabularExport {
+    public export(): ITabularExport<T> {
         const exportedValues: string[] = [];
         for (const column of this.columns) {
             const values = this.values.get(column.name);
@@ -138,13 +141,24 @@ export class TabularData {
         };
     }
 
-    public import(data: ITabularExport) {
+    public import(data: ITabularExport<T>) {
+        if (data.columns === undefined) {
+            throw new Error('Corrupt tabular export');
+        }
         this.columns = data.columns;
         this.n = data.n;
         this.values.clear();
         let idx = 0;
         for (const column of this.columns) {
             const values = data.values[idx];
+
+            if (data.n === 0) {
+                // The below "split" code returns [undefined] when there are 0 records. That is not what we want, so explicitly
+                // handle this case here.
+                this.values.set(column.name, []);
+                continue;
+            }
+
             const splitted = values.split(column.delimiter ?? DEFAULT_DELIMITER);
             const remapped = splitted.map((x) => {
                 if (x === '') {
@@ -173,6 +187,8 @@ export class TabularData {
                 return (value as number).toString();
             case 'int':
                 return (value as number).toString();
+            case 'json':
+                return JSON.stringify(value);
         }
     }
 
@@ -192,6 +208,8 @@ export class TabularData {
                 return parseFloat(value);
             case 'int':
                 return parseInt(value);
+            case 'json':
+                return JSON.parse(value);
         }
     }
 
