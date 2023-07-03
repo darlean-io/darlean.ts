@@ -58,7 +58,7 @@ export class TabularData<T extends object> {
         }
     }
 
-    public addRecord(struct: unknown) {
+    public addRecord(struct: T) {
         const values: { key: string; value: unknown }[] = [];
         this.extractValues(struct, '', values);
         for (const column of this.columns) {
