@@ -41,6 +41,13 @@ export interface IPersistable<T> {
     load(): Promise<T | undefined>;
 
     /**
+     * Copies root fields from value into this.value when they do not exist in this.value.
+     * When one or more values are copied, the `changed` flag is automastically set.
+     * @param value The object of keys and associated default values.
+     */
+    initializeFrom(value: T): void;
+
+    /**
      * Stores the value in the unerlying persistence store.
      * @param force When `true`, also perform the store when the value is not {@link changed}. Default value
      * is `false`.
@@ -134,4 +141,18 @@ export type VolatileTimerFactory<T extends object> = (wrapper: IInstanceWrapper<
 export interface IVolatileTimer {
     once(handler: Function, delay: number, args?: unknown): IVolatileTimerHandle;
     repeat(handler: Function, interval: number, delay?: number, nrRepeats?: number, args?: unknown): IVolatileTimerHandle;
+}
+
+export interface IMigrationDefinition<State extends IMigrationState = IMigrationState, Context = unknown> {
+    version: string;
+    name: string;
+    migrator: (persistable: IPersistable<State>, context: Context) => Promise<Context | void>;
+}
+
+export interface IMigrationState {
+    migrationInfo?: string;
+}
+
+export interface IMigrationContext<T extends IMigrationState = IMigrationState, Context = unknown> {
+    perform(state: IPersistable<T>, nameResolver: () => Promise<string>, defaultValue: T): Promise<Context>;
 }

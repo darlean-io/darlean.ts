@@ -2,7 +2,14 @@ import { IDeSer, ITime } from '@darlean/utils';
 import { IInstanceContainer } from './instances';
 import { IActorPlacement, IPortal } from './remoteinvocation';
 import { ITableIndexItem } from './services/tables';
-import { IPersistence, ITablePersistence, IVolatileTimer } from './various';
+import {
+    IMigrationContext,
+    IMigrationDefinition,
+    IMigrationState,
+    IPersistence,
+    ITablePersistence,
+    IVolatileTimer
+} from './various';
 
 export interface IStartAction {
     name: string;
@@ -22,9 +29,23 @@ export interface IStopHandler {
 }
 
 /**
+ * Options for performing automatic migrations.
+ */
+export interface IMigrationOptions<MigrationState extends IMigrationState, MigrationContext> {
+    /**
+     * List of migrations. The list must be sorted in the proper migration order, oldest to newest.
+     */
+    migrations: IMigrationDefinition<MigrationState, MigrationContext>[];
+}
+
+/**
  * Options that specify how an actor type should be registered.
  */
-export interface IActorRegistrationOptions<T extends object> {
+export interface IActorRegistrationOptions<
+    ActorT extends object = object,
+    MigrationState extends IMigrationState = IMigrationState,
+    MigrationContext = undefined
+> {
     /**
      * The actor type. To avoid name collisions, it is recommended to prefix the actual type
      * with the 'inverse domain', for example: `com.example.MyActor`.
@@ -46,13 +67,13 @@ export interface IActorRegistrationOptions<T extends object> {
      *
      * @see IActorCreateContext
      */
-    creator?: (context: IActorCreateContext) => T;
+    creator?: (context: IActorCreateContext<MigrationState>) => ActorT;
 
     /**
      * Optional container instance that hosts the created instances for this type. When omitted,
      * an {@link InstanceContainer} is automatically created.
      */
-    container?: IInstanceContainer<T>;
+    container?: IInstanceContainer<ActorT>;
 
     /**
      * The maximum number of instances in the container.
@@ -85,6 +106,12 @@ export interface IActorRegistrationOptions<T extends object> {
      * When present, invoked when the actor runner will be stopped.
      */
     stopHandlers?: IStopHandler[];
+
+    /**
+     * Optional list of migrations that are registered to an internal migration controller for which
+     * a new context can be generated via {@link IActorCreateContext.migrationContext}.
+     */
+    migrations?: IMigrationOptions<MigrationState, MigrationContext> | IMigrationDefinition<MigrationState, MigrationContext>[];
 }
 
 export interface ITablePersistenceOptions<T> {
@@ -108,7 +135,7 @@ export interface ITablePersistenceOptions<T> {
  * Provides useful context to the {@link IActorRegistrationOptions.creater} factory function that creates
  * new actor instances.
  */
-export interface IActorCreateContext {
+export interface IActorCreateContext<MigrationState extends IMigrationState = IMigrationState> {
     /**
      * The id of the actor that is to be created.
      */
@@ -157,16 +184,24 @@ export interface IActorCreateContext {
      * A Serializer/Deserializer that can be used for serialization/deserialization of data.
      */
     deser: IDeSer;
+
+    /**
+     * Returns a new migration context of which the {@link IMigrationContext.perform} method can be invoked
+     * to perform a migration (that is, to bring the persisted state up to date with the latest software version).
+     * The `perform` is typically invoked as first statement in the `activate` actor method.
+     * @param context
+     */
+    migrationContext<Context = undefined>(context: Context): IMigrationContext<MigrationState, Context>;
 }
 
 export interface IActorSuite {
-    getRegistrationOptions(): IActorRegistrationOptions<object>[];
+    getRegistrationOptions(): IActorRegistrationOptions<object, IMigrationState>[];
 }
 
 export class ActorSuite implements IActorSuite {
-    protected options: IActorRegistrationOptions<object>[];
+    protected options: IActorRegistrationOptions<object, IMigrationState>[];
 
-    constructor(actors: Array<IActorRegistrationOptions<object> | undefined> = []) {
+    constructor(actors: Array<IActorRegistrationOptions<object, IMigrationState> | undefined> = []) {
         this.options = [];
 
         for (const item of actors) {
@@ -176,8 +211,12 @@ export class ActorSuite implements IActorSuite {
         }
     }
 
-    public addActor(options: IActorRegistrationOptions<object>) {
-        this.options.push(options);
+    public addActor<
+        ActorT extends object,
+        MigrationState extends IMigrationState = IMigrationState,
+        MigrationContext = undefined
+    >(options: IActorRegistrationOptions<ActorT, MigrationState, MigrationContext>) {
+        this.options.push(options as unknown as IActorRegistrationOptions<object, IMigrationState>);
     }
 
     public addSuite(suite: IActorSuite | undefined) {
@@ -188,7 +227,7 @@ export class ActorSuite implements IActorSuite {
         }
     }
 
-    public getRegistrationOptions(): IActorRegistrationOptions<object>[] {
+    public getRegistrationOptions(): IActorRegistrationOptions<object, IMigrationState>[] {
         return this.options;
     }
 
@@ -207,6 +246,6 @@ export class ActorSuite implements IActorSuite {
  * Holds actor registration options or a suite.
  */
 export interface IActorOrSuite {
-    actor?: IActorRegistrationOptions<object>;
+    actor?: IActorRegistrationOptions<object, IMigrationState>;
     suite?: IActorSuite;
 }

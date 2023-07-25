@@ -117,11 +117,16 @@ export class DistributedActorRegistry implements IActorRegistry {
             // console.log('OBTAINED', JSON.stringify(info));
             for (const [type, typeinfo] of Object.entries(info.actorInfo ?? {})) {
                 for (const application of typeinfo.applications) {
-                    this.knownRegistry.addMapping(type, application.name, {
-                        version: '',
-                        bindIdx: typeinfo.placement.appBindIdx,
-                        sticky: typeinfo.placement.sticky
-                    });
+                    this.knownRegistry.addMapping(
+                        type,
+                        application.name,
+                        {
+                            version: '',
+                            bindIdx: typeinfo.placement.appBindIdx,
+                            sticky: typeinfo.placement.sticky
+                        },
+                        application.migrationVersion
+                    );
                 }
             }
         } catch (e) {
@@ -140,12 +145,15 @@ export class DistributedActorRegistry implements IActorRegistry {
         };
 
         for (const [actorType, info] of this.ownRegistry.getAll().entries()) {
-            if (info.destinations.includes(this.appId)) {
+            const dest = info.destinations.find((x) => x.destination === this.appId);
+
+            if (dest) {
                 request.actorInfo[actorType] = {
                     placement: {
                         appBindIdx: info.placement?.bindIdx,
                         sticky: info.placement?.sticky
-                    }
+                    },
+                    migrationVersion: dest.migrationVersion
                 };
             }
         }

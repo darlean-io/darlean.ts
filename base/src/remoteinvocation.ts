@@ -2,6 +2,7 @@ import { Aborter } from '@darlean/utils';
 import { IInvokeOptions, IInvokeResult } from './shared';
 
 export const FRAMEWORK_ERROR_PARAMETER_REDIRECT_DESTINATION = 'REDIRECT_DESTINATION';
+export const FRAMEWORK_ERROR_PARAMETER_MIGRATION_VERSION = 'MIGRATION_VERSION';
 
 export const FRAMEWORK_ERROR_NO_RECEIVERS_AVAILABLE = 'NO_RECEIVERS_AVAILABLE';
 export const FRAMEWORK_ERROR_INVOKE_ERROR = 'INVOKE_ERROR';
@@ -10,6 +11,7 @@ export const FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE = 'UNKNOWN_ACTOR_TYPE';
 export const FRAMEWORK_ERROR_ACTOR_LOCK_FAILED = 'ACTOR_LOCK_FAILED';
 export const FRAMEWORK_ERROR_FINALIZING = 'FINALIZING';
 export const FRAMEWORK_ERROR_INCORRECT_STATE = 'INCORRECT_STATE';
+export const FRAMEWORK_ERROR_MIGRATION_ERROR = 'MIGRATION_ERROR';
 
 /**
  * Indicates that long running actions on an object that implements IAbortable can be aborted

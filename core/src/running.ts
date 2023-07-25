@@ -6,7 +6,8 @@ import {
     ITime,
     notifier,
     offApplicationStop,
-    onApplicationStop
+    onApplicationStop,
+    encodeNumber
 } from '@darlean/utils';
 import { Time } from '@darlean/utils';
 import { InstanceContainer, MultiTypeInstanceContainer, VolatileTimer } from './instances';
@@ -22,11 +23,13 @@ import {
     IActorRegistryService,
     IActorSuite,
     IBackOff,
+    IMigrationState,
     IMultiTypeInstanceContainer,
     IPersistence,
     IPersistenceService,
     IPortal,
     IRemote,
+    ITablePersistence,
     ITablePersistenceOptions,
     ITablesService,
     IVolatileTimer,
@@ -39,6 +42,8 @@ import { DistributedActorRegistry } from './distributedactorregistry';
 import { DistributedPersistence } from './distributedpersistence';
 import { normalizeActorType } from './shared';
 import { TablePersistence } from './tablepersistence';
+import { IMigrationController, MigrationController } from './migrationcontroller';
+import { MigrationPersistence, MigrationTablePersistence } from './migrationpersistence';
 
 export const DEFAULT_CAPACITY = 1000;
 
@@ -143,7 +148,7 @@ export class ActorRunner {
  * Class that can be used to build an {@link ActorRunner} based on provided configuration.
  */
 export class ActorRunnerBuilder {
-    protected actors: IActorRegistrationOptions<object>[];
+    protected actors: IActorRegistrationOptions<object, IMigrationState>[];
     protected portal?: IPortal;
     protected persistenceFactory?: IPersistence<unknown> | ((actorType: string, specifier?: string) => IPersistence<unknown>);
     protected appId: string;
@@ -167,8 +172,10 @@ export class ActorRunnerBuilder {
      * @param options The options for the actor.
      * @returns The builder
      */
-    public registerActor<T extends object>(options: IActorRegistrationOptions<T>): ActorRunnerBuilder {
-        this.actors.push(options as unknown as IActorRegistrationOptions<object>);
+    public registerActor<T extends object, T2 extends IMigrationState>(
+        options: IActorRegistrationOptions<T, T2>
+    ): ActorRunnerBuilder {
+        this.actors.push(options as unknown as IActorRegistrationOptions<object, IMigrationState>);
         return this;
     }
 
@@ -356,17 +363,20 @@ export class ActorRunnerBuilder {
         return new MultiTypeInstanceContainer();
     }
 
-    private fillContainers(multiContainer: MultiTypeInstanceContainer, portal: IPortal, actorLock: IActorLock): void {
+    private fillContainers(multiContainer: MultiTypeInstanceContainer, actorLock: IActorLock): void {
         for (const actor of this.actors) {
             const creator = actor.creator;
             if (creator) {
+                const migrations = Array.isArray(actor.migrations) ? actor.migrations : actor.migrations?.migrations ?? [];
+                const mc = new MigrationController<IMigrationState>(migrations);
+
                 const container =
                     actor.container ??
                     new InstanceContainer(
                         actor.type,
                         (id) => {
                             const timers: VolatileTimer<object>[] = [];
-                            const context = this.createActorCreateContext(actor.type, id, timers);
+                            const context = this.createActorCreateContext(actor.type, id, timers, mc);
                             return {
                                 instance: creator(context),
                                 afterCreate: (wrapper) => {
@@ -404,7 +414,7 @@ export class ActorRunnerBuilder {
         portal.setRegistry(distributedRegistry);
 
         const actorLock = this.createActorLock(portal, time, appId);
-        this.fillContainers(multiContainer, portal, actorLock);
+        this.fillContainers(multiContainer, actorLock);
 
         for (const actor of this.actors) {
             const hosts = actor.apps ?? this.defaultApps ?? [this.appId];
@@ -418,7 +428,20 @@ export class ActorRunnerBuilder {
                     if (actor.kind === 'singular' && placement.sticky === undefined) {
                         placement.sticky = true;
                     }
-                    registry.addMapping(actor.type, host, placement);
+                    let migrationVersion: string | undefined;
+                    if (actor.migrations) {
+                        if (Array.isArray(actor.migrations)) {
+                            migrationVersion = actor.migrations[actor.migrations.length - 1]?.version;
+                        } else {
+                            migrationVersion = actor.migrations.migrations[actor.migrations.migrations.length - 1]?.version;
+                        }
+                    }
+                    if (migrationVersion) {
+                        migrationVersion = encodeNumber(parseInt(migrationVersion.split('.')[0]));
+                    } else {
+                        migrationVersion = undefined;
+                    }
+                    registry.addMapping(actor.type, host, placement, migrationVersion);
                 }
             }
         }
@@ -452,7 +475,12 @@ export class ActorRunnerBuilder {
         };
     }
 
-    private createActorCreateContext(type: string, id: string[], timers: IVolatileTimer[]): IActorCreateContext {
+    private createActorCreateContext<MigrationState extends IMigrationState>(
+        type: string,
+        id: string[],
+        timers: IVolatileTimer[],
+        mc: IMigrationController<MigrationState>
+    ): IActorCreateContext<MigrationState> {
         type = normalizeActorType(type);
 
         if (!this.portal) {
@@ -478,9 +506,14 @@ export class ActorRunnerBuilder {
                 // When actor 1 has id ['a', 'b'] and stores state in ['c];
                 // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
                 // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
-                const typePersistence =
-                    typeof persistenceFactory === 'function' ? persistenceFactory(type, specifier) : persistenceFactory;
-                return typePersistence.sub([type, id.length.toString(), ...id]) as IPersistence<T>;
+                const typePersistence = (
+                    typeof persistenceFactory === 'function' ? persistenceFactory(type, specifier) : persistenceFactory
+                ) as IPersistence<T>;
+                const sub = typePersistence.sub([type, id.length.toString(), ...id]);
+                return new MigrationPersistence(
+                    sub as IPersistence<IMigrationState>,
+                    mc
+                ) as IPersistence<unknown> as IPersistence<T>;
             },
             tablePersistence: <T>(options: ITablePersistenceOptions<T>) => {
                 if (!this.portal) {
@@ -498,7 +531,11 @@ export class ActorRunnerBuilder {
                         : options.id;
                 const service = this.portal.retrieve<ITablesService>(TABLES_SERVICE, tableId);
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                return new TablePersistence(service, options.indexer ?? (() => []), this.deser!, options.specifier);
+                const tp = new TablePersistence<T>(service, options.indexer ?? (() => []), this.deser!, options.specifier);
+                return new MigrationTablePersistence(
+                    tp as ITablePersistence<IMigrationState>,
+                    mc
+                ) as ITablePersistence<unknown> as ITablePersistence<T>;
             },
             time,
             newVolatileTimer: () => {
@@ -507,7 +544,10 @@ export class ActorRunnerBuilder {
                 return timer as IVolatileTimer;
             },
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            deser: this.deser!
+            deser: this.deser!,
+            migrationContext: <Context = undefined>(c: Context) => {
+                return (mc as IMigrationController<MigrationState, Context>).getContext(c);
+            }
         };
     }
 

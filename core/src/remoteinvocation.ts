@@ -43,7 +43,8 @@ import {
     ITypedPortal,
     ApplicationError,
     FrameworkError,
-    IAbortable
+    IAbortable,
+    FRAMEWORK_ERROR_PARAMETER_MIGRATION_VERSION
 } from '@darlean/base';
 import { Aborter, currentScope, deeper, encodeKeyFast, ITime } from '@darlean/utils';
 import { sleep } from '@darlean/utils';
@@ -124,12 +125,17 @@ export class ImmediateBackOff implements IBackOff {
     }
 }
 
+export interface IActorDestinationInfo {
+    destination: string;
+    migrationVersion?: string;
+}
+
 /**
  * Used to keep administration of which actor type is present on which
  * destinations, and what the current placement settings are for the actor type.
  */
 export interface IActorTypeInfo {
-    destinations: string[];
+    destinations: IActorDestinationInfo[];
     placement?: IActorPlacement;
 }
 
@@ -145,19 +151,22 @@ export class ActorRegistry implements IActorRegistry {
         this.mapping = new Map();
     }
 
-    public addMapping(actorType: string, receiver: string, placement?: IActorPlacement) {
+    public addMapping(actorType: string, receiver: string, placement?: IActorPlacement, migrationVersion?: string) {
         actorType = normalizeActorType(actorType);
 
         const entry = this.mapping.get(actorType);
         if (entry) {
-            if (!entry.destinations.includes(receiver)) {
-                entry.destinations.push(receiver);
+            const destEntry = entry.destinations.find((x) => x.destination === receiver);
+            if (destEntry) {
+                destEntry.migrationVersion = migrationVersion;
+            } else {
+                entry.destinations.push({ destination: receiver, migrationVersion });
             }
             if (placement && placement.version > (entry.placement?.version ?? '')) {
                 entry.placement = placement;
             }
         } else {
-            this.mapping.set(actorType, { destinations: [receiver], placement });
+            this.mapping.set(actorType, { destinations: [{ destination: receiver, migrationVersion }], placement });
         }
     }
 
@@ -166,7 +175,7 @@ export class ActorRegistry implements IActorRegistry {
 
         const entry = this.mapping.get(actorType);
         if (entry) {
-            const idx = entry.destinations.indexOf(receiver);
+            const idx = entry.destinations.findIndex((x) => x.destination === receiver);
             if (idx >= 0) {
                 entry.destinations.splice(idx, 1);
             }
@@ -303,7 +312,10 @@ export class RemotePortal implements IPortal {
                             arguments: Array.from(args)
                         };
 
-                        const info: { suggestion: string | undefined } = { suggestion: undefined };
+                        const info: { suggestion: string | undefined; minMigrationVersion: string | undefined } = {
+                            suggestion: undefined,
+                            minMigrationVersion: undefined
+                        };
 
                         const placement = self.registry.findPlacement(type)?.placement;
                         if (placement?.sticky && self.placementCache) {
@@ -378,6 +390,14 @@ export class RemotePortal implements IPortal {
                                                             if (redirect) {
                                                                 info.suggestion = redirect[0];
                                                             }
+
+                                                            const requiredMigrationVersion = response.error.parameters?.[
+                                                                FRAMEWORK_ERROR_PARAMETER_MIGRATION_VERSION
+                                                            ] as string;
+                                                            if (requiredMigrationVersion) {
+                                                                info.minMigrationVersion = requiredMigrationVersion;
+                                                            }
+
                                                             nested.push(toFrameworkError(response.error));
                                                         } else {
                                                             ok = true;
@@ -485,13 +505,22 @@ export class RemotePortal implements IPortal {
         return new PrefixPortal(this, idPrefix);
     }
 
-    protected findReceivers(actorType: string) {
+    protected findReceivers(actorType: string, minMigrationVersion?: string) {
         actorType = normalizeActorType(actorType);
 
-        return this.registry.findPlacement(actorType)?.destinations || [];
+        const destinations = this.registry.findPlacement(actorType)?.destinations || [];
+        if (minMigrationVersion) {
+            return destinations.filter((d) => (d.migrationVersion ?? '') >= minMigrationVersion).map((d) => d.destination);
+        } else {
+            return destinations.map((d) => d.destination);
+        }
     }
 
-    protected *iterateDestinations(type: string, id: string[], info: { suggestion: string | undefined }) {
+    protected *iterateDestinations(
+        type: string,
+        id: string[],
+        info: { suggestion: string | undefined; minMigrationVersion: string | undefined }
+    ) {
         let randomReceiversDone: string[] = [];
 
         for (let i = 0; i < 10; i++) {
@@ -518,7 +547,7 @@ export class RemotePortal implements IPortal {
                     }
                 }
 
-                const receivers = this.findReceivers(type);
+                const receivers = this.findReceivers(type, info.minMigrationVersion);
                 if (receivers.length > 0) {
                     const currentIdx = -1; // TODO: Only do this when "multiplar" = i === 0 && this.defaultDestination ? receivers.indexOf(this.defaultDestination) : -1;
                     const idx = currentIdx >= 0 ? currentIdx : Math.floor(Math.random() * receivers.length);

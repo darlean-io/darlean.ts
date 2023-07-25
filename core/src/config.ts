@@ -1,4 +1,4 @@
-import { IActorRegistrationOptions, IActorSuite } from '@darlean/base';
+import { IActorRegistrationOptions, IActorSuite, IMigrationState } from '@darlean/base';
 import { MultiDeSer, ConfigEnv, IConfigEnv, notifier, onApplicationStop, sleep } from '@darlean/utils';
 import { InProcessTransport, NatsTransport } from './infra';
 import { NatsServer } from './infra/natsserver';
@@ -166,7 +166,7 @@ export interface IApplicationCfg {
  * @see {@link IApplicationCfg} for an overview of all the available configuration items.
  */
 export class ConfigRunnerBuilder {
-    private actors: IActorRegistrationOptions<object>[];
+    private actors: IActorRegistrationOptions<object, IMigrationState>[];
     private overrides: Map<string, string>;
     private appId: string;
     private root: IConfigEnv<IApplicationCfg>;
@@ -186,8 +186,10 @@ export class ConfigRunnerBuilder {
      * @param options The options for the actor.
      * @returns The builder
      */
-    public registerActor<T extends object>(options: IActorRegistrationOptions<T>): ConfigRunnerBuilder {
-        this.actors.push(options as unknown as IActorRegistrationOptions<object>);
+    public registerActor<T extends object, T2 extends IMigrationState>(
+        options: IActorRegistrationOptions<T, T2>
+    ): ConfigRunnerBuilder {
+        this.actors.push(options as unknown as IActorRegistrationOptions<object, IMigrationState>);
         return this;
     }
 
