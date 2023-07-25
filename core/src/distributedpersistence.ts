@@ -7,7 +7,7 @@ import {
     IQueryItem
 } from '@darlean/base';
 import { IDeSer } from '@darlean/utils';
-import { SubPersistence } from './various';
+import { SubPersistence, initializeFrom } from './various';
 
 /**
  * For internal use. Helper class for {@link DistributedPersistence}.
@@ -38,9 +38,17 @@ class DistributedPersistable<T> implements IPersistable<T> {
         if (result[0] !== undefined) {
             this.value = result[0];
         }
-        this.version = result[1];
         this._changed = false;
+        this.version = result[1];
         return result[0];
+    }
+
+    public initializeFrom(value: T) {
+        const current = (this.value ?? {}) as { [key: string]: unknown };
+        const changed = initializeFrom(current, value as { [key: string]: unknown });
+        if (changed) {
+            this.change(current as T);
+        }
     }
 
     public async store(force?: boolean): Promise<void> {

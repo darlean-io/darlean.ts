@@ -45,7 +45,8 @@ import {
     IInstanceWrapper,
     IMultiTypeInstanceContainer,
     InstanceCreator,
-    toApplicationError
+    toApplicationError,
+    FRAMEWORK_ERROR_MIGRATION_ERROR
 } from '@darlean/base';
 import { IVolatileTimer, IVolatileTimerHandle } from '@darlean/base';
 import { IAcquiredActorLock, IActorLock } from './distributedactorlock';
@@ -411,6 +412,16 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                     }
                 }
             } catch (e) {
+                if (e instanceof FrameworkError) {
+                    // When a migration error occurs within the application code, we must literally forward it as
+                    // framework error (otherwise receiving side will not properly perform a retry on a modern node).
+                    // Because migration errors in remote invocations within the method call are already converted to
+                    // framework errors with code FRAMEWORK_ERROR_INVOKE_ERROR (see RemotePortal.retrieve), we have no
+                    // risk of accidentally reporting such false migration errors here.
+                    if (e.code === FRAMEWORK_ERROR_MIGRATION_ERROR) {
+                        throw e;
+                    }
+                }
                 throw toApplicationError(e);
             } finally {
                 this.releaseLocalLock(locking, callId);

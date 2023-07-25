@@ -9,27 +9,28 @@ import {
     ITablesService
 } from '@darlean/base';
 import { IDeSer } from '@darlean/utils';
+import { initializeFrom } from './various';
 
 /**
  * For internal use. Helper class for {@link TablePersistence}.
  */
 class TablePersistable<T> implements IPersistable<T> {
     private _changed = false;
-    private persistence: TablePersistence<T>;
-    private key: string[];
     private baseline?: string;
 
     public value?: T | undefined;
     public version?: string | undefined;
 
-    constructor(persistence: TablePersistence<T>, key: string[], value: T | undefined) {
-        this.persistence = persistence;
-        this.key = key;
+    constructor(
+        private onLoad: () => Promise<[value: T | undefined, version: string | undefined, baseline: string | undefined]>,
+        private onStore: (value: T | undefined, version: string, baseline: string | undefined) => Promise<ITablePutResponse>,
+        value: T | undefined
+    ) {
         this.value = value;
     }
 
     public async load(): Promise<T | undefined> {
-        const result = await this.persistence.loadImpl(this.key);
+        const result = await this.onLoad();
         if (result[0] !== undefined) {
             this.value = result[0];
         }
@@ -37,6 +38,14 @@ class TablePersistable<T> implements IPersistable<T> {
         this.baseline = result[2];
         this._changed = false;
         return result[0];
+    }
+
+    public initializeFrom(value: T) {
+        const current = (this.value ?? {}) as { [key: string]: unknown };
+        const changed = initializeFrom(current, value as { [key: string]: unknown });
+        if (changed) {
+            this.change(current as T);
+        }
     }
 
     public async store(force?: boolean): Promise<void> {
@@ -56,7 +65,7 @@ class TablePersistable<T> implements IPersistable<T> {
             version = next.toString().padStart(20, '0');
             this.version = version;
         }
-        const result = await this.persistence.storeImpl(this.key, this.value, version, this.baseline);
+        const result = await this.onStore(this.value, version, this.baseline);
         this.baseline = result.baseline;
         this._changed = false;
     }
@@ -175,7 +184,11 @@ export class TablePersistence<T> implements ITablePersistence<T> {
     }
 
     public persistable(key: string[], value: T | undefined): IPersistable<T> {
-        return new TablePersistable<T>(this, key, value);
+        return new TablePersistable<T>(
+            () => this.loadImpl(key),
+            (value, version, baseLine) => this.storeImpl(key, value, version, baseLine),
+            value
+        );
     }
 
     public async load(key: string[]): Promise<IPersistable<T>> {

@@ -15,6 +15,7 @@ export interface IActorRegistryService_Obtain_Request {
 
 export interface IActorRegistryApplicationInfo {
     name: string;
+    migrationVersion?: string;
 }
 
 export interface IActorRegistryActorPlacement {
@@ -34,6 +35,7 @@ export interface IActorRegistryService_Obtain_Response {
 
 export interface IActorRegistryActorPushInfo {
     placement: IActorRegistryActorPlacement;
+    migrationVersion?: string;
 }
 
 export interface IActorRegistryService_Push_Request {

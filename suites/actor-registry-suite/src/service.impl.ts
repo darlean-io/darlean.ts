@@ -74,9 +74,14 @@ export class ActorRegistryService implements IActorRegistryService, IDeactivatab
                 changed = true;
             }
             // TODO: Remove application when not hosting the actor type anymore
-            if (!ourInfo.applications.find((x) => x.name === options.application)) {
-                ourInfo.applications.push({ name: options.application });
+            const app = ourInfo.applications.find((x) => x.name === options.application);
+            if (!app) {
+                ourInfo.applications.push({ name: options.application, migrationVersion: actorInfo.migrationVersion });
                 changed = true;
+            } else {
+                if (actorInfo.migrationVersion !== app.migrationVersion) {
+                    app.migrationVersion = actorInfo.migrationVersion;
+                }
             }
 
             // TODO: Use version number for replacement of placement

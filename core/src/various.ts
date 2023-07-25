@@ -33,6 +33,14 @@ class MemoryPersistable<T> implements IPersistable<T> {
         return result[0];
     }
 
+    public initializeFrom(value: T) {
+        const current = (this.value ?? {}) as { [key: string]: unknown };
+        const changed = initializeFrom(current, value as { [key: string]: unknown });
+        if (changed) {
+            this.change(current as T);
+        }
+    }
+
     public async store(force?: boolean): Promise<void> {
         if (!force) {
             if (!this._changed) {
@@ -213,4 +221,15 @@ export function idFromText2(text: string): string[] {
         offset += len;
     }
     return result;
+}
+
+export function initializeFrom(current: { [key: string]: unknown }, value: { [key: string]: unknown }): boolean {
+    let changed = false;
+    for (const [k, v] of Object.entries(value)) {
+        if (current[k] === undefined) {
+            current[k] = v;
+            changed = true;
+        }
+    }
+    return changed;
 }
