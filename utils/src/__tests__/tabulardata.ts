@@ -24,7 +24,7 @@ describe('Tabular data', () => {
         table.addRecord({ Name: 'Moon', Size: 234.56, Oxygen: false });
         table.addRecord({ Name: 'Unknown', Temperature: 3.14 });
 
-       // const exported = table.export();
+        // const exported = table.export();
         //const imported = new TabularData(exported);
 
         const tab = kind === 'imported' ? new TabularData(table.export()) : table;
@@ -41,19 +41,13 @@ describe('Tabular data', () => {
         ]);
 
         const multiFilterFirst = tab.getMultiCursor(['Name', 'Oxygen'], (name) => name === 'Earth');
-        expect(Array.from(multiFilterFirst)).toStrictEqual([
-            { Name: 'Earth', Oxygen: true }
-        ]);
+        expect(Array.from(multiFilterFirst)).toStrictEqual([{ Name: 'Earth', Oxygen: true }]);
 
         const multiFilterMiddle = tab.getMultiCursor(['Name', 'Oxygen'], (name) => name === 'Moon');
-        expect(Array.from(multiFilterMiddle)).toStrictEqual([
-            { Name: 'Moon', Oxygen: false }
-        ]);
+        expect(Array.from(multiFilterMiddle)).toStrictEqual([{ Name: 'Moon', Oxygen: false }]);
 
         const multiFilterLast = tab.getMultiCursor(['Name', 'Oxygen'], (name) => name === 'Unknown');
-        expect(Array.from(multiFilterLast)).toStrictEqual([
-            { Name: 'Unknown', Oxygen: undefined }
-        ]);
+        expect(Array.from(multiFilterLast)).toStrictEqual([{ Name: 'Unknown', Oxygen: undefined }]);
 
         const multiFilterNone = tab.getMultiCursor(['Name', 'Oxygen'], (_name) => false);
         expect(Array.from(multiFilterNone)).toStrictEqual([]);
@@ -72,8 +66,8 @@ describe('Tabular data', () => {
             b: {
                 b0?: string;
                 b1?: number;
-            },
-            c: {[key: string]: number}
+            };
+            c: { [key: string]: number };
         }
 
         const columns: ITabularColumn<IData>[] = [
@@ -84,19 +78,22 @@ describe('Tabular data', () => {
         ];
 
         const table = new TabularData(columns);
-        table.addRecord({
-            a: 'World',
-            b: {
-                b0: 'Moon'
+        table.addRecord(
+            {
+                a: 'World',
+                b: {
+                    b0: 'Moon'
+                },
+                c: {
+                    Jupiter: 42
+                }
             },
-            c: {
-                Jupiter: 42
-            }
-        }, {recursionLevel: 2, onMissingColumn: (name) => ({name, kind: 'int'})});
+            { recursionLevel: 2, onMissingColumn: (name) => ({ name, kind: 'int' }) }
+        );
         for (const item of table.getMultiCursor(table.getColumnNames())) {
             console.log('ITEM', item['b.b0']);
         }
-    })
+    });
 
     test('Map', () => {
         const columns: ITabularColumn[] = [
@@ -106,17 +103,23 @@ describe('Tabular data', () => {
             { name: 'Oxygen', kind: 'boolean' }
         ];
         const table = new TabularData(columns);
-        table.addRecord({Name: 'World', Temperature: 12});
+        table.addRecord({ Name: 'World', Temperature: 12 });
         for (const record of table.getMultiCursor()) {
             expect(record.Name).toBe('World');
             expect(record['Temperature']).toBe(12);
-            expect(record['Bla']).toBeUndefined();  // Does not exist in columns
+            expect(record['Bla']).toBeUndefined(); // Does not exist in columns
         }
     });
 
     test('Multiple imports', () => {
-        interface A { ab?: string; a?: string }
-        interface B { ab?: string; b?: string }
+        interface A {
+            ab?: string;
+            a?: string;
+        }
+        interface B {
+            ab?: string;
+            b?: string;
+        }
 
         const columnsA: ITabularColumn<A>[] = [
             { name: 'ab', kind: 'text' },
@@ -127,36 +130,35 @@ describe('Tabular data', () => {
             { name: 'ab', kind: 'text' },
             { name: 'b', kind: 'text' }
         ];
-        
+
         const tableA = new TabularData(columnsA);
-        tableA.addRecord({ab: '0-AB', a: '0-A'});
-        tableA.addRecord({a: '1-A'});
-        tableA.addRecord({ab: '2-AB'});
+        tableA.addRecord({ ab: '0-AB', a: '0-A' });
+        tableA.addRecord({ a: '1-A' });
+        tableA.addRecord({ ab: '2-AB' });
         tableA.addRecord({});
-        
+
         const tableB = new TabularData(columnsB);
-        tableB.addRecord({ab: '4-AB', b: '4-B'});
-        tableB.addRecord({b: '5-B'});
-        tableB.addRecord({ab: '6-AB'});
+        tableB.addRecord({ ab: '4-AB', b: '4-B' });
+        tableB.addRecord({ b: '5-B' });
+        tableB.addRecord({ ab: '6-AB' });
         tableB.addRecord({});
-        
+
         const exportA = tableA.export();
         const exportB = tableB.export();
 
         const newA = new TabularData<A & B>(exportA);
         newA.import(exportB);
         const c = newA.getMultiCursor();
-        expect(c.next().value).toStrictEqual({ab: '0-AB', a: '0-A', b: undefined});
-        expect(c.next().value).toStrictEqual({ab: undefined, a: '1-A', b: undefined});
-        expect(c.next().value).toStrictEqual({ab: '2-AB', a: undefined, b: undefined});
-        expect(c.next().value).toStrictEqual({ab: undefined, a: undefined, b: undefined});
+        expect(c.next().value).toStrictEqual({ ab: '0-AB', a: '0-A', b: undefined });
+        expect(c.next().value).toStrictEqual({ ab: undefined, a: '1-A', b: undefined });
+        expect(c.next().value).toStrictEqual({ ab: '2-AB', a: undefined, b: undefined });
+        expect(c.next().value).toStrictEqual({ ab: undefined, a: undefined, b: undefined });
 
-        expect(c.next().value).toStrictEqual({ab: '4-AB', a: undefined, b: '4-B'});
-        expect(c.next().value).toStrictEqual({ab: undefined, a: undefined, b: '5-B'});
-        expect(c.next().value).toStrictEqual({ab: '6-AB', a: undefined, b: undefined});
-        expect(c.next().value).toStrictEqual({ab: undefined, a: undefined, b: undefined});
+        expect(c.next().value).toStrictEqual({ ab: '4-AB', a: undefined, b: '4-B' });
+        expect(c.next().value).toStrictEqual({ ab: undefined, a: undefined, b: '5-B' });
+        expect(c.next().value).toStrictEqual({ ab: '6-AB', a: undefined, b: undefined });
+        expect(c.next().value).toStrictEqual({ ab: undefined, a: undefined, b: undefined });
 
         expect(c.next().done).toBeTruthy();
     });
-
 });

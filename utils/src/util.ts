@@ -204,7 +204,7 @@ export function decodeNumber(text: string) {
     }
 }
 
-export function decodeIntNumberFromBuffer(buf: {buf: Buffer, pos: number}, skip: boolean) {
+export function decodeIntNumberFromBuffer(buf: { buf: Buffer; pos: number }, skip: boolean) {
     const prefixCode = buf.buf[buf.pos];
     if (prefixCode === CODE_a) {
         buf.pos++;
@@ -221,7 +221,7 @@ export function decodeIntNumberFromBuffer(buf: {buf: Buffer, pos: number}, skip:
             buf.pos += 1 + len;
             return 0;
         }
-        const substr = buf.buf.toString('ascii', buf.pos+1, buf.pos+1+len);
+        const substr = buf.buf.toString('ascii', buf.pos + 1, buf.pos + 1 + len);
         const base = (BigInt('1' + substr) - 1n).toString().substring(1);
         const compl = complement(base);
         buf.pos += 1 + len;
@@ -233,7 +233,7 @@ export function decodeIntNumberFromBuffer(buf: {buf: Buffer, pos: number}, skip:
             buf.pos += 1 + len;
             return 0;
         }
-        const base = buf.buf.toString('ascii', buf.pos+1, buf.pos+1+len);
+        const base = buf.buf.toString('ascii', buf.pos + 1, buf.pos + 1 + len);
         buf.pos += 1 + len;
         return parseInt(base);
     } else {
