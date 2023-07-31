@@ -5,10 +5,10 @@ const KEY_SEPARATOR = '.';
 export interface ITabularExportColValues {
     lastPos: number;
     n: number;
-    buf: Buffer
+    buf: Buffer;
 }
 
-export interface ITabularExport<T extends object = {[key: string]: unknown}> {
+export interface ITabularExport<T extends object = { [key: string]: unknown }> {
     n: number;
     columns: ITabularColumn<T>[];
     values: ITabularExportColValues[];
@@ -17,7 +17,7 @@ export interface ITabularExport<T extends object = {[key: string]: unknown}> {
 export type TabularColumnKind = 'text' | 'int' | 'fixed' | 'float' | 'boolean' | 'json';
 export type TabularColumnCompression = 'none' | 'rle';
 
-export interface ITabularColumn<T extends object = {[key: string]: unknown}> {
+export interface ITabularColumn<T extends object = { [key: string]: unknown }> {
     name: NestedKeyOf<T>;
     kind: TabularColumnKind;
     precision?: number;
@@ -38,7 +38,7 @@ export interface ITabularCursorOptions {
     skip?: number;
 }
 
-export interface ITabularExportOptions<T extends object = {[key: string]: unknown}> {
+export interface ITabularExportOptions<T extends object = { [key: string]: unknown }> {
     columns?: NestedKeyOf<T>[];
 }
 
@@ -49,16 +49,16 @@ export interface ITabularAddOptions {
 
 // From: https://dev.to/pffigueiredo/typescript-utility-keyof-nested-object-2pa3
 export type NestedKeyOf<T, K = keyof T> = K extends keyof T & (string | number)
-? `${K}` | (T[K] extends object ? `${K}.${NestedKeyOf<T[K]>}` : never)
-: never;
+    ? `${K}` | (T[K] extends object ? `${K}.${NestedKeyOf<T[K]>}` : never)
+    : never;
 
-export type DictOf<T, U> = {[Property in NestedKeyOf<T>]: U};
+export type DictOf<T, U> = { [Property in NestedKeyOf<T>]: U };
 
 export interface ITabularColumnValues {
     n: number;
     lastPos: number;
     len: number;
-    buf: Buffer | Buffer[]
+    buf: Buffer | Buffer[];
 }
 
 /**
@@ -68,8 +68,8 @@ export interface ITabularColumnValues {
  * It is similar to Apache Parquet, but simpler. And the schema (columns) is stored together with the
  * data, which makes it easier for readers to consume.
  *
- * Like Parquet, data is stored per column. Per column, an array of values (internally stored as a buffer) 
- * is maintained. This makes it efficient to only request a subset (certain column) of the data. It also allows 
+ * Like Parquet, data is stored per column. Per column, an array of values (internally stored as a buffer)
+ * is maintained. This makes it efficient to only request a subset (certain column) of the data. It also allows
  * more efficient storage (like RLE) which currently is not yet implemented.
  *
  * Only appending new data is supported. It is not possible to modify existing data. A record can be flat
@@ -79,11 +79,11 @@ export interface ITabularColumnValues {
  * Reading data is by means of a cursor. It is possible to obtain a cursor for one column ({@link getCursor})
  * or for multiple columns at once ({@link getMultiCursor}). The cursors are just iterators that iterate over
  * all records.
- * 
+ *
  * For the multi-cursor, a filter expression can be supplied that is evaluated against the first cursor so that the other
  * cursors can be processed more eficiently (their values are only evaluated when the filter matches).
  */
-export class TabularData<T extends object = {[key: string]: unknown}> {
+export class TabularData<T extends object = { [key: string]: unknown }> {
     private values: Map<NestedKeyOf<T>, ITabularColumnValues>;
     private columns: ITabularColumn<T>[];
     private columnMap: Map<NestedKeyOf<T>, ITabularColumn<T>>;
@@ -128,11 +128,10 @@ export class TabularData<T extends object = {[key: string]: unknown}> {
             const encoded = this.encodeValue(keyValue.value, column.kind, column.precision);
             let colvalues = this.values.get(column.name);
             if (colvalues === undefined) {
-                colvalues = {n: 0, lastPos: -1, len: 0, buf: []};
+                colvalues = { n: 0, lastPos: -1, len: 0, buf: [] };
                 this.values.set(column.name, colvalues);
-            } else
-            if (Buffer.isBuffer(colvalues.buf)) {
-                colvalues.buf = [colvalues.buf]
+            } else if (Buffer.isBuffer(colvalues.buf)) {
+                colvalues.buf = [colvalues.buf];
             }
 
             this.completeValues(colvalues, this.n);
@@ -144,23 +143,26 @@ export class TabularData<T extends object = {[key: string]: unknown}> {
         }
         this.n++;
     }
-    
-    public *getCursor<C extends NestedKeyOf<T> | keyof T>(columnName: C, options?: ITabularCursorOptions): Generator<(C extends keyof T ? T[C] : unknown) | undefined> {
+
+    public *getCursor<C extends NestedKeyOf<T> | keyof T>(
+        columnName: C,
+        options?: ITabularCursorOptions
+    ): Generator<(C extends keyof T ? T[C] : unknown) | undefined> {
         const column = this.columnMap.get(columnName as NestedKeyOf<T>);
         const n = this.n;
         if (column) {
-            const values = this.values.get(columnName as NestedKeyOf<T>) ?? {n: 0, buf: Buffer.from([])};
+            const values = this.values.get(columnName as NestedKeyOf<T>) ?? { n: 0, buf: Buffer.from([]) };
             if (values) {
                 if (Array.isArray(values.buf)) {
                     values.buf = Buffer.concat(values.buf);
                 }
-                const buf: IBufPos = { buf: values.buf, pos: 0};
+                const buf: IBufPos = { buf: values.buf, pos: 0 };
                 const len = buf.buf.length;
                 let idx = 0;
                 while (idx < n) {
                     if ((options?.skip ?? 0) > 0) {
                         const end = Math.min(n, idx + (options?.skip ?? 0));
-                        while ( (idx < end) && (buf.pos < len)) {
+                        while (idx < end && buf.pos < len) {
                             this.decodeValue(buf, column.kind, true);
                             idx++;
                         }
@@ -186,20 +188,20 @@ export class TabularData<T extends object = {[key: string]: unknown}> {
         throw new Error('Column not found');
     }
 
-    public *getMultiCursor<U>(columns?: (NestedKeyOf<T>)[], filter?: (value: U) => boolean): Generator<DictOf<T, unknown>> {
+    public *getMultiCursor<U>(columns?: NestedKeyOf<T>[], filter?: (value: U) => boolean): Generator<DictOf<T, unknown>> {
         if (columns === undefined) {
             columns = this.getColumnNames();
         }
         const options: ITabularCursorOptions = {};
         let skip = 0;
         const cursors = columns.map((key) => this.getCursor(key, options));
-      
+
         while (true) {
             const firstCursorValue = cursors[0].next();
             if (firstCursorValue.done) {
                 return;
             }
-            const accept = (!filter) || (filter(firstCursorValue.value as U));
+            const accept = !filter || filter(firstCursorValue.value as U);
             if (!accept) {
                 skip++;
                 continue;
@@ -224,7 +226,7 @@ export class TabularData<T extends object = {[key: string]: unknown}> {
 
     public export(options?: ITabularExportOptions<T>): ITabularExport<T> {
         const exportedValues: ITabularExportColValues[] = [];
-        const cols = options?.columns?.map(c => this.columnMap.get(c) ?? c) ?? this.columns;
+        const cols = options?.columns?.map((c) => this.columnMap.get(c) ?? c) ?? this.columns;
         for (const column of cols) {
             if (typeof column === 'string') {
                 throw new Error(`No such column: ${column}`);
@@ -266,15 +268,15 @@ export class TabularData<T extends object = {[key: string]: unknown}> {
             if (!values) {
                 continue;
             }
-            
+
             let currentValues = this.values.get(column.name);
             if (!currentValues) {
                 currentValues = { buf: [], len: 0, lastPos: -1, n: 0 };
                 this.values.set(column.name, currentValues);
             }
-            
+
             if (Buffer.isBuffer(currentValues.buf)) {
-                currentValues.buf = [currentValues.buf]
+                currentValues.buf = [currentValues.buf];
             }
 
             this.completeValues(currentValues, this.n);
@@ -291,7 +293,7 @@ export class TabularData<T extends object = {[key: string]: unknown}> {
         this.n += data.n;
     }
 
-    public getColumnNames(): (NestedKeyOf<T>)[] {
+    public getColumnNames(): NestedKeyOf<T>[] {
         return this.columns.map((c) => c.name);
     }
 
@@ -314,7 +316,7 @@ export class TabularData<T extends object = {[key: string]: unknown}> {
         switch (kind) {
             case 'boolean':
                 return (value as boolean) ? Buffer.from('t', 'ascii') : Buffer.from('f', 'ascii');
-            case 'text': 
+            case 'text':
                 return encodeText(value as string, 'utf8');
             case 'fixed':
                 return encodeText(encodeNumber(value as number, precision), 'ascii');
@@ -375,7 +377,7 @@ export class TabularData<T extends object = {[key: string]: unknown}> {
         if (isObject(data)) {
             for (const [key, value] of Object.entries(data as { [key: string]: unknown })) {
                 const p = path ? [path, key].join(KEY_SEPARATOR) : key;
-                this.extractValues(value, p, values, level-1);
+                this.extractValues(value, p, values, level - 1);
             }
         } else {
             values.push({ key: path, value: data });
