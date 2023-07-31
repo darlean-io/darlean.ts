@@ -204,6 +204,43 @@ export function decodeNumber(text: string) {
     }
 }
 
+export function decodeIntNumberFromBuffer(buf: {buf: Buffer, pos: number}, skip: boolean) {
+    const prefixCode = buf.buf[buf.pos];
+    if (prefixCode === CODE_a) {
+        buf.pos++;
+        return 0;
+    }
+    if (prefixCode === CODE_Z) {
+        buf.pos++;
+        return 0;
+    }
+    if (prefixCode >= CODE_A && prefixCode <= CODE_Z) {
+        // Negative number
+        const len = CODE_Z - prefixCode;
+        if (skip) {
+            buf.pos += 1 + len;
+            return 0;
+        }
+        const substr = buf.buf.toString('ascii', buf.pos+1, buf.pos+1+len);
+        const base = (BigInt('1' + substr) - 1n).toString().substring(1);
+        const compl = complement(base);
+        buf.pos += 1 + len;
+        return parseInt('-' + compl);
+    } else if (prefixCode >= CODE_a && prefixCode <= CODE_z) {
+        // Positive number or zero
+        const len = prefixCode - CODE_a;
+        if (skip) {
+            buf.pos += 1 + len;
+            return 0;
+        }
+        const base = buf.buf.toString('ascii', buf.pos+1, buf.pos+1+len);
+        buf.pos += 1 + len;
+        return parseInt(base);
+    } else {
+        throw new Error('Not a decoded number');
+    }
+}
+
 /*export function decodeNumberRtl(text: string, index?: number) {
     index = index ?? text.length - 1;
     for (let idx = index; idx >= 0; idx--) {
