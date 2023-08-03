@@ -16,6 +16,7 @@ import { WorkerDef } from './worker';
 interface IConnection {
     worker: ModuleThread<WorkerDef>;
     mutex: Mutex<void>;
+    busy: boolean;
 }
 
 // For now, a fixed value. We can make this configurable/dynamic later on.
@@ -68,6 +69,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         }
         conn.mutex.tryAcquire() || (await conn.mutex.acquire());
         try {
+            conn.busy = true;
             const loadResult = await conn.worker.load(options);
             // Because of thread boundaries, the Buffer value in loadResult is replaced
             // with a byte-array. So, create a new Buffer around this.
@@ -76,6 +78,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
                 value: loadResult.value ? Buffer.from(await loadResult.value.arrayBuffer()) : undefined
             };
         } finally {
+            conn.busy = false;
             conn.mutex.release();
         }
     }
@@ -88,6 +91,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         }
         conn.mutex.tryAcquire() || (await conn.mutex.acquire());
         try {
+            conn.busy = true;
             const queryResults = await conn.worker.query(options);
             const result: IPersistenceQueryResult<Buffer> = {
                 items: [],
@@ -101,6 +105,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             }
             return this.deser.serialize(result);
         } finally {
+            conn.busy = false;
             conn.mutex.release();
         }
     }
@@ -113,6 +118,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         }
         conn.mutex.tryAcquire() || (await conn.mutex.acquire());
         try {
+            conn.busy = true;
             // TODO: Check assumption that worker performs internal synchronization (only one task at a time)
             const options2: IPersistenceStoreBatchOptions<Blob> = {
                 items: options.items.map((item) => ({
@@ -126,6 +132,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
             };
             return (await conn.worker.storeBatch(options2)) as unknown as Promise<void>;
         } finally {
+            conn.busy = false;
             conn.mutex.release();
         }
     }
@@ -137,7 +144,8 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         await spawned.open(filepath, mode);
         return {
             worker: spawned,
-            mutex: new Mutex()
+            mutex: new Mutex(),
+            busy: false
         };
     }
 
@@ -152,8 +160,14 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         if (mode === 'writable') {
             return this.connections[0];
         } else {
-            this.lastConnIdx++;
-            const idx = 1 + (this.lastConnIdx % (this.connections.length - 1));
+            let idx = 0;
+            for (let offset = 0; offset < this.connections.length - 1; offset++) {
+                this.lastConnIdx++;
+                idx = 1 + (this.lastConnIdx % (this.connections.length - 1));
+                if (!this.connections[idx].busy) {
+                    break;
+                }
+            }
             return this.connections[idx];
         }
     }

@@ -339,7 +339,10 @@ export class FsPersistenceWorker {
 
         // Only exclusive mode makes it possible to use the faster WAL without having a shared lock
         // (which we do not have, as the nodes run on different machines).
-        // await db.run('PRAGMA locking_mode=EXCLUSIVE;');
+        // Even though we access SQLite from multiple threads within 1 process, SQLIte still gives locked errors
+        // for the reader threads when we enable exclusive locking.
+        //db.run('PRAGMA locking_mode=EXCLUSIVE;');
+
         // Enable the (faster) WAL mode
         db.run('PRAGMA journal_mode=WAL;');
 
