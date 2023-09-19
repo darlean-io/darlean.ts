@@ -11,7 +11,7 @@
     "directory": "suites/webgateways-suite"
   },
   "scripts": {
-    "build": "shx rm -r lib/* && tsc",
+    "build": "shx rm -rf lib/* && tsc",
     "run": "node lib/index.js",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "npx eslint ./src --ext .js,.jsx,.ts,.tsx",

@@ -6,7 +6,7 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "test": "npm run test:fs-persistence:all && npm run test:tables:all && npm run test:timers:all && npm run test:migrations:3",
-    "build": "shx rm -r lib/* && tsc",
+    "build": "shx rm -rf lib/* && tsc",
     "kill": "node lib/kill.js",
     "test:fs-persistence:all": "npm run test:fs-persistence:1s1 && npm run test:fs-persistence:1 && npm run test:fs-persistence:3",
     "test:fs-persistence:1s1": "shx rm -rf ./persistence && concurrently --success first \"node lib/fs-persistence-tests/server.js --darlean-appid=server01 --darlean-runtimeapps=server01 --darlean-runtime-fspersistence-maxshardcount=1\" \"node lib/fs-persistence-tests/client.js --darlean-appid=client --darlean-runtimeapps=server01 && npm run kill\"",
