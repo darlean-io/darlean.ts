@@ -278,6 +278,12 @@ export class RemotePortal implements IPortal {
         let nextCallAborter: Aborter | undefined;
         const p = Proxy.revocable(instance, {
             get: (_target, prop, _receiver) => {
+                if (prop === 'then') {
+                    // Otherwise, js thinks we are a promise and invokes "then" upon us when the proxy
+                    // is awaited as the return value of an async function.
+                    return undefined;
+                }
+
                 if (prop === 'aborter') {
                     return (value: Aborter) => {
                         nextCallAborter = value;

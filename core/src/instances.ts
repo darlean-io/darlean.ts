@@ -280,6 +280,12 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         const p = Proxy.revocable(instance, {
             get: (target, prop) => {
                 const name = normalizeActionName(prop.toString());
+                if (name === 'then') {
+                    // Otherwise, js thinks we are a promise and invokes "then" upon us when the proxy
+                    // is awaited as the return value of an async function.
+                    return undefined;
+                }
+
                 const func = this.methods.get(name);
                 if (func) {
                     return function (...args: unknown[]) {
