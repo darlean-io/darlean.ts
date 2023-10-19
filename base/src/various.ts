@@ -10,7 +10,7 @@ import { Changeable, IChangeable } from '@darlean/utils';
  * Note: This interface is called `IPersistablePure` to have no naming conflict with the {@IPersistable} interface
  * which is used a lot by application code so deserves to have the short name `IPersistable`.
  */
-export interface IPersistablePure {
+export interface IPersistablePure<T> {
     /**
      * Returns the last known version of the persistable, or undefined when the version is not yet known.
      */
@@ -41,7 +41,7 @@ export interface IPersistablePure {
 /**
  * Represents a value that can be loaded, changed and persisted.
  */
-export interface IPersistable<T> extends IChangeable<T>, IPersistablePure {
+export interface IPersistable<T> extends IChangeable<T>, IPersistablePure<T> {
     /**
      * Returns the last known version of the persistable, or undefined when the version is not yet known.
      */
