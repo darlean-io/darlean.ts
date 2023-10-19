@@ -70,14 +70,14 @@ export class MigrationController<T extends IMigrationState, Context = undefined>
         if (!info) {
             return;
         }
-        if (!persistable.value) {
+        if (!persistable.hasValue()) {
             const state: IMigrationState = {
                 migrationInfo: info
             };
             persistable.change(state);
         } else {
-            (persistable.value as unknown as IMigrationState).migrationInfo = info;
-            persistable.change();
+            (persistable.getValue() as unknown as IMigrationState).migrationInfo = info;
+            persistable.markDirty();
         }
     }
 
@@ -150,7 +150,7 @@ export class MigrationController<T extends IMigrationState, Context = undefined>
                 c = (await migration.migrator(persistable, c)) ?? c;
 
                 this.enforceMigrationInfo(this.encodeMigrationVersion(migration.version), persistable);
-                await persistable.store(true);
+                await persistable.persist('always');
                 stateVersion = migration.version;
                 notifier().info(
                     'MIGRATION_FINISHED',

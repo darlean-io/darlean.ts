@@ -76,7 +76,7 @@ export class EchoActor implements IEchoActor {
     @action({ locking: 'exclusive' })
     public async getLastValue(): Promise<string | undefined> {
         await sleep(50);
-        return this.last.value;
+        return this.last.tryGetValue();
     }
 
     public async activate(): Promise<void> {
@@ -87,7 +87,7 @@ export class EchoActor implements IEchoActor {
 
     public async deactivate() {
         if (this.store) {
-            await this.last.store();
+            await this.last.persist();
         }
     }
 }

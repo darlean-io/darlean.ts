@@ -15,12 +15,12 @@ export class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
     }
 
     public async deactivate(): Promise<void> {
-        await this.knowledge.store();
+        await this.knowledge.persist();
     }
 
     @action()
     public async ask(question: string): Promise<number> {
-        for (const [fact, answer] of Object.entries(this.knowledge.value ?? {})) {
+        for (const [fact, answer] of Object.entries(this.knowledge.getValue())) {
             if (question.includes(fact)) {
                 return answer;
             }
@@ -30,9 +30,9 @@ export class OracleActor implements IOracleActor, IActivatable, IDeactivatable {
 
     @action()
     public async teach(fact: string, answer: number): Promise<void> {
-        const knowledge = this.knowledge.value ?? {};
+        const knowledge = this.knowledge.getValue();
         knowledge[fact] = answer;
         this.knowledge.change(knowledge);
-        await this.knowledge.store();
+        await this.knowledge.persist();
     }
 }

@@ -1,14 +1,12 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { IPersistable, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult } from '@darlean/base';
+import { CustomPersistable, IPersistable, IPersistence, IPersistenceQueryOptions, IPersistenceQueryResult } from '@darlean/base';
 import { replaceAll } from '@darlean/utils';
 
-class MemoryPersistable<T> implements IPersistable<T> {
-    private _changed = false;
+class MemoryPersistable<T> extends CustomPersistable<T> {
     private persistence: MemoryPersistence<T>;
     private partitionKey: string[] | undefined;
     private sortKey: string[] | undefined;
 
-    public value?: T | undefined;
     public version?: string | undefined;
 
     constructor(
@@ -17,64 +15,20 @@ class MemoryPersistable<T> implements IPersistable<T> {
         sortKey: string[] | undefined,
         value: T | undefined
     ) {
+        super(value);
         this.persistence = persistence;
         this.partitionKey = partitionKey;
         this.sortKey = sortKey;
-        this.value = value;
     }
 
-    public async load(): Promise<T | undefined> {
+    protected async _load(): Promise<{ value: T | undefined; version: string | undefined }> {
         const result = await this.persistence.loadImpl(this.partitionKey, this.sortKey);
-        if (result[0] !== undefined) {
-            this.value = result[0];
-        }
         this.version = result[1];
-        this._changed = false;
-        return result[0];
+        return { value: result[0], version: result[1] };
     }
 
-    public initializeFrom(value: T) {
-        const current = (this.value ?? {}) as { [key: string]: unknown };
-        const changed = initializeFrom(current, value as { [key: string]: unknown });
-        if (changed) {
-            this.change(current as T);
-        }
-    }
-
-    public async store(force?: boolean): Promise<void> {
-        if (!force) {
-            if (!this._changed) {
-                return;
-            }
-        }
-
-        if (this._changed) {
-            if (this.version) {
-                const next = parseInt(this.version || '0') + 1;
-                this.version = next.toString().padStart(20, '0');
-            } else {
-                const next = Date.now();
-                this.version = next.toString().padStart(20, '0');
-            }
-        }
-        await this.persistence.storeImpl(this.partitionKey, this.sortKey, this.value, this.version);
-        this._changed = false;
-    }
-
-    public change(value: T | undefined): void {
-        if (value !== undefined) {
-            this.value = value;
-        }
-        this._changed = true;
-    }
-
-    public clear(): void {
-        this.value = undefined;
-        this._changed = true;
-    }
-
-    changed(): boolean {
-        return this._changed;
+    protected async _persist(value: T | undefined, version: string): Promise<void> {
+        await this.persistence.storeImpl(this.partitionKey, this.sortKey, value, version);
     }
 }
 
@@ -221,15 +175,4 @@ export function idFromText2(text: string): string[] {
         offset += len;
     }
     return result;
-}
-
-export function initializeFrom(current: { [key: string]: unknown }, value: { [key: string]: unknown }): boolean {
-    let changed = false;
-    for (const [k, v] of Object.entries(value)) {
-        if (current[k] === undefined) {
-            current[k] = v;
-            changed = true;
-        }
-    }
-    return changed;
 }

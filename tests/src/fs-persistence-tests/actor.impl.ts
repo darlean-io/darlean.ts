@@ -21,7 +21,7 @@ export class StorageTestActor {
         } else {
             p.change({ text: value });
         }
-        await p.store();
+        await p.persist();
     }
 
     @action({ locking: 'shared' })

@@ -25,3 +25,4 @@ export * from './mimedeser';
 export * from './multipart';
 export * from './multideser';
 export * from './tabulardata';
+export * from './changeable';
