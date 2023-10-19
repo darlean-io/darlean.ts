@@ -11,6 +11,8 @@
   },
   "scripts": {
     "build": "shx rm -rf lib/* && tsc",
+    "test": "npm run test:all",
+    "test:all": "jest --verbose --runInBand --config jestconfig.json",
     "run": "node lib/index.js",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "npx eslint ./src --ext .js,.jsx,.ts,.tsx",

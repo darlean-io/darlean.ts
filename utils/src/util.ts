@@ -949,3 +949,21 @@ export function normalize(value: string): string {
     // eslint-disable-next-line no-control-regex
     return stringWithoutAccents.replace(/[^\u0000-\u007E]/g, (character) => unicodeToAsciiMap[character] || '');
 }
+
+/**
+ * Initializes a target object from another template object by copying all fields from the template that are not
+ * in the target object. Only the top-level fields are considered. No merging is performed on deeper levels.
+ * @param target The object to which not-yet-existing fields should be copied
+ * @param template The object from which the fields should be copied
+ * @returns Whether any changes have been made to target.
+ */
+export function initializeFrom(target: { [key: string]: unknown }, template: { [key: string]: unknown }): boolean {
+    let changed = false;
+    for (const [k, v] of Object.entries(template)) {
+        if (target[k] === undefined) {
+            target[k] = v;
+            changed = true;
+        }
+    }
+    return changed;
+}

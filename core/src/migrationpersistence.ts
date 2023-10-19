@@ -1,4 +1,5 @@
 import {
+    CustomPersistable,
     IMigrationState,
     IPersistable,
     IPersistence,
@@ -9,72 +10,38 @@ import {
     ITableSearchRequest,
     ITableSearchResponse
 } from '@darlean/base';
-import { SubPersistence, initializeFrom } from './various';
+import { SubPersistence } from './various';
 import { IMigrationController } from './migrationcontroller';
 
-export class MigrationPersistable<T extends IMigrationState> implements IPersistable<T> {
-    public value: T | undefined;
-    public version?: string;
-
-    private _changed: boolean;
+export class MigrationPersistable<T extends IMigrationState> extends CustomPersistable<T> implements IPersistable<T> {
     private checked: boolean;
 
     constructor(private superPersistable: IPersistable<T>, private controller: IMigrationController<T>) {
-        this._changed = false;
+        super(undefined);
         this.checked = false;
     }
 
-    public initializeFrom(value: T) {
-        const current = (this.value ?? {}) as { [key: string]: unknown };
-        const changed = initializeFrom(current, value as unknown as { [key: string]: unknown });
-        if (changed) {
-            this.change(current as unknown as T);
-        }
-    }
-
-    public change(value?: T) {
-        if (value !== undefined) {
-            this.value = value;
-        }
-        this._changed = true;
-    }
-
-    public changed() {
-        return this._changed;
-    }
-
-    public clear() {
-        this._changed = true;
-        this.value = undefined;
-    }
-
-    public async load() {
+    protected async _load(): Promise<{ value: T | undefined; version: string | undefined }> {
         if (!this.checked) {
             this.checked = true;
             // Throws an error when not compatible. Otherwise, returns current migration info
             await this.controller.checkCompatibility(this.superPersistable);
-            this.value = this.superPersistable.value;
-            this.version = this.superPersistable.version;
-            this._changed = false;
-            return this.value;
+            this.setVersion(this.superPersistable.getVersion());
+            return { value: this.superPersistable.tryGetValue(), version: this.getVersion() };
         }
         const value = await this.superPersistable.load();
-        this.value = value;
-        this.version = this.superPersistable.version;
-        this._changed = false;
-        return value;
+        this.setVersion(this.superPersistable.getVersion());
+        return { value, version: this.getVersion() };
     }
 
-    public async store(force: boolean) {
-        if (force || this._changed) {
-            if (this.value === undefined) {
-                this.superPersistable.clear();
-            } else {
-                this.superPersistable.change(this.value);
-            }
-            const result = await this.superPersistable.store(true);
-            return result;
+    protected async _persist(value: T | undefined) {
+        if (value === undefined) {
+            this.superPersistable.clear();
+        } else {
+            this.superPersistable.change(value);
         }
+        const result = await this.superPersistable.persist('always');
+        return result;
     }
 }
 

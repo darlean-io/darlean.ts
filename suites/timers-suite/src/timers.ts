@@ -72,7 +72,7 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
 
         const item = await this.persistence.load([newState.id]);
         item.change(newState);
-        await item.store();
+        await item.persist();
 
         if (this.nextTime !== undefined) {
             if (newState.nextMoment <= this.nextTime) {
@@ -91,9 +91,9 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
     @action({ locking: 'exclusive' })
     public async cancel(options: ITimerCancelOptions) {
         const item = await this.persistence.load([options.id]);
-        if (item.value) {
+        if (item.hasValue()) {
             item.clear();
-            await item.store();
+            await item.persist();
         }
     }
 
@@ -118,36 +118,38 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
 
             for (const item of chunk.items) {
                 const currentItem = await this.persistence.load(item.id);
-                const currentTimer = currentItem.value;
-                if (currentTimer) {
-                    let breaking = false;
-                    const trigger = currentTimer.remainingTriggers[0];
-                    try {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const actor = this.portal.retrieve(currentTimer.callbackActorType, currentTimer.callbackActorId) as any;
-                        await actor[currentTimer.callbackActionName]();
+                const currentTimer = currentItem.tryGetValue();
+                if (!currentTimer) {
+                    continue;
+                }
 
-                        if ((trigger?.success ?? 'continue') === 'break') {
-                            breaking = true;
-                        }
-                    } catch (e) {
-                        if ((trigger?.error ?? 'continue') === 'break') {
-                            breaking = true;
-                        }
-                    } finally {
-                        if (!breaking) {
-                            const newMoment = this.updateNextMoment(currentTimer);
-                            if (newMoment === undefined) {
-                                breaking = true;
-                            }
-                        }
+                let breaking = false;
+                const trigger = currentTimer.remainingTriggers[0];
+                try {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const actor = this.portal.retrieve(currentTimer.callbackActorType, currentTimer.callbackActorId) as any;
+                    await actor[currentTimer.callbackActionName]();
 
-                        if (breaking) {
-                            currentItem.clear();
-                        }
-
-                        await currentItem.store(true);
+                    if ((trigger?.success ?? 'continue') === 'break') {
+                        breaking = true;
                     }
+                } catch (e) {
+                    if ((trigger?.error ?? 'continue') === 'break') {
+                        breaking = true;
+                    }
+                } finally {
+                    if (!breaking) {
+                        const newMoment = this.updateNextMoment(currentTimer);
+                        if (newMoment === undefined) {
+                            breaking = true;
+                        }
+                    }
+
+                    if (breaking) {
+                        currentItem.clear();
+                    }
+
+                    await currentItem.persist('always');
                 }
             }
 

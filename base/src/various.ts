@@ -2,57 +2,71 @@
 import { IInstanceWrapper } from './instances';
 import { IPersistenceQueryOptions, IPersistenceQueryResult } from './services/persistence';
 import { ITableSearchItem, ITableSearchRequest, ITableSearchResponse } from './services/tables';
-
-//----- Standard persistence -------
+import { Changeable, IChangeable } from '@darlean/utils';
 
 /**
- * Represents a value that can be loaden, changed and persisted.
+ * Represents something that can be loaded and persisted.
+ *
+ * Note: This interface is called `IPersistablePure` to have no naming conflict with the {@IPersistable} interface
+ * which is used a lot by application code so deserves to have the short name `IPersistable`.
  */
-export interface IPersistable<T> {
+export interface IPersistablePure {
     /**
-     * The current value as the application knows it.
+     * Returns the last known version of the persistable, or undefined when the version is not yet known.
      */
-    value?: T;
-    /**
-     * The version reported for the last load action.
-     */
-    version?: string;
-    /**
-     * Change value and mark the value as being changed.
-     * @param value The new value (optional). When not present, the old value is not adjusted.
-     */
-    change(value?: T): void;
-    /**
-     * Make value undefined and mark it as being changed.
-     */
-    clear(): void;
-    /**
-     * Returns whether the value was changed locally
-     */
-    changed(): boolean;
+    getVersion(): string | undefined;
+
     /**
      * Loads the value from the underlying persistence store.
+     * @param whenNotPresent Defines what should happen when the underlying store does not have a
+     * value. The default is `'keep'`, which keeps the existing value (see remarks). It can also
+     * be set to `'clear'` which clears the value.
      * @returns The loaded value
-     * @Remarks When the store does not return a value, `load` returns `undefined`, but the value of
-     * {@link IPersistable.value} is not adjusted (still has the old value). This makes it easy to
+     * @Remarks When the store does not return a value, `load` returns `undefined`, but the internal value
+     * is not adjusted (still has the old value). This makes it easy to
      * provide an {@link IPersistable} with a default initial value, then call {@link load}, and when
-     * no data was yet present in the store, the earlier assigned default value is still present.
+     * no data was yet present in the store, the earlier assigned default value is still present. To
+     * alter this behaviour, set whenUndefined to `'clear'`, which will clear the internal value.
      */
-    load(): Promise<T | undefined>;
+    load(whenNotPresent?: 'keep' | 'clear'): Promise<T | undefined>;
 
     /**
-     * Copies root fields from value into this.value when they do not exist in this.value.
-     * When one or more values are copied, the `changed` flag is automastically set.
-     * @param value The object of keys and associated default values.
+     * Stores the value in the underlying persistence store.
+     * @param condition When `dirty`, only store the value when it is marked as dirty (default). When `always`,
+     * the store is also performed when the value is not changed.
      */
-    initializeFrom(value: T): void;
+    persist(condition?: 'dirty' | 'always'): Promise<void>;
+}
+
+/**
+ * Represents a value that can be loaded, changed and persisted.
+ */
+export interface IPersistable<T> extends IChangeable<T>, IPersistablePure {
+    /**
+     * Returns the last known version of the persistable, or undefined when the version is not yet known.
+     */
+    getVersion(): string | undefined;
 
     /**
-     * Stores the value in the unerlying persistence store.
-     * @param force When `true`, also perform the store when the value is not {@link changed}. Default value
-     * is `false`.
+     * Loads the value from the underlying persistence store.
+     * @param whenNotPresent Defined what should happen when the underlying store does not have a
+     * value. The default is `'keep'`, which keeps the existing value (see remarks). It can also
+     * be set to `'clear'` which clears the value.
+     * @returns The loaded value
+     * @Remarks When the store does not return a value, `load` returns `undefined`, but the internal value
+     * is not adjusted (still has the old value). This makes it easy to
+     * provide an {@link IPersistable} with a default initial value, then call {@link load}, and when
+     * no data was yet present in the store, the earlier assigned default value is still present. To
+     * alter this behaviour, set whenUndefined to `'clear'`, which will clear the internal value.
      */
-    store(force?: boolean): Promise<void>;
+    load(whenNotPresent?: 'keep' | 'clear'): Promise<T | undefined>;
+
+    /**
+     * Stores the value in the underlying persistence store.
+     * @param condition When `dirty`, only store the value when it is marked as dirty (default). When `always`,
+     * the store is also performed when the value is not changed.
+     */
+    persist(condition?: 'dirty' | 'always'): Promise<void>;
 }
 
 /**
@@ -71,7 +85,7 @@ export interface IPersistence<T> {
     persistable(partitionKey?: string[], sortKey?: string[], value?: T): IPersistable<T>;
 
     /**
-     * Creates a new {@link Ipersistable} instance with the provided partition and sort key, and
+     * Creates a new {@link IPersistable} instance with the provided partition and sort key, and
      * loads the most recent value from the persistence store.
      * @param partitionKey The partition key that will be used for this and later load and store actions
      * @param sortKey The sort key that will be used for this and later load and store actions
@@ -122,7 +136,7 @@ export interface ITablePersistence<T> {
      */
     persistable(key: string[], value: T | undefined): IPersistable<T>;
     /**
-     * Creates a new {@link Ipersistable} instance with the provided key, and
+     * Creates a new {@link IPersistable} instance with the provided key, and
      * loads the most recent value from the persistence store.
      */
     load(key: string[]): Promise<IPersistable<T>>;
@@ -150,9 +164,65 @@ export interface IMigrationDefinition<State extends IMigrationState = IMigration
 }
 
 export interface IMigrationState {
-    migrationInfo?: string;
+    migrationInfo: string;
 }
 
 export interface IMigrationContext<T extends IMigrationState = IMigrationState, Context = unknown> {
     perform(state: IPersistable<T>, nameResolver: () => Promise<string>, defaultValue: T): Promise<Context>;
+}
+
+/**
+ * Base class for creating custom persistables.
+ */
+export abstract class CustomPersistable<T> extends Changeable<T> implements IPersistable<T> {
+    private _version?: string | undefined;
+
+    constructor(value: T | undefined, dirty = true) {
+        super(value, dirty);
+    }
+
+    public getVersion(): string | undefined {
+        return this._version;
+    }
+
+    public async load(whenUndefined?: 'keep' | 'clear'): Promise<T | undefined> {
+        const result = await this._load();
+        this._version = result.version;
+        if (result.value === undefined) {
+            if (whenUndefined === 'clear') {
+                this.setClear();
+            }
+        } else {
+            this.setValue(result.value);
+        }
+        this.markDirty(false);
+        return result.value;
+    }
+
+    public async persist(condition?: 'dirty' | 'always'): Promise<void> {
+        if (condition !== 'always' && !this.isDirty()) {
+            return;
+        }
+
+        let version = this._version;
+        if (version) {
+            const next = parseInt(this._version || '0') + 1;
+            version = next.toString().padStart(20, '0');
+            this._version = version;
+        } else {
+            const next = Date.now();
+            version = next.toString().padStart(20, '0');
+            this._version = version;
+        }
+
+        await this._persist(this.tryGetValue(), version);
+        this.markDirty(false);
+    }
+
+    protected setVersion(version: string | undefined) {
+        this._version = version;
+    }
+
+    protected abstract _load(): Promise<{ value: T | undefined; version?: string }>;
+    protected abstract _persist(value: T | undefined, version: string): Promise<void>;
 }

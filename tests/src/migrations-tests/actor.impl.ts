@@ -12,7 +12,7 @@ export class MigrationTestActor {
     @activator()
     public async activate() {
         if (this.mc) {
-            await this.mc.perform(this.persistable, async () => 'MigrationTest', { migrations: [] });
+            await this.mc.perform(this.persistable, async () => 'MigrationTest', { migrationInfo: '', migrations: [] });
         } else {
             await this.persistable.load();
         }
@@ -20,14 +20,15 @@ export class MigrationTestActor {
 
     @action({ locking: 'shared' })
     public async getMigrations(): Promise<string[]> {
-        return this.persistable.value?.migrations ?? [];
+        return this.persistable.tryGetValue()?.migrations ?? [];
     }
 
     @action()
     public async add(value: string) {
-        if (this.persistable.value) {
-            this.persistable.value.migrations.push(value);
-            await this.persistable.store(true);
+        const pValue = this.persistable.tryGetValue();
+        if (pValue) {
+            pValue.migrations.push(value);
+            await this.persistable.persist('always');
         }
     }
 }
@@ -48,10 +49,11 @@ export function migrationTestActorSuite(migrations: string[] | undefined): IActo
                 name: `Migration ${m}`,
                 version: m,
                 migrator: async (p) => {
-                    console.log('Performing', m);
-                    if (p.value) {
-                        p.value.migrations.push(m);
-                        p.change();
+                    //console.log('Performing', m);
+                    const pValue = p.tryGetValue();
+                    if (pValue) {
+                        pValue.migrations.push(m);
+                        p.markDirty();
                     }
                 }
             })) ?? undefined
