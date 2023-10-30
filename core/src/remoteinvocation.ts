@@ -292,8 +292,8 @@ export class RemotePortal implements IPortal {
 
                 // Assume the caller is only trying to get functions (not properties, fields etc)
                 // we simply return a getter function implementation.
-                return async function (...args: unknown[]) {
-                    return await deeper('io.darlean.remote.invoke', `${type}::${id}::${prop.toString()}`).perform(async () => {
+                return function (...args: unknown[]) {
+                    return deeper('io.darlean.remote.invoke', `${type}::${id}::${prop.toString()}`).perform(async () => {
                         let aborted = false;
                         const aborter = nextCallAborter;
                         nextCallAborter = undefined;

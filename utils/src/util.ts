@@ -47,6 +47,10 @@ export async function sleep(ms: number, aborter?: Aborter): Promise<void> {
  * @returns The input with all occurrances of search replaced by replace.
  */
 export function replaceAll(input: string, search: string, replace: string): string {
+    // Performance optimization: return early when the search string is not included in input.
+    if (!input.includes(search)) {
+        return input;
+    }
     return input.split(search).join(replace);
 }
 
@@ -102,166 +106,6 @@ export function applyWildcardPattern(pattern: IWildcardPattern, input: string, p
     }
     partsOut?.push(input.substring(lastIdx, input.length - parts[parts.length - 1].length));
     return true;
-}
-
-// Ascii-codes
-const CODE_A = 65;
-const CODE_Z = 90;
-const CODE_a = 97;
-const CODE_z = 122;
-const CODE_0 = 48;
-const CODE_9 = 57;
-
-/**
- * Encodes a number to a string in such a way that sorting encoded strings in lexicographical order gives
- * the same order as sorting the numbers.
- * @param value The value to be encoded. Can be a positive or negative integer or float, but the absolute value must be < 10^21.
- * @param maxDigits The maximum number of digits to be taken into account.
- * @remarks The encoding works by counting the number of digits before the '.', and encoding that number as a
- * character. For positive numbers, characters 'a'..'z' are used for 0, 1 .. 26 digits. For negative numbers,
- * characters 'Y'..'A' are used for 1 .. 26 digits. The resulting character is prepadded to the number.
- *
- * Because the number of digits before the '.' is already encoded by the leading character, the '.' is removed
- * from the textual representation of the number.
- *
- * For negative numbers, the textual representation of the number is complemented ('0' becomes '9' .. '9' becomes '0').
- * This ensure that negative numbers are sorted properly ("the other way around").
- *
- * Numbers are converted into a textual representation via `value.toFixed(maxDigits)`. After that, zeroes on the
- * end are removed (only for zeroes after the '.'). For positive numbers, this has no impact on sorting: `b35` (3.5) still
- * comes before `b351` (3.51). For negative numbers, this is different: the sorted order would become -3.52, -3.51, -3.4, -3.49.
- * To accomodate for this, the complemented value is incremented by 1 (taking into account that any leading zeroes are preserved
- * during this addition).
- */
-export function encodeNumber(value: number, maxDigits = 0) {
-    if (value === 0) {
-        return 'a';
-    }
-    if (value >= 0) {
-        let base = value.toFixed(maxDigits);
-        let len = base.indexOf('.');
-        if (len < 0) {
-            len = base.length;
-        } else {
-            while (base.endsWith('0')) {
-                base = base.substring(0, base.length - 1);
-            }
-        }
-        const prefix = String.fromCharCode(CODE_a + len);
-        return prefix + base.replace('.', '');
-    } else {
-        let base = value.toFixed(maxDigits);
-        if (base[0] === '-') {
-            base = base.substring(1);
-        }
-        let len = base.indexOf('.');
-        if (len < 0) {
-            len = base.length;
-        } else {
-            while (base.endsWith('0')) {
-                base = base.substring(0, base.length - 1);
-            }
-        }
-        const prefix = String.fromCharCode(CODE_Z - len);
-        // Complicated story. Why the +1? -2 becomes Y7. -2.1 becomes Y78. Where this sorting goes fine for
-        // positive numbers (because shorter strings come before longer strings with the same prefix), for negative
-        // numbers, this goes wrong. The order would become -3.2, -3.1, -2, -2.9, -2.8 -- which is wrong.
-        // By adding 1 to the complementary value, this issue 'magically' (mathematically) disppears. What the +1
-        // is effectively doing is to increment the rightmost fractional digit with 1. That is sufficient to have
-        // "shorter" numbers (like -2) sort well with longer numbers (like 2.1).
-        // We use BigInt here to avoid rounding errors.
-        // We use the "'1' +"" to make sure that number '000' becomes '001' after +1n (and not '1').
-        return prefix + (BigInt('1' + complement(base.replace('.', ''))) + 1n).toString().substring(1);
-    }
-}
-
-/**
- * Decodes a string that was previously encoded using {@link encodeNumber}.
- */
-export function decodeNumber(text: string) {
-    const prefixCode = text.charCodeAt(0);
-    if (prefixCode === CODE_a) {
-        return 0;
-    }
-    if (prefixCode === CODE_Z) {
-        return 0;
-    }
-    if (prefixCode >= CODE_A && prefixCode <= CODE_Z) {
-        // Negative number
-        const len = CODE_Z - prefixCode;
-        const base = (BigInt('1' + text.substring(1)) - 1n).toString().substring(1);
-        const compl = complement(base);
-        return compl.length > len
-            ? parseFloat('-' + compl.substring(0, len) + '.' + compl.substring(len))
-            : parseInt('-' + compl);
-    } else if (prefixCode >= CODE_a && prefixCode <= CODE_z) {
-        // Positive number or zero
-        const len = prefixCode - CODE_a;
-        const base = text.substring(1);
-        return base.length > len ? parseFloat(base.substring(0, len) + '.' + base.substring(len)) : parseInt(base);
-    } else {
-        throw new Error('Not a decoded number');
-    }
-}
-
-export function decodeIntNumberFromBuffer(buf: { buf: Buffer; pos: number }, skip: boolean) {
-    const prefixCode = buf.buf[buf.pos];
-    if (prefixCode === CODE_a) {
-        buf.pos++;
-        return 0;
-    }
-    if (prefixCode === CODE_Z) {
-        buf.pos++;
-        return 0;
-    }
-    if (prefixCode >= CODE_A && prefixCode <= CODE_Z) {
-        // Negative number
-        const len = CODE_Z - prefixCode;
-        if (skip) {
-            buf.pos += 1 + len;
-            return 0;
-        }
-        const substr = buf.buf.toString('ascii', buf.pos + 1, buf.pos + 1 + len);
-        const base = (BigInt('1' + substr) - 1n).toString().substring(1);
-        const compl = complement(base);
-        buf.pos += 1 + len;
-        return parseInt('-' + compl);
-    } else if (prefixCode >= CODE_a && prefixCode <= CODE_z) {
-        // Positive number or zero
-        const len = prefixCode - CODE_a;
-        if (skip) {
-            buf.pos += 1 + len;
-            return 0;
-        }
-        const base = buf.buf.toString('ascii', buf.pos + 1, buf.pos + 1 + len);
-        buf.pos += 1 + len;
-        return parseInt(base);
-    } else {
-        throw new Error('Not a decoded number');
-    }
-}
-
-/*export function decodeNumberRtl(text: string, index?: number) {
-    index = index ?? text.length - 1;
-    for (let idx = index; idx >= 0; idx--) {
-        const code = text.charCodeAt(idx);
-        if ((code >= CODE_A && code <= CODE_Z) || (code >= CODE_a && code <= CODE_z)) {
-            return [decodeNumber(text, idx), idx];
-        } else if (code >= CODE_0 && code <= CODE_9) {
-            // continue
-        } else {
-            throw new Error('Not an encoded number');
-        }
-    }
-    throw new Error('Not an encoded number');
-}*/
-
-function complement(value: string) {
-    let compl = '';
-    for (let i = 0; i < value.length; i++) {
-        compl += String.fromCharCode(CODE_9 - (value.charCodeAt(i) - CODE_0));
-    }
-    return compl;
 }
 
 // Important: For correct sorting, the field separator must have a lower ascii code than char sep.
@@ -377,17 +221,11 @@ export class Mutex<T> {
     }
 
     public tryAcquire(): boolean {
-        const start = performance.now();
-        try {
-            if (!this.held) {
-                this.held = true;
-                return true;
-            } else {
-                return false;
-            }
-        } finally {
-            const stop = performance.now();
-            currentScope().info('INLINE ACQUIRE TOOK [Duration]', () => ({ Duration: stop - start }));
+        if (!this.held) {
+            this.held = true;
+            return true;
+        } else {
+            return false;
         }
     }
 

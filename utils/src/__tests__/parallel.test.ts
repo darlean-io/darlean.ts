@@ -1,4 +1,4 @@
-import { parallel, ParallelAbort } from '../parallel';
+import { parallel, ParallelAbort, ParallelTask } from '../parallel';
 import { sleep } from '../util';
 
 describe('Parallel execution of tasks', () => {
@@ -157,4 +157,17 @@ describe('Parallel execution of tasks', () => {
         // Must finish within 5 seconds max test duration
         await parallel([], 100 * 1000);
     });
+
+    const tasks: ParallelTask<void, void>[] = [];
+    for (let i = 0; i < 100000; i++) {
+        // Just something relatively slow that takes time
+        // (but not simply sleeping, because sleep times are not predictable)
+        tasks.push(async () => {
+            Buffer.alloc(500000);
+        });
+    }
+
+    test('Performance', async () => {
+        await parallel(tasks, 50 * 1000, 50);
+    }, 50000);
 });

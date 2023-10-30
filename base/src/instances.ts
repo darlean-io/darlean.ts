@@ -53,6 +53,7 @@ export interface IInstanceContainer<T extends object> {
  */
 export interface IMultiTypeInstanceContainer {
     obtain<T extends object>(type: string, id: string[]): T;
+    wrapper<T extends object>(type: string, id: string[]): IInstanceWrapper<T>;
     finalize(): Promise<void>;
 }
 

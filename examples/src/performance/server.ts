@@ -4,6 +4,10 @@ import { FileTracer, Tracer } from '@darlean/utils';
 import { static_suite, virtual_suite } from './actor.impl';
 
 async function main() {
+    // Nats library uses errors also in their happy flow.
+    // This limit speeds things up.
+    Error.stackTraceLimit = -1;
+
     const tracer = new Tracer(undefined, undefined, undefined, []);
 
     const builder = new ConfigRunnerBuilder();

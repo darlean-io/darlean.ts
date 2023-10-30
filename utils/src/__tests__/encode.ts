@@ -1,4 +1,6 @@
-import { decodeKeyReadable, decodeNumber, encodeKeyReadable, encodeNumber } from '../util';
+import { decodeKeyReadable, encodeKeyReadable } from '../util';
+import { encodeNumber, decodeNumber, writeUnsignedInt, readUnsignedInt } from '../numbers';
+import { IBufWithCursor } from '../bufferwithcursor';
 
 describe('EncodeNumber', () => {
     test('Zero', () => {
@@ -60,6 +62,34 @@ describe('EncodeNumber', () => {
         expect(decodeNumber('X81')).toBe(-19);
         expect(decodeNumber('X75')).toBe(-25);
         expect(decodeNumber('W877')).toBe(-123);
+    });
+
+    test('Buffer', () => {
+        const buffer: IBufWithCursor = {
+            buffer: Buffer.alloc(1000),
+            cursor: 0
+        };
+
+        writeUnsignedInt(buffer, 0);
+        writeUnsignedInt(buffer, 1);
+        writeUnsignedInt(buffer, 10);
+        writeUnsignedInt(buffer, 11);
+        writeUnsignedInt(buffer, 100);
+        writeUnsignedInt(buffer, 101);
+        writeUnsignedInt(buffer, 1000);
+        writeUnsignedInt(buffer, 1001);
+
+        console.log(buffer.buffer.toString('utf-8'));
+
+        buffer.cursor = 0;
+        expect(readUnsignedInt(buffer)).toBe(0);
+        expect(readUnsignedInt(buffer)).toBe(1);
+        expect(readUnsignedInt(buffer)).toBe(10);
+        expect(readUnsignedInt(buffer)).toBe(11);
+        expect(readUnsignedInt(buffer)).toBe(100);
+        expect(readUnsignedInt(buffer)).toBe(101);
+        expect(readUnsignedInt(buffer)).toBe(1000);
+        expect(readUnsignedInt(buffer)).toBe(1001);
     });
 
     /*test('RightToLeft', () => {

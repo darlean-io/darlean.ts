@@ -205,7 +205,7 @@
  * ### Remotes and transports
  * The default portal implementation, {@link RemotePortal}, uses an {@link IRemote} to {@link IRemote.invoke} actions on remote actors. A
  * remote typically uses an {@link ITransport} (like {@link NatsTransport}) to perform the underlying calls by {@link ITransportSession.send | send}ing
- * an {@link ITransportEnvelope} with an {@link ITransportActorCallRequest} content to another process, and waiting for an
+ * a message with {@link ITransportTags} and {@link ITransportActorCallRequest} to another process, and waiting for an
  * {@link ITransportActorCallResponse} to come back.
  *
  *

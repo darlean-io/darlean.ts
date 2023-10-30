@@ -12,6 +12,7 @@ export const FRAMEWORK_ERROR_ACTOR_LOCK_FAILED = 'ACTOR_LOCK_FAILED';
 export const FRAMEWORK_ERROR_FINALIZING = 'FINALIZING';
 export const FRAMEWORK_ERROR_INCORRECT_STATE = 'INCORRECT_STATE';
 export const FRAMEWORK_ERROR_MIGRATION_ERROR = 'MIGRATION_ERROR';
+export const FRAMEWORK_ERROR_LAZY_REFUSE = 'LAZY_REFUSE';
 
 /**
  * Indicates that long running actions on an object that implements IAbortable can be aborted
