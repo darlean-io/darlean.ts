@@ -68,19 +68,19 @@ export class OracleControllerActor implements OracleControllerActor, IActivatabl
     }
 
     public async deactivate(): Promise<void> {
-        await this.knowledge.store();
+        await this.knowledge.persist();
         this.pollController.interrupt(false);
         this.pollController.finalize();
     }
 
     @action({ locking: 'exclusive' })
     public async teach(fact: string, answer: number): Promise<void> {
-        const knowledge = this.knowledge.value ?? {};
+        const knowledge = this.knowledge.tryGetValue() ?? {};
         knowledge[fact] = answer;
         this.knowledge.change(knowledge);
         this.nonce = uuid.v4();
         this.pollController.interrupt(true);
-        await this.knowledge.store();
+        await this.knowledge.persist();
     }
 
     @action({ locking: 'none' })

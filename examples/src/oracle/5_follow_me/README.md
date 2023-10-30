@@ -75,7 +75,7 @@ The `deactivate` only should store our knowledge when we are a controller:
     public async deactivate(): Promise<void> {
         if (!this.controller) {
             // We are a controller
-            await this.knowledge.store();
+            await this.knowledge.persist();
         }
     }
 ```
@@ -84,7 +84,7 @@ The `ask` method remains unchanged:
 ```ts
     @action()
     public async ask(question: string): Promise<number> {
-        for (const [fact, answer] of Object.entries(this.knowledge.value ?? {})) {
+        for (const [fact, answer] of Object.entries(this.knowledge.tryGetValue() ?? {})) {
             if (question.includes(fact)) {
                 return answer;
             }
@@ -101,10 +101,10 @@ But the `teach`, we have to adjust. In theory it could remain unchanged, because
             throw new Error('You can only teach a controller');
         }
 
-        const knowledge = this.knowledge.value ?? {};
+        const knowledge = this.knowledge.tryGetValue() ?? {};
         knowledge[fact] = answer;
         this.knowledge.change(knowledge);
-        await this.knowledge.store();
+        await this.knowledge.persist();
     }
 ```
 
@@ -112,7 +112,7 @@ When we are a controller, we have to provide the `fetch` action method, so that 
 ```ts
     @action()
     public async fetch(): Promise<Knowledge> {
-        return this.knowledge.value ?? {};
+        return this.knowledge.tryGetValue() ?? {};
     }
 ```
 

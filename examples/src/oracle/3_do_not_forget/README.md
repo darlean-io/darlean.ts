@@ -114,7 +114,7 @@ Now that we have the constructor right, we can implement the `IActivateable` and
     }
 
     public async deactivate(): Promise<void> {
-        await this.knowledge.store();
+        await this.knowledge.persist();
     }
 ```
 We simply load the knowledge from the store on activation (when there is no knowledge yet in the store, the load is a noop -- the old value is still there), and store the knowledge on deactivation.
@@ -125,7 +125,7 @@ We still have to make a very small change in `ask` because we have to use `this.
 ```ts
 @action()
     public async ask(question: string): Promise<number> {
-        for (const [fact, answer] of Object.entries(this.knowledge.value ?? {})) {
+        for (const [fact, answer] of Object.entries(this.knowledge.tryGetValue() ?? {})) {
             if (question.includes(fact)) {
                 return answer;
             }
@@ -137,10 +137,10 @@ and the same holds for `teach`, but here we also add an extra store whenever we 
 ```ts
    @action()
     public async teach(fact: string, answer: number): Promise<void> {
-        const knowledge = this.knowledge.value ?? {};
+        const knowledge = this.knowledge.tryGetValue() ?? {};
         knowledge[fact] = answer;
         this.knowledge.change(knowledge);
-        await this.knowledge.store();
+        await this.knowledge.persist();
     }
 ```
 
