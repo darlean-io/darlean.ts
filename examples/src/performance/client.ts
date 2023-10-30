@@ -1,10 +1,11 @@
 import { IPerformanceActor, PERFORMANCE_ACTOR_STATIC } from './actor.intf';
-import { FileTracer, parallel, ParallelTask, sleep, Time, Tracer } from '@darlean/utils';
+import { parallel, ParallelTask, sleep, Time } from '@darlean/utils';
 import { ConfigRunnerBuilder } from '@darlean/core';
 
 async function main(servers: string[]) {
-    const tracer = new Tracer(undefined, undefined, undefined, [{ scope: 'io.darlean.remote.invoke', interval: 1000 }]);
-    const toFile = new FileTracer(tracer, 'client');
+    Error.stackTraceLimit = -1;
+    //const tracer = new Tracer(undefined, undefined, undefined, [{ scope: 'io.darlean.remote.invoke', interval: 1000 }]);
+    //const toFile = new FileTracer(tracer, 'client');
 
     const builder = new ConfigRunnerBuilder();
     const runner = builder.build();
@@ -16,18 +17,31 @@ async function main(servers: string[]) {
         const time = new Time();
         const portal = runner.getPortal().typed<IPerformanceActor>(PERFORMANCE_ACTOR_STATIC);
 
+        let latency = 0;
+
         const tasks: ParallelTask<number, void>[] = [];
-        for (let i = 0; i < 100000; i++) {
+        const N = 100000;
+        for (let i = 0; i < N; i++) {
             tasks.push(async () => {
-                const app = servers[i % servers.length];
-                const actor = portal.retrieve([app, i.toString()]);
-                const result = await actor.add(i, 5);
-                return result;
+                try {
+                    const strt = time.machineTicks();
+                    const app = servers[i % servers.length];
+                    const actor = portal.retrieve([app, 'A']);
+                    const result = await actor.addPure(i);
+                    const stp = time.machineTicks();
+                    latency += stp - strt;
+                    return result;
+                } catch (e) {
+                    console.log(e);
+                    throw e;
+                }
             });
         }
 
         const start = time.machineTicks();
-        const results = await parallel(tasks, 120 * 1000, 1000);
+        const results = await parallel(tasks, 120 * 1000, 400);
+        const stop = time.machineTicks();
+        latency /= results.results.length || 1;
         if (results.status === 'completed') {
             let success = 0;
             let error = 0;
@@ -52,10 +66,10 @@ async function main(servers: string[]) {
                 process.exitCode = 2;
             }
 
-            const stop = time.machineTicks();
             const duration = stop - start;
             const perSecond = success / (duration * 0.001);
             console.log('Finished', duration, 'ms', ' / ', perSecond, '/sec');
+            console.log('Latency', latency, 'ms');
 
             if (perSecond < 4000) {
                 // process.exitCode = 3;
@@ -66,7 +80,7 @@ async function main(servers: string[]) {
         console.log(JSON.stringify(e, undefined, 2));
     } finally {
         await runner.stop();
-        toFile.dump();
+        //toFile.dump();
     }
 }
 

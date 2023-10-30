@@ -85,6 +85,12 @@ export interface IActorCallRequest {
      * Any arguments that should be passed to the remote action implementation
      */
     arguments: unknown[];
+
+    /**
+     * When set to `true`, and the requested actor does not yet exist, do not try
+     * to create a new instance but return a {@link LAZY_REFUSE} framework error.
+     */
+    lazy?: boolean;
 }
 
 /**

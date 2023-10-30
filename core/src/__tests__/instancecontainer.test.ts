@@ -21,10 +21,10 @@ export class MyActor implements IMyActor, IActivatable, IDeactivatable {
 
     @action({ locking: 'exclusive' })
     public async makeWarmer(amount: number): Promise<number> {
-        const temp = this.temperature.value || 0;
+        const temp = this.temperature.tryGetValue() || 0;
         await sleep(50);
         this.temperature.change(temp + amount);
-        return this.temperature.value || 0;
+        return this.temperature.tryGetValue() || 0;
     }
 
     @action()
@@ -46,7 +46,7 @@ export class MyActor implements IMyActor, IActivatable, IDeactivatable {
     }
 
     public async deactivate() {
-        await this.temperature.store();
+        await this.temperature.persist();
     }
 }
 

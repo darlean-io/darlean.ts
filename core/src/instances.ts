@@ -206,10 +206,7 @@ export class MultiTypeInstanceContainer implements IMultiTypeInstanceContainer {
     }
 
     /**
-     *
-     * @param type
-     * @param id
-     * @returns
+     * Returns a proxy to an instance with the specified type and id.
      * @throws {@link FrameworkError} with code {@link FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE}
      * when the actor type is unknown
      */
@@ -217,6 +214,22 @@ export class MultiTypeInstanceContainer implements IMultiTypeInstanceContainer {
         const container = this.containers.get(type) as IInstanceContainer<T>;
         if (container) {
             return container.obtain(id);
+        } else {
+            throw new FrameworkError(FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE, 'Actor type [ActorType] is unknown', {
+                ActorType: type
+            });
+        }
+    }
+
+    /**
+     * Returns an {@link IInstanceWrapper} for the specified type and id.
+     * @throws {@link FrameworkError} with code {@link FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE}
+     * when the actor type is unknown
+     */
+    public wrapper<T extends object>(type: string, id: string[]): IInstanceWrapper<T> {
+        const container = this.containers.get(type) as IInstanceContainer<T>;
+        if (container) {
+            return container.wrapper(id);
         } else {
             throw new FrameworkError(FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE, 'Actor type [ActorType] is unknown', {
                 ActorType: type
@@ -311,8 +324,8 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
      * method when it exists and waiting for it to complete) and then invalidates the internal proxy (that could have previously been
      * obtained via {@link getProxy}), so that all future requests to the proxy raise an exception. Once deactivated, deactivation cannot be undone.
      */
-    public async deactivate(skipMutex = false): Promise<void> {
-        await deeper('io.darlean.instances.deactivate').perform(async () => {
+    public deactivate(skipMutex = false): Promise<void> {
+        return deeper('io.darlean.instances.deactivate').perform(async () => {
             if (!skipMutex) {
                 deeper('io.darlean.instances.try-acquire-lifecycle-mutex').performSync(() => this.lifecycleMutex.tryAcquire()) ||
                     (await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform(() => this.lifecycleMutex.acquire()));
@@ -327,7 +340,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
 
                     try {
                         const func = this.methods.get(DEACTIVATOR);
-                        await this.handleCall(func, DEACTIVATOR, [], { locking: 'exclusive' }, undefined, true);
+                        await this.handleCall(func, DEACTIVATOR, [], { locking: 'exclusive' }, true);
                     } finally {
                         this.revoke();
                         this.state = 'inactive';
@@ -368,18 +381,17 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 });
             }
         }
-        return await this.handleCall(method, typeof method === 'string' ? method : method?.name ?? '', args);
+        return this.handleCall(method, typeof method === 'string' ? method : method?.name ?? '', args);
     }
 
-    protected async handleCall(
+    protected handleCall(
         method: Function | undefined,
         actionName: string,
         args: unknown,
         defaultConfig?: IActionDecoration,
-        conditional?: () => boolean,
         shortCircuit = false
     ): Promise<unknown> {
-        return await deeper('io.darlean.instances.handle-call', `${this.actorType}::${method?.name}`).perform(async () => {
+        return deeper('io.darlean.instances.handle-call', `${this.actorType}::${method?.name}`).perform(async () => {
             const config = (method as IActionDecorable)?._darlean_options;
 
             if (!config && !defaultConfig && method !== undefined) {
@@ -404,18 +416,18 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
 
             try {
                 if (method) {
-                    if (!conditional || conditional()) {
-                        // Invoke the actual method on the underlying instance
-                        const scope =
-                            actionName === ACTIVATOR
-                                ? 'actor.invoke-activator'
-                                : actionName === DEACTIVATOR
-                                ? 'actor.invoke-deactivator'
-                                : 'actor.invoke-action';
-                        return await deeper(scope, `${this.actorType}::${actionName}`).perform(() =>
-                            method.apply(this.instance, args)
-                        );
-                    }
+                    // Invoke the actual method on the underlying instance
+                    const scope =
+                        actionName === ACTIVATOR
+                            ? 'actor.invoke-activator'
+                            : actionName === DEACTIVATOR
+                            ? 'actor.invoke-deactivator'
+                            : 'actor.invoke-action';
+                    // We cannot remove the 'await' here because of the surrounding catch clause that then
+                    // is not triggered anymore and the surrounding finally.
+                    return await deeper(scope, `${this.actorType}::${actionName}`).perform(() =>
+                        method.apply(this.instance, args)
+                    );
                 }
             } catch (e) {
                 if (e instanceof FrameworkError) {
@@ -465,7 +477,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                     const func = this.methods.get(ACTIVATOR);
 
                     if (func) {
-                        await this.handleCall(func, ACTIVATOR, [], { locking: 'exclusive' }, undefined, true);
+                        await this.handleCall(func, ACTIVATOR, [], { locking: 'exclusive' }, true);
                     }
 
                     this.state = 'active';

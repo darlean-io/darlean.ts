@@ -1,12 +1,6 @@
 import { IDeSer } from '@darlean/utils';
-import {
-    ITransportFailure,
-    ITransport,
-    ITransportEnvelope,
-    MessageHandler,
-    ITransportSession,
-    TRANSPORT_ERROR_UNKNOWN_RECEIVER
-} from './transport';
+import { ITransportFailure, ITransport, MessageHandler, ITransportSession } from './transport';
+import { IRemoteCallTags, ITransportTags, TRANSPORT_ERROR_UNKNOWN_RECEIVER } from './wiretypes';
 
 interface IClient {
     appId: string;
@@ -46,24 +40,21 @@ export class InProcessTransportSession implements ITransportSession {
         this.deser = deser;
     }
 
-    public async send(envelope: ITransportEnvelope, contents: unknown, failure?: ITransportFailure): Promise<void> {
-        const client = this.clients.get(envelope.receiverId);
+    public async send(tags: ITransportTags & IRemoteCallTags, contents: unknown, failure?: ITransportFailure): Promise<void> {
+        const client = this.clients.get(tags.transport_receiver);
 
         if (client) {
             try {
-                const c = contents === undefined ? undefined : this.deser.deserialize(this.deser.serialize(contents));
-                const f = failure === undefined ? undefined : this.deser.deserialize(this.deser.serialize(failure));
-
-                client.onMessage(envelope, c, f as ITransportFailure | undefined);
+                client.onMessage({ ...tags, ...(contents as object), ...failure });
                 return;
             } catch (e) {
                 console.log(e); // TODO
             }
         } else {
             this.sendFailureMessage(
-                envelope,
+                tags,
                 TRANSPORT_ERROR_UNKNOWN_RECEIVER,
-                `Receiver [${envelope.receiverId}] is not registered to the in-process transport (only ${JSON.stringify(
+                `Receiver [${tags.transport_receiver}] is not registered to the in-process transport (only ${JSON.stringify(
                     Array.from(this.clients.keys())
                 )} is/are registered)`
             );
@@ -74,16 +65,19 @@ export class InProcessTransportSession implements ITransportSession {
         this.clients.delete(this.appId);
     }
 
-    protected sendFailureMessage(originalEnv: ITransportEnvelope, code: string, msg: string) {
-        const failure: ITransportFailure = {
-            code,
-            message: msg
-        };
+    protected sendFailureMessage(originalTags: ITransportTags & IRemoteCallTags, code: string, msg: string) {
+        if (originalTags.transport_return) {
+            const failure: ITransportFailure = {
+                code,
+                message: msg
+            };
 
-        if (originalEnv.returnEnvelopes) {
-            for (const env of originalEnv.returnEnvelopes) {
-                this.send(env, undefined, failure);
-            }
+            const tags: ITransportTags & IRemoteCallTags = {
+                transport_receiver: originalTags.transport_return,
+                remotecall_id: originalTags.remotecall_id,
+                remotecall_kind: 'return'
+            };
+            this.send(tags, undefined, failure);
         }
     }
 }

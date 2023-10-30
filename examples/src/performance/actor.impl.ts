@@ -5,12 +5,18 @@ import { IPerformanceActor, PERFORMANCE_ACTOR_STATIC, PERFORMANCE_ACTOR_VIRTUAL 
 class PerformanceActor implements IPerformanceActor {
     protected sum = 0;
 
-    @action()
+    @action({ locking: 'shared' })
     public async add(amount: number, sleepAmount: number): Promise<number> {
         this.sum += amount;
         if (sleepAmount > 0) {
             await sleep(sleepAmount);
         }
+        return this.sum;
+    }
+
+    @action({ locking: 'shared' })
+    public async addPure(amount: number): Promise<number> {
+        this.sum += amount;
         return this.sum;
     }
 

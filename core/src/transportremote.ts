@@ -9,9 +9,9 @@ import {
 } from '@darlean/base';
 import { deeper } from '@darlean/utils';
 import * as uuid from 'uuid';
-import { IEnvelope } from './infra/envelope';
-import { ITransport, ITransportEnvelope, ITransportFailure, ITransportSession } from './infra/transport';
+import { ITransport, ITransportFailure, ITransportSession } from './infra/transport';
 import { toActionError, toFrameworkError } from './instances';
+import { IRemoteCallTags, ITransportTags } from './infra/wiretypes';
 
 export type ITransportActorCallRequest = IActorCallRequest;
 export type ITransportActorCallResponse = IActorCallResponse;
@@ -30,11 +30,6 @@ interface IRemotePendingCall {
     reject: (error: unknown) => void;
     timeout: NodeJS.Timeout;
     options?: IInvokeOptions;
-}
-
-export interface IRemoteCallEnvelope extends IEnvelope {
-    remoteCallKind: 'call' | 'return';
-    remoteCallId: string;
 }
 
 export class TransportRemote implements IRemote {
@@ -58,9 +53,7 @@ export class TransportRemote implements IRemote {
     }
 
     public async init() {
-        this.session = await this.transport.connect(this.appId, (envelope, contents, failure) =>
-            this.handleMessage(envelope, contents, failure)
-        );
+        this.session = await this.transport.connect(this.appId, (tags) => this.handleMessage(tags));
     }
 
     public async finalize() {
@@ -96,13 +89,11 @@ export class TransportRemote implements IRemote {
     protected invokeImpl(options: IInvokeOptions): Promise<IInvokeResult> {
         const callId = uuid.v4();
 
-        const env: ITransportEnvelope = {
-            receiverId: options.destination,
-            child: {
-                remoteCallKind: 'call',
-                remoteCallId: callId
-            } as IRemoteCallEnvelope,
-            returnEnvelopes: [this.makeReturnEnvelope(callId)]
+        const tags: ITransportTags & IRemoteCallTags = {
+            transport_receiver: options.destination,
+            transport_return: this.appId,
+            remotecall_kind: 'call',
+            remotecall_id: callId
         };
 
         return new Promise((resolve, reject) => {
@@ -130,7 +121,7 @@ export class TransportRemote implements IRemote {
             }
 
             if (this.session) {
-                this.session.send(env, this.toTransportRequest(options.content as IActorCallRequest));
+                this.session.send(tags, this.toTransportRequest(options.content as IActorCallRequest));
             } else {
                 clearTimeout(call.timeout);
                 resolve({
@@ -141,16 +132,6 @@ export class TransportRemote implements IRemote {
                 });
             }
         });
-    }
-
-    protected makeReturnEnvelope(callId: string): ITransportEnvelope {
-        return {
-            receiverId: this.appId,
-            child: {
-                remoteCallId: callId,
-                remoteCallKind: 'return'
-            } as IRemoteCallEnvelope
-        };
     }
 
     protected toTransportRequest(content: IActorCallRequest): ITransportActorCallRequest {
@@ -185,24 +166,36 @@ export class TransportRemote implements IRemote {
         return content;
     }
 
-    protected handleMessage(envelope: ITransportEnvelope, contents: unknown, failure?: ITransportFailure): void {
-        const env = envelope.child as IRemoteCallEnvelope;
-        if (env) {
-            if (env.remoteCallKind === 'return') {
+    protected handleMessage(
+        tags: ITransportTags &
+            IRemoteCallTags &
+            (ITransportFailure | ITransportActorCallResponse | ITransportActorCallRequest | never)
+    ): void {
+        function makeReturnTags(rec: string) {
+            const e1: ITransportTags & IRemoteCallTags = {
+                transport_receiver: rec,
+                remotecall_id: tags?.remotecall_id,
+                remotecall_kind: 'return'
+            };
+            return e1;
+        }
+
+        if (tags) {
+            if (tags.remotecall_kind === 'return') {
                 // Handling of a return message that contains the response (or error result) of a previous outgoing call
-                const call = this.pendingCalls.get(env.remoteCallId);
-                if (call) {
+                const call = this.pendingCalls.get(tags.remotecall_id);
+                if (call !== undefined) {
                     clearTimeout(call.timeout);
-                    this.pendingCalls.delete(env.remoteCallId);
-                    if (failure) {
+                    this.pendingCalls.delete(tags.remotecall_id);
+                    if ((tags as ITransportFailure).code) {
                         call.resolve({
                             errorCode: TRANSPORT_ERROR_TRANSPORT_ERROR,
                             errorParameters: {
-                                [TRANSPORT_ERROR_PARAMETER_MESSAGE]: failure.message
+                                [TRANSPORT_ERROR_PARAMETER_MESSAGE]: (tags as ITransportFailure).message
                             }
                         });
                     } else {
-                        const result = this.fromTransportResponse(contents as ITransportActorCallResponse);
+                        const result = this.fromTransportResponse(tags as ITransportActorCallResponse);
                         call.resolve({
                             content: result
                         });
@@ -211,21 +204,20 @@ export class TransportRemote implements IRemote {
             } else {
                 // Handle a new message that is to be sent to a local actor
                 setImmediate(() => {
-                    const request = this.fromTransportRequest(contents as ITransportActorCallRequest);
+                    const request = this.fromTransportRequest(tags as ITransportActorCallRequest);
                     deeper(
                         'io.darlean.remotetransport.incoming-action',
                         `${request.actorType}::${request.actorId}::${request.actionName}`
                     ).perform(async () => {
                         try {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            const proxy = this.instanceContainer.obtain(request.actorType, request.actorId) as any;
+                            const wrapper = this.instanceContainer.wrapper(request.actorType, request.actorId);
                             try {
-                                const result = await proxy[request.actionName](...request.arguments);
+                                const result = await wrapper.invoke(request.actionName, request.arguments);
                                 const response: IActorCallResponse = {
                                     result
                                 };
-                                for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
-                                    this.session?.send(returnEnvelope, this.toTransportResponse(response));
+                                if (tags.transport_return) {
+                                    this.session?.send(makeReturnTags(tags.transport_return), this.toTransportResponse(response));
                                 }
                             } catch (e) {
                                 const err = toActionError(e);
@@ -247,8 +239,8 @@ export class TransportRemote implements IRemote {
                                     error: err
                                 };
 
-                                for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
-                                    this.session?.send(returnEnvelope, this.toTransportResponse(response));
+                                if (tags.transport_return) {
+                                    this.session?.send(makeReturnTags(tags.transport_return), this.toTransportResponse(response));
                                 }
                             }
                         } catch (e) {
@@ -256,8 +248,8 @@ export class TransportRemote implements IRemote {
                                 error: toFrameworkError(e)
                             };
 
-                            for (const returnEnvelope of envelope.returnEnvelopes ?? []) {
-                                this.session?.send(returnEnvelope, this.toTransportResponse(response));
+                            if (tags.transport_return) {
+                                this.session?.send(makeReturnTags(tags.transport_return), this.toTransportResponse(response));
                             }
                         }
                     });

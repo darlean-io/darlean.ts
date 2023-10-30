@@ -26,3 +26,6 @@ export * from './multipart';
 export * from './multideser';
 export * from './tabulardata';
 export * from './changeable';
+export * from './numbers';
+export * from './bufferwithcursor';
+export * from './fastproto';

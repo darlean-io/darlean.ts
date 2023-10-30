@@ -1,3 +1,7 @@
+export interface IDeserializeOptions {
+    copyBuffers?: boolean;
+}
+
 export interface IDeSer {
     /** Serializes value into a Buffer. After serializing, the contents of value or the returned buffer should not
      * be modified anymore to prevent unpredictable behaviour on subsequent attempts to serialize value or to
@@ -9,9 +13,9 @@ export interface IDeSer {
      * should not be modified anymore to prevent unpredictable behaviour on subsequent attempts to deserialize buffer
      *  or to serialize the resulting value.
      */
-    deserialize(buffer: Buffer): unknown;
+    deserialize(buffer: Buffer, options?: IDeserializeOptions): unknown;
 
-    deserializeTyped<T>(buffer: BufferOf<T>): T;
+    deserializeTyped<T>(buffer: BufferOf<T>, options?: IDeserializeOptions): T;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unused-vars

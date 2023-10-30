@@ -1,4 +1,5 @@
-import { decodeIntNumberFromBuffer, decodeNumber, encodeNumber, isObject } from './util';
+import { decodeNumber, encodeNumber, readIntNumberFromBuffer } from './numbers';
+import { isObject } from './util';
 
 const KEY_SEPARATOR = '.';
 
@@ -26,8 +27,8 @@ export interface ITabularColumn<T extends object = { [key: string]: unknown }> {
 }
 
 interface IBufPos {
-    buf: Buffer;
-    pos: number;
+    buffer: Buffer;
+    cursor: number;
 }
 
 const ASCII_HYPHEN = 45;
@@ -156,13 +157,13 @@ export class TabularData<T extends object = { [key: string]: unknown }> {
                 if (Array.isArray(values.buf)) {
                     values.buf = Buffer.concat(values.buf);
                 }
-                const buf: IBufPos = { buf: values.buf, pos: 0 };
-                const len = buf.buf.length;
+                const buf: IBufPos = { buffer: values.buf, cursor: 0 };
+                const len = buf.buffer.length;
                 let idx = 0;
                 while (idx < n) {
                     if ((options?.skip ?? 0) > 0) {
                         const end = Math.min(n, idx + (options?.skip ?? 0));
-                        while (idx < end && buf.pos < len) {
+                        while (idx < end && buf.cursor < len) {
                             this.decodeValue(buf, column.kind, true);
                             idx++;
                         }
@@ -172,7 +173,7 @@ export class TabularData<T extends object = { [key: string]: unknown }> {
                         }
                     }
 
-                    if (buf.pos >= len) {
+                    if (buf.cursor >= len) {
                         idx++;
                         yield undefined;
                         continue;
@@ -330,15 +331,15 @@ export class TabularData<T extends object = { [key: string]: unknown }> {
     }
 
     private decodeValue(buf: IBufPos, kind: TabularColumnKind, skip: boolean): unknown {
-        const v = buf.buf[buf.pos];
+        const v = buf.buffer[buf.cursor];
         if (v === ASCII_HYPHEN) {
-            buf.pos++;
+            buf.cursor++;
             return;
         }
 
         switch (kind) {
             case 'boolean': {
-                buf.pos++;
+                buf.cursor++;
                 return v === ASCII_LOWER_T;
             }
             case 'text': {
@@ -358,7 +359,7 @@ export class TabularData<T extends object = { [key: string]: unknown }> {
                 return parseFloat(decodeText(buf, 'ascii', false));
             }
             case 'int':
-                return decodeIntNumberFromBuffer(buf, skip);
+                return readIntNumberFromBuffer(buf, skip);
             case 'json': {
                 if (skip) {
                     decodeText(buf, 'ascii', true);
@@ -392,11 +393,11 @@ function encodeText(value: string, encoding: 'ascii' | 'utf8') {
 }
 
 function decodeText(buf: IBufPos, encoding: 'ascii' | 'utf8', skip: boolean) {
-    const len = decodeIntNumberFromBuffer(buf, false);
+    const len = readIntNumberFromBuffer(buf, false);
     if (skip) {
         return '';
     }
-    const p = buf.pos;
-    buf.pos += len;
-    return buf.buf.toString(encoding, p, buf.pos);
+    const p = buf.cursor;
+    buf.cursor += len;
+    return buf.buffer.toString(encoding, p, buf.cursor);
 }

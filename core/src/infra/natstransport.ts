@@ -1,29 +1,17 @@
-import {
-    ITransportFailure,
-    ITransport,
-    ITransportEnvelope,
-    MessageHandler,
-    ITransportSession,
-    TRANSPORT_ERROR_UNKNOWN_RECEIVER
-} from './transport';
+import { ITransportFailure, ITransport, MessageHandler, ITransportSession } from './transport';
 import { connect, ErrorCode, Msg, NatsConnection, NatsError, Subscription } from 'nats';
 import { currentScope, deeper, IDeSer, ITraceInfo } from '@darlean/utils';
+import { deserialize, serialize } from './wiredeser';
+import { ITracingTags, IRemoteCallTags, ITransportTags, TRANSPORT_ERROR_UNKNOWN_RECEIVER } from './wiretypes';
+import { IActorCallRequest, IActorCallResponse } from '@darlean/base';
 
 export const NATS_ERROR_NOT_CONNECTED = 'NOT_CONNECTED';
 export const NATS_ERROR_SEND_FAILED = 'SEND_FAILED';
 export const NATS_ERROR_SEND_NO_ACK = 'NO_ACK';
 
+const BUF_NEWLINE = Buffer.from('\n', 'ascii');
+
 const ACK_TIMEOUT = 4000;
-
-// const MAX_MSG_SIZE = 100 * 1000 * 1000;
-
-export interface INatsMessage {
-    envelope: ITransportEnvelope;
-    contents?: Buffer;
-    failure?: Buffer;
-    cids?: string[];
-    parentUid?: string;
-}
 
 export class NatsTransport implements ITransport {
     private deser: IDeSer;
@@ -81,19 +69,27 @@ export class NatsTransportSession implements ITransportSession {
         setImmediate(async () => await this.listen(subscription, onMessage));
     }
 
-    public async send(envelope: ITransportEnvelope, contents: unknown, failure?: ITransportFailure): Promise<void> {
-        if (envelope.receiverId == this.appId) {
+    public send(
+        tags: ITransportTags & IRemoteCallTags & ITracingTags,
+        contents: IActorCallRequest | IActorCallResponse | ITransportFailure | undefined,
+        failure?: ITransportFailure
+    ): void {
+        if (tags.transport_receiver == this.appId) {
             // Bypass NATS. That is not just a performance optimization. It also ensures that when the error situation is that
             // NATS is not available (like, NATS server not running), the error is properly fed back to the calling code.
-            deeper('io.darlean.nats.bypass-nats').performSync(() => this.messageHandler?.(envelope, contents, failure));
+            process.nextTick(() => {
+                deeper('io.darlean.nats.bypass-nats').performSync(() =>
+                    this.messageHandler?.({ ...tags, ...(contents as object), ...failure })
+                );
+            });
             return;
         }
 
         if (!this.connection) {
             this.sendFailureMessage(
-                envelope,
+                tags,
                 'SEND_ERROR',
-                `Unable to send to  [${envelope.receiverId}]: [${NATS_ERROR_NOT_CONNECTED}]`
+                `Unable to send to  [${tags.transport_receiver}]: [${NATS_ERROR_NOT_CONNECTED}]`
             );
             return;
         }
@@ -101,48 +97,50 @@ export class NatsTransportSession implements ITransportSession {
         const scope = currentScope();
         const cids = scope.getCorrelationIds();
 
-        const msg: INatsMessage = {
-            envelope,
-            contents: contents === undefined ? undefined : this.deser.serialize(contents),
-            failure: failure === undefined ? undefined : this.deser.serialize(failure),
-            cids,
-            parentUid: cids === undefined ? undefined : scope.getUid()
+        const msg: ITracingTags & ITransportTags & IRemoteCallTags = {
+            tracing_cids: cids,
+            tracing_parentUid: cids === undefined ? undefined : scope.getUid(),
+            transport_receiver: tags.transport_receiver,
+            transport_return: tags.transport_return,
+            remotecall_id: tags.remotecall_id,
+            remotecall_kind: tags.remotecall_kind,
+            ...contents,
+            ...failure
         };
 
-        //if ((msg.contents?.length ?? 0) > MAX_MSG_SIZE) {
-        //    this.sendFailureMessage(envelope, NATS_ERROR_SEND_FAILED, `Unable to send to  [${envelope.receiverId}]: Serialized message too large`);
-        //}
-
-        try {
-            await deeper('io.darlean.nats.send', envelope.receiverId).perform(() =>
-                this.sendImpl(envelope.receiverId, this.deser.serialize(msg))
-            );
-        } catch (e) {
-            const ne = e as NatsError;
-            if (ne.code === ErrorCode.NoResponders) {
-                this.sendFailureMessage(
-                    envelope,
-                    TRANSPORT_ERROR_UNKNOWN_RECEIVER,
-                    `Receiver [${envelope.receiverId}] is not registered to the nats transport`
-                );
-            } else if (ne.code === ErrorCode.Timeout) {
-                // It USED TO BE normal to receive a timeout, because we do not send back a reply when we receive a message
-                // (that to avoid an unnecessary round trip). We have our own timeout mechanism that will fire when anything
-                // else goes wrong. So, we can just ignore the timeout.
-                // But we enabled the ack-mechanism ("m.respond()"), so now a timeout is really a signal that something is wrong
-                // and that the receiver did not receive the message,
-                if (this.ackTimeout > 0) {
+        deeper('io.darlean.nats.send', tags.transport_receiver).performSync(() => {
+            const buf = serialize(msg, this.deser); //isStringifyMsg(msg);
+            this.sendImpl(tags.transport_receiver, buf, (e) => {
+                const ne = e as NatsError;
+                if (ne.code === ErrorCode.NoResponders) {
                     this.sendFailureMessage(
-                        envelope,
-                        NATS_ERROR_SEND_NO_ACK,
-                        `No ack received after sending to  [${envelope.receiverId}]: [${e}]`
+                        tags,
+                        TRANSPORT_ERROR_UNKNOWN_RECEIVER,
+                        `Receiver [${tags.transport_receiver}] is not registered to the nats transport`
+                    );
+                } else if (ne.code === ErrorCode.Timeout) {
+                    // It USED TO BE normal to receive a timeout, because we do not send back a reply when we receive a message
+                    // (that to avoid an unnecessary round trip). We have our own timeout mechanism that will fire when anything
+                    // else goes wrong. So, we can just ignore the timeout.
+                    // But we enabled the ack-mechanism ("m.respond()"), so now a timeout is really a signal that something is wrong
+                    // and that the receiver did not receive the message,
+                    if (this.ackTimeout > 0) {
+                        this.sendFailureMessage(
+                            tags,
+                            NATS_ERROR_SEND_NO_ACK,
+                            `No ack received after sending to  [${tags.transport_receiver}]: [${e}]`
+                        );
+                    }
+                } else {
+                    console.log('Error during nats send:', e, tags.transport_receiver);
+                    this.sendFailureMessage(
+                        tags,
+                        NATS_ERROR_SEND_FAILED,
+                        `Unable to send to  [${tags.transport_receiver}]: [${e}]`
                     );
                 }
-            } else {
-                console.log('Error during nats send:', e, envelope.receiverId);
-                this.sendFailureMessage(envelope, NATS_ERROR_SEND_FAILED, `Unable to send to  [${envelope.receiverId}]: [${e}]`);
-            }
-        }
+            });
+        });
     }
 
     public async finalize(): Promise<void> {
@@ -150,95 +148,108 @@ export class NatsTransportSession implements ITransportSession {
         await this.connection?.close();
     }
 
-    protected async sendImpl(receiver: string, msg: Buffer): Promise<void> {
-        return new Promise((resolve, reject) => {
-            let items = this.sendQueue.get(receiver);
-            if (!items) {
-                items = { receiver, messages: [], len: 0 };
-                process.nextTick(() => {
-                    const items2 = this.sendQueue.get(receiver);
-                    if (items2) {
-                        this.sendQueue.delete(receiver);
-                        this.doSendBatch(receiver, items2);
-                    }
-                });
-                this.sendQueue.set(receiver, items);
-            }
-            const item: ISendItem = {
-                buffer: msg,
-                handler: (err) => {
-                    if (err) {
-                        reject(err);
-                    }
-                    resolve();
-                }
-            };
-            if (items.len + msg.length >= 10000) {
-                this.sendQueue.delete(receiver);
-                const items2 = items;
-                process.nextTick(() => {
-                    if (items) {
-                        this.doSendBatch(receiver, items2);
-                    }
-                });
-                items = { receiver, messages: [], len: 0 };
-                this.sendQueue.set(receiver, items);
-            }
-            items.messages.push(item);
-            items.len += msg.length;
-        });
-    }
+    protected sendImpl(receiver: string, msg: Buffer, onError: (error: unknown) => void): void {
+        const MAX_BATCH_LEN = 10000;
 
-    protected async doSendBatch(receiver: string, items: ISendItems) {
-        try {
-            await deeper('io.darlean.nats.send-batch', receiver).perform(() => {
-                const buffer = this.deser.serialize(items.messages.map((msg) => msg.buffer));
-                if (!this.connection) {
-                    throw new Error(NATS_ERROR_NOT_CONNECTED);
-                }
-                return this.connection.request(receiver, buffer, {
-                    timeout: this.ackTimeout || 4000
+        let items = this.sendQueue.get(receiver);
+        const willExceedMaxSize = (items?.len ?? 0) + msg.length > MAX_BATCH_LEN;
+
+        if (items === undefined) {
+            items = { receiver, messages: [], len: 0 };
+            this.sendQueue.set(receiver, items);
+            if (!willExceedMaxSize) {
+                // Set the trigger that will send out the current batch in the next event loop iteration.
+                // This allows us to buffer quite some items and send them out in a batch.
+                // We use setImmediate here (as opposed to nextTick of queurMicroTask) because incoming
+                // messages are dispatched via setImmediate. This allows us to collect multiple such messages.
+                setImmediate(() => {
+                    this.doSendBatch(receiver);
                 });
-            });
-            for (const item of items.messages) {
-                item.handler(undefined);
             }
-        } catch (e) {
-            for (const item of items.messages) {
-                item.handler(e);
-            }
+        }
+
+        items.messages.push({ buffer: msg, handler: onError });
+        items.len += msg.length;
+
+        if (willExceedMaxSize) {
+            // When the buffer size (including our newly added message) is larger than the
+            // threshold, immediately (synchronously) send the batch.
+            this.doSendBatch(receiver);
         }
     }
 
+    // Sends out a batch. Does not return anything, and does not raise
+    // exceptions. As a side effect, removes the batch from the sendqueue for the specified receiver.
+    protected doSendBatch(receiver: string) {
+        const items = this.sendQueue.get(receiver);
+        this.sendQueue.delete(receiver);
+
+        if (items === undefined || items.len === 0) {
+            return;
+        }
+
+        deeper('io.darlean.nats.send-batch', receiver).performSync(() => {
+            const lengths = items.messages.map((msg) => msg.buffer.length.toString()).join(',') + '\n';
+            const buffer = Buffer.concat([Buffer.from(lengths, 'ascii'), ...items.messages.map((msg) => msg.buffer)]);
+            if (!this.connection) {
+                const e = new Error(NATS_ERROR_NOT_CONNECTED);
+                for (const item of items.messages) {
+                    item.handler(e);
+                }
+                return;
+            }
+            this.connection
+                .request(receiver, buffer, {
+                    timeout: this.ackTimeout || 4000
+                })
+                .catch((e) => {
+                    for (const item of items.messages) {
+                        item.handler(e);
+                    }
+                });
+        });
+    }
+
+    // TODO: Do not send "respond" for a reply (and also do not expect a respond to prevent timeouts)
+
     protected handleMessage(_err: unknown, m: Msg, onMessage: MessageHandler) {
         try {
-            const data = m.data;
+            const data = Buffer.from(m.data);
+            // We deliberately DID do not send a response ("m.respond()") because the sender does not need this information.
+            // It would just cost us additional network traffic.
+            // BUT. It appears that during startup, messages may get lost.
+            // Performance tests did not show a significant drop.
+            // In addition to that, we only do this once per batch of messages (so not for each
+            // individual message).
+            deeper('io.darlean.nats.send-ack').performSync(() => m.respond());
 
-            const messages = this.deser.deserialize(Buffer.from(data)) as Buffer[];
-            for (const message of messages) {
+            const p = data.indexOf(BUF_NEWLINE);
+            if (p < 0) {
+                throw new Error('Corrupt data');
+            }
+            const h = data.toString('ascii', 0, p);
+            const lengths = h.split(',').map((x) => parseInt(x));
+
+            let offset = p + 1;
+            for (const len of lengths) {
+                const message = data.subarray(offset, offset + len);
+                offset += len;
                 try {
-                    const msg = this.deser.deserialize(message) as INatsMessage;
+                    const msg = deserialize(message, this.deser);
+                    if (!msg) {
+                        continue;
+                    }
 
                     const traceInfo: ITraceInfo | undefined =
-                        msg.cids || msg.parentUid
+                        msg.tracing_cids || msg.tracing_parentUid
                             ? {
-                                  correlationIds: msg.cids || [],
-                                  parentSegmentId: msg.parentUid
+                                  correlationIds: msg.tracing_cids || [],
+                                  parentSegmentId: msg.tracing_parentUid
                               }
                             : undefined;
+
                     deeper('io.darlean.nats.received-message', undefined, undefined, traceInfo).performSync(() => {
-                        // We deliberately DID do not send a response ("m.respond()") because the sender does not need this information.
-                        // It would just cost us additional network traffic.
-                        // BUT. It appears that during startup, messages may get lost.
-                        // Performance tests did not show a significant drop.
-                        deeper('io.darlean.nats.send-ack').performSync(() => m.respond());
-
-                        const contents = msg.contents ? this.deser.deserialize(msg.contents) : undefined;
-                        const failure = msg.failure ? (this.deser.deserialize(msg.failure) as ITransportFailure) : undefined;
-
-                        deeper('io.darlean.nats.call-message-handler').performSync(() =>
-                            onMessage(msg.envelope, contents, failure)
-                        );
+                        deeper('io.darlean.nats.call-message-handler').performSync(() => onMessage(msg));
                     });
                 } catch (e) {
                     currentScope().error('Error during handling of incoming message: [Error]', () => ({
@@ -265,16 +276,19 @@ export class NatsTransportSession implements ITransportSession {
         }
     }
 
-    protected sendFailureMessage(originalEnv: ITransportEnvelope, code: string, msg: string) {
+    protected sendFailureMessage(originalTags: ITransportTags & IRemoteCallTags, code: string, msg: string) {
         const failure: ITransportFailure = {
             code,
             message: msg
         };
 
-        if (originalEnv.returnEnvelopes) {
-            for (const env of originalEnv.returnEnvelopes) {
-                deeper('io.darlean.nats.send-failure-message').perform(() => this.send(env, undefined, failure));
-            }
+        if (originalTags.transport_return) {
+            const tags: ITransportTags & IRemoteCallTags = {
+                transport_receiver: originalTags.transport_return,
+                remotecall_id: originalTags.remotecall_id,
+                remotecall_kind: 'return'
+            };
+            deeper('io.darlean.nats.send-failure-message').performSync(() => this.send(tags, undefined, failure));
         }
     }
 }
