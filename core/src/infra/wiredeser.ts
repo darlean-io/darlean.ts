@@ -150,8 +150,10 @@ export function serialize(
         buffers.push(insertion.data);
         position = insertion.offset;
     }
-    if (position < buf.buffer.length) {
-        buffers.push(buf.buffer.subarray(position));
+    // Warning: Do NOT take buf.length here, as the buffer
+    // itself is much larger than the content
+    if (position < buf.cursor) {
+        buffers.push(buf.buffer.subarray(position, buf.cursor));
     }
     const resultbuf = Buffer.concat(buffers);
     return resultbuf;
