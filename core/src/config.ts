@@ -359,6 +359,7 @@ export class ConfigRunnerBuilder {
         if (pidFilePrefix) {
             const pidFile = pidFilePrefix + makeNice(appId) + '.pid';
             const pidFolder = path.dirname(pidFile);
+            let success = false;
             runner.addStarter(
                 async () => {
                     if (fs.existsSync(pidFile)) {
@@ -368,6 +369,7 @@ export class ConfigRunnerBuilder {
                     }
                     fs.mkdirSync(pidFolder, { recursive: true });
                     fs.writeFileSync(pidFile, pid, {});
+                    success = true;
                 },
                 10,
                 'PID File Check'
@@ -376,11 +378,15 @@ export class ConfigRunnerBuilder {
             // to be performed when the application crashes so heavily that the asynchronous runner stop code is not
             // properly executed.
             onApplicationStop(() => {
-                fs.rmSync(pidFile, { force: true });
+                if (success) {
+                    fs.rmSync(pidFile, { force: true });
+                }
             });
             runner.addStopper(
                 async () => {
-                    fs.rmSync(pidFile, { force: true });
+                    if (success) {
+                        fs.rmSync(pidFile, { force: true });
+                    }
                 },
                 10,
                 'PID File Remove'
