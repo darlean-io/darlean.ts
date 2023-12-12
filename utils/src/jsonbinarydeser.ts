@@ -33,16 +33,20 @@
  *   additional trailing newline character.
  * * Buffer lengths (optional): Comma-separated list of ascii-encoded numbers that indicate the length (in bytes)
  *   of every appended buffer. May be omitted when there are no buffers. The lengths do not include the additional trailing
- *   newline character that must be present after every buffer.
+ *   newline character that must be present after every buffer. When base64 encoding is used, the empty string is used as partlen.
  *
  * After the header comes the JSON body (UTF-8 encoded), which must exactly be as long as the number of bytes
  * indicated in the "JSON Length" header field. The JSON body is followed by one newline character.
  *
  * After the JSON body come the binary blobs. Their sizes must match the sizes in the "Buffer Lengths" header field. After each
- * buffer, a newline character must be present.
+ * buffer, a newline character must be present. When a size is the empty string, the buffer and the newline should not be present.
  *
- * When a buffer is less then {@link INLINE_BUF_THRESHOLD} in bytes, it is not appended as a separate buffer (and its length is not part of
- * the "Buffer Lengths" header field), but is included as base64 encoded text in the `b64` field of the {@link IContainedBuffer}.
+ * When a buffer is less then {@link INLINE_BUF_THRESHOLD} in bytes, it is not appended as a separate buffer. Its length in the
+ * "Buffer Lengths" header field is set to empty string, and is included as base64 encoded text in the `b64` field of the {@link IContainedBuffer}.
+ * 
+ * A {@link IContainedBuffer} structure can contain an index value (`i`) that points to the i-th entry in the "Buffer lengths" header field.
+ * It pins a certain `IContainerBuffer` with a specific buffer. That is required because the order of items in a map is undefined in JSON, so
+ * JSON libraries may change the order of items in maps, which would (without the index) map the wrong buffers.
  */
 import { BufferOf, IDeSer, IDeserializeOptions } from './deser';
 import { isObject } from './util';
@@ -67,13 +71,17 @@ interface IContainedBuffer {
      * When present, contains the base64 encoded binary data.
      */
     b64?: string;
+    /**
+     * When present, the index (0-based) in the "Buffer lengths" header field that corresponds to the data for this buffer.
+     */
+    i?: number;
 }
 
 let convertFunc: ((buffer: Buffer) => unknown) | undefined = undefined;
 
 const NULL_BUF = Buffer.from('null');
-const NO_SEED_BUF = Buffer.from('JB00\n');
-const JB_HEADER_PREFIX = 'JB00';
+const NO_SEED_BUF = Buffer.from('JB01\n');
+const JB_HEADER_PREFIX = 'JB01';
 
 const CHARCODE_0 = '0'.charCodeAt(0);
 const CHARCODE_J = 'J'.charCodeAt(0);
@@ -154,6 +162,7 @@ export class JBDeSer implements IDeSer {
                 partsLengths = [];
                 seed = nextSeed(10); // 2ms
             }
+            const idx = partsLengths.length;
             if (buffer.length < INLINE_BUF_THRESHOLD) {
                 partsLengths.push('');
                 if (buffer.length === 0) {
@@ -164,7 +173,7 @@ export class JBDeSer implements IDeSer {
             parts.push(buffer);
             parts.push(BUF_NEWLINE);
             partsLengths.push(buffer.length.toString());
-            const result = { __b: seed } as IContainedBuffer;
+            const result = { __b: seed, i: idx } as IContainedBuffer;
             return result;
         };
 
@@ -245,7 +254,19 @@ export class JBDeSer implements IDeSer {
         const replacers: (() => void)[] = [];
         let nextBufIdx = 0;
 
+        const buffers: (Buffer | undefined)[] = [];
+        for (const len of partLens || []) {
+            if (len === '') {
+                buffers.push(undefined);
+                continue;
+            }
+            const lenInt = parseInt(len, 10);
+            buffers.push(buffer.subarray(cursor, cursor + lenInt));
+            cursor += lenInt + NEWLINE_LENGTH;
+        }
+
         const parsed = JSON.parse(text, function (key, value) {
+            // Replace null with undefined
             if (value === null) {
                 // We do not want nulls in our data structures, we want undefined's. We cannot simply
                 // return undefined here, because in that case, the entire key would be omitted (which
@@ -258,23 +279,21 @@ export class JBDeSer implements IDeSer {
                 return value;
             }
 
+            // Detect buffer placeholders and replace then with actual buffers
             const foundSeed = (value as IContainedBuffer)?.__b;
             if (foundSeed) {
                 const expectedSeed = headerParts[JB_HEADER_PARTIDX_SEED];
                 if (foundSeed === expectedSeed) {
-                    const partLength = partLens?.[nextBufIdx] ?? '';
-                    nextBufIdx++;
-                    if (partLength === '') {
+                    const idx = (value as IContainedBuffer)?.i ?? nextBufIdx;
+                    let buf = buffers[idx];
+                    nextBufIdx = idx + 1;
+                    if (buf === undefined) {
                         const b64 = (value as IContainedBuffer)?.b64;
                         if (b64 === undefined) {
                             return Buffer.from([]);
                         }
                         return Buffer.from(b64, 'base64');
                     }
-                    const start = cursor;
-                    const partLengthInt = parseInt(partLength);
-                    cursor += partLengthInt + NEWLINE_LENGTH;
-                    let buf = buffer.subarray(start, start + partLengthInt);
                     if (options?.copyBuffers) {
                         buf = Buffer.from(buf);
                     }
