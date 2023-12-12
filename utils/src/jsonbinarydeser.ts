@@ -43,7 +43,7 @@
  *
  * When a buffer is less then {@link INLINE_BUF_THRESHOLD} in bytes, it is not appended as a separate buffer. Its length in the
  * "Buffer Lengths" header field is set to empty string, and is included as base64 encoded text in the `b64` field of the {@link IContainedBuffer}.
- * 
+ *
  * A {@link IContainedBuffer} structure can contain an index value (`i`) that points to the i-th entry in the "Buffer lengths" header field.
  * It pins a certain `IContainerBuffer` with a specific buffer. That is required because the order of items in a map is undefined in JSON, so
  * JSON libraries may change the order of items in maps, which would (without the index) map the wrong buffers.
