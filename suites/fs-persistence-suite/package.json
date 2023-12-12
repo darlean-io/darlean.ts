@@ -10,6 +10,9 @@
     "url": "https://gitlab.com/darlean/javascript/repo.git",
     "directory": "suites/fs-persistence-suite"
   },
+  "engines": {
+    "node": ">= 18.0.0"
+  },
   "scripts": {
     "build": "shx rm -rf lib/* && tsc",
     "run": "node lib/index.js",
