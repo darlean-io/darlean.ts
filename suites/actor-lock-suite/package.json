@@ -33,19 +33,19 @@
   "author": "Theo van der Donk",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@types/jest": "^29.2.4",
-    "@types/node": "^18.11.17",
-    "@types/uuid": "^9.0.0",
-    "@typescript-eslint/eslint-plugin": "^5.46.1",
-    "@typescript-eslint/parser": "^5.46.1",
-    "eslint": "^8.30.0",
-    "jest": "^29.3.1",
+    "@types/jest": "^29.5.11",
+    "@types/node": "^18.19.3",
+    "@types/uuid": "^9.0.7",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "eslint": "^8.55.0",
+    "jest": "^29.7.0",
     "jest-standard-reporter": "^2.0.0",
-    "prettier": "^2.8.1",
+    "prettier": "^2.8.8",
     "shx": "^0.3.4",
-    "ts-jest": "^29.0.3",
-    "typedoc": "^0.23.23",
-    "typescript": "^4.9.4"
+    "ts-jest": "^29.1.1",
+    "typedoc": "^0.23.28",
+    "typescript": "^4.9.5"
   },
   "files": [
     "lib/**/*",
@@ -58,6 +58,6 @@
   "dependencies": {
     "@darlean/base": "^2.0.0-alpha.0",
     "@darlean/utils": "^2.0.0-alpha.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.1"
   }
 }
