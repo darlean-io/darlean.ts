@@ -55,6 +55,8 @@
     "NOTICE"
   ],
   "dependencies": {
+    "@darlean/base": "^2.0.0-alpha.15",
+    "@darlean/utils": "^2.0.0-alpha.14",
     "json5": "^2.2.3",
     "nats": "^2.18.0",
     "uuid": "^9.0.1"
