@@ -54,5 +54,8 @@
   "typedoc": {
     "entryPoint": "./src/index.ts",
     "tsconfig": "./tsconfig.json"
+  },
+  "dependencies": {
+    "@darlean/utils": "^2.0.0-alpha.14"
   }
 }
