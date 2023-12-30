@@ -35,9 +35,9 @@ import { createActorRegistrySuiteFromConfig, IActorRegistryCfg } from '@darlean/
 import { ActorSuite } from '@darlean/base';
 import { createPersistenceSuiteFromConfig, IPersistenceCfg } from '@darlean/persistence-suite';
 import { IConfigEnv } from '@darlean/utils';
-import { createFsPersistenceSuiteFromConfig, IFileSystemPersistenceCfg } from '../../fs-persistence-suite/lib';
 import { createWebGatewaysSuiteFromConfig, IWebGatewaysCfg } from '@darlean/webgateways-suite';
 import { createTablesSuiteFromConfig } from '@darlean/tables-suite';
+import { createFsPersistenceSuiteFromConfig, IFileSystemPersistenceCfg } from '@darlean/fs-persistence-suite';
 
 /**
  * Root configuration object for the configuration of a Darlean application with only those fields
