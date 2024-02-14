@@ -36,14 +36,16 @@ export interface IInstanceContainer<T extends object> {
      * Returns a proxy to an instance with the specified id. This is a
      * convenience wrapper for `wrapper(id).getProxy()`.
      * @param id The id of the actor for which a proxy should be returned
+     * @param lazy When true, a new instance is not created, but a framework error is thrown.
      */
-    obtain(id: string[]): T;
+    obtain(id: string[], lazy: boolean): T;
 
     /**
      * Returns an {@link IInstanceWrapper} around an instance with the specified id
      * @param id The id of the actor for which an instance wrapper should be returned.
+     * @param lazy When true, a new instance is not created, but a framework error is thrown.
      */
-    wrapper(id: string[]): IInstanceWrapper<T>;
+    wrapper(id: string[], lazy: boolean): IInstanceWrapper<T>;
 
     finalize(): Promise<void>;
 }
@@ -52,8 +54,8 @@ export interface IInstanceContainer<T extends object> {
  * Container for instances of multiple types.
  */
 export interface IMultiTypeInstanceContainer {
-    obtain<T extends object>(type: string, id: string[]): T;
-    wrapper<T extends object>(type: string, id: string[]): IInstanceWrapper<T>;
+    obtain<T extends object>(type: string, id: string[], lazy: boolean): T;
+    wrapper<T extends object>(type: string, id: string[], lazy: boolean): IInstanceWrapper<T>;
     finalize(): Promise<void>;
 }
 

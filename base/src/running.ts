@@ -76,9 +76,16 @@ export interface IActorRegistrationOptions<
     container?: IInstanceContainer<ActorT>;
 
     /**
-     * The maximum number of instances in the container.
+     * The maximum number of instances in the container. When more instances are required,
+     * older instances are automatically finalized.
      */
     capacity?: number;
+
+    /**
+     * Number of seconds after which the actor will automatically be finalized. When undefined,
+     * this mechanism is not active.
+     */
+    maxAgeSeconds?: number;
 
     /**
      * Optional placement options.
@@ -192,6 +199,12 @@ export interface IActorCreateContext<MigrationState extends IMigrationState = IM
      * @param context
      */
     migrationContext<Context = undefined>(context: Context): IMigrationContext<MigrationState, Context>;
+
+    /**
+     * Performs explicit finalization of this instance. Waits until the instance has been deactivated. To avoid
+     * deadlock, do not call inline from within in an action method, but for example via setImmediate.
+     */
+    performFinalization(): Promise<void>;
 }
 
 export interface IActorSuite {

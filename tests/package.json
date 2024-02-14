@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "test": "npm run test:fs-persistence:all && npm run test:tables:all && npm run test:timers:all && npm run test:migrations:3",
+    "test": "npm run test:fs-persistence:all && npm run test:tables:all && npm run test:timers:all && npm run test:migrations:3 && npm run test:recycle:3",
     "build": "shx rm -rf lib/* && tsc",
     "kill": "node lib/kill.js",
     "test:fs-persistence:all": "npm run test:fs-persistence:1s1 && npm run test:fs-persistence:1 && npm run test:fs-persistence:3",
@@ -21,6 +21,7 @@
     "test:timers:1": "shx rm -rf ./persistence && concurrently --success first \"node lib/timers-tests/server.js --darlean-appid=server01 --darlean-runtimeapps=server01\" \"node lib/timers-tests/client.js --darlean-appid=client --darlean-runtimeapps=server01 && npm run kill\"",
     "test:timers:3": "shx rm -rf ./persistence && concurrently --success first \"node lib/timers-tests/server.js --darlean-appid=server01 --darlean-runtimeapps=server01,server02,server03\" \"node lib/timers-tests/server.js --darlean-appid=server02 --darlean-runtimeapps=server01,server02,server03\" \"node lib/timers-tests/server.js --darlean-appid=server03 --darlean-runtimeapps=server01,server02,server03\" \"node lib/timers-tests/client.js --darlean-appid=client --darlean-runtimeapps=server01,server02,server03 && npm run kill\"",
     "test:migrations:3": "shx rm -rf ./persistence && concurrently --success first \"node lib/migrations-tests/server.js --darlean-appid=server01 --darlean-runtimeapps=server01,server02,server03\" \"node lib/migrations-tests/server.js --darlean-appid=server02 --darlean-runtimeapps=server01,server02,server03\" \"node lib/migrations-tests/server.js --darlean-appid=server03 --darlean-runtimeapps=server01,server02,server03\" \"node lib/migrations-tests/client.js --darlean-appid=client --darlean-runtimeapps=server01,server02,server03 && npm run kill\"",
+    "test:recycle:3": "shx rm -rf ./persistence && concurrently --success first \"node lib/recycle-tests/server.js --darlean-appid=server01 --darlean-runtimeapps=server01,server02,server03\" \"node lib/recycle-tests/server.js --darlean-appid=server02 --darlean-runtimeapps=server01,server02,server03\" \"node lib/recycle-tests/server.js --darlean-appid=server03 --darlean-runtimeapps=server01,server02,server03\" \"node lib/recycle-tests/client.js --darlean-appid=client --darlean-runtimeapps=server01,server02,server03 && npm run kill\"",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "npx eslint ./src --ext .js,.jsx,.ts,.tsx",
     "prepublish": "npm run build",

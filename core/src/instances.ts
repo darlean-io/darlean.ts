@@ -24,7 +24,7 @@
  * @packageDocumentation
  */
 
-import { currentScope, deeper, Mutex, SharedExclusiveLock } from '@darlean/utils';
+import { currentScope, deeper, ITimer, Mutex, SharedExclusiveLock } from '@darlean/utils';
 import { idToText } from './various';
 import { normalizeActionName, normalizeActorType } from './shared';
 import { EventEmitter } from 'events';
@@ -46,7 +46,8 @@ import {
     IMultiTypeInstanceContainer,
     InstanceCreator,
     toApplicationError,
-    FRAMEWORK_ERROR_MIGRATION_ERROR
+    FRAMEWORK_ERROR_MIGRATION_ERROR,
+    FRAMEWORK_ERROR_LAZY_REFUSE
 } from '@darlean/base';
 import { IVolatileTimer, IVolatileTimerHandle } from '@darlean/base';
 import { IAcquiredActorLock, IActorLock } from './distributedactorlock';
@@ -74,10 +75,11 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
     protected actorLock?: IActorLock;
     protected actorType: string;
 
-    constructor(actorType: string, creator: InstanceCreator<T>, capacity: number, actorLock?: IActorLock) {
+    constructor(actorType: string, creator: InstanceCreator<T>, capacity: number, actorLock: IActorLock | undefined, private time: ITime | undefined, private maxAgeSeconds?: number) {
         this.actorType = normalizeActorType(actorType);
         this.creator = creator;
         this.capacity = capacity;
+        this.maxAgeSeconds = maxAgeSeconds;
         this.instances = new Map();
         this.cleaning = new Map();
         this.callCounter = 0;
@@ -89,8 +91,8 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
         return await this.deleteImpl(idt);
     }
 
-    public obtain(id: string[]): T {
-        return this.wrapper(id).getProxy();
+    public obtain(id: string[], lazy: boolean): T {
+        return this.wrapper(id, lazy).getProxy();
     }
 
     /**
@@ -99,13 +101,19 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
      * @returns
      * @throws {@link FrameworkError} when something goes wrong.
      */
-    public wrapper(id: string[]): IInstanceWrapper<T> {
+    public wrapper(id: string[], lazy: boolean): IInstanceWrapper<T> {
         const idt = idToText(id);
         const current = this.instances.get(idt);
         if (current) {
-            this.instances.delete(idt);
-            this.instances.set(idt, current);
             return current;
+        }
+
+        if (lazy) {
+            throw new FrameworkError(
+                FRAMEWORK_ERROR_LAZY_REFUSE,
+                'Refused to create new instance of [ActorType] because the lazy flag is set on the request',
+                { ActorType: this.actorType }
+            );
         }
 
         // TODO: Is this correct here? Should we not return a proxy, and should the proxy
@@ -123,7 +131,7 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
         const instanceWrapperActorLock: InstanceWrapperActorLock | undefined = actorLock
             ? (onBroken: () => void) => actorLock.acquire([this.actorType, ...id], onBroken)
             : undefined;
-        const wrapper = new InstanceWrapper(this.actorType, instanceinfo.instance, instanceWrapperActorLock);
+        const wrapper = new InstanceWrapper(this.actorType, instanceinfo.instance, instanceWrapperActorLock, this.time, this.maxAgeSeconds);
         wrapper?.on('deactivated', () => {
             this.instances.delete(idt);
             this.cleaning.delete(idt);
@@ -171,6 +179,9 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
                     break;
                 }
 
+                // We add selected instances to the "cleaning" map, and perform asynchronous
+                // cleaning. Once cleaning of an instance is complete, it is removed from the
+                // this.cleaning and this.instances administrations.
                 if (!this.cleaning.has(id)) {
                     this.cleaning.set(id, true);
                     setImmediate(async () => {
@@ -210,10 +221,10 @@ export class MultiTypeInstanceContainer implements IMultiTypeInstanceContainer {
      * @throws {@link FrameworkError} with code {@link FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE}
      * when the actor type is unknown
      */
-    public obtain<T extends object>(type: string, id: string[]): T {
+    public obtain<T extends object>(type: string, id: string[], lazy: boolean): T {
         const container = this.containers.get(type) as IInstanceContainer<T>;
         if (container) {
-            return container.obtain(id);
+            return container.obtain(id, lazy);
         } else {
             throw new FrameworkError(FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE, 'Actor type [ActorType] is unknown', {
                 ActorType: type
@@ -226,10 +237,10 @@ export class MultiTypeInstanceContainer implements IMultiTypeInstanceContainer {
      * @throws {@link FrameworkError} with code {@link FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE}
      * when the actor type is unknown
      */
-    public wrapper<T extends object>(type: string, id: string[]): IInstanceWrapper<T> {
+    public wrapper<T extends object>(type: string, id: string[], lazy: boolean): IInstanceWrapper<T> {
         const container = this.containers.get(type) as IInstanceContainer<T>;
         if (container) {
-            return container.wrapper(id);
+            return container.wrapper(id, lazy);
         } else {
             throw new FrameworkError(FRAMEWORK_ERROR_UNKNOWN_ACTOR_TYPE, 'Actor type [ActorType] is unknown', {
                 ActorType: type
@@ -271,6 +282,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
     protected lifecycleMutex: Mutex<void>;
     protected acquiredActorLock?: IAcquiredActorLock;
     protected actorType: string;
+    protected finalizeTimer?: ITimer;
 
     /**
      * Creates a new wrapper around the provided instance of type T.
@@ -278,7 +290,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
      * @throws {@link FrameworkError} with code {@link FRAMEWORK_ERROR_UNKNOWN_ACTION}
      * when methods on this object are invokes that do not exist in the underlying instance.
      */
-    public constructor(actorType: string, instance: T, actorLock: InstanceWrapperActorLock | undefined) {
+    public constructor(actorType: string, instance: T, actorLock: InstanceWrapperActorLock | undefined, time?: ITime, maxAgeSeconds?: number) {
         super();
         this.actorType = actorType;
         this.instance = instance;
@@ -317,6 +329,23 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         this.revoke = p.revoke;
         this.lock = new SharedExclusiveLock('exclusive');
         this.callCounter = 0;
+
+        if ((maxAgeSeconds !== undefined) && time) {
+            this.finalizeTimer = time.repeat(async () => {
+                try {
+                    this.deactivate();
+                } catch (e) {
+                    currentScope().info(
+                        'Error during automatic deactivation of actor of type [ActorType] after [MaxAge] seconds: [Error]',
+                        () => ({
+                            Error: e,
+                            ActorType: this.actorType,
+                            MaxAge: maxAgeSeconds
+                        })
+                    );
+                }
+            }, 'Actor auto finalize', -1, maxAgeSeconds, 0);
+        }
     }
 
     /**
@@ -330,6 +359,9 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 deeper('io.darlean.instances.try-acquire-lifecycle-mutex').performSync(() => this.lifecycleMutex.tryAcquire()) ||
                     (await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform(() => this.lifecycleMutex.acquire()));
             }
+            
+            this.finalizeTimer?.cancel();
+
             try {
                 if (this.state === 'created') {
                     return;
