@@ -157,10 +157,10 @@ export interface IVolatileTimer {
     repeat(handler: Function, interval: number, delay?: number, nrRepeats?: number, args?: unknown): IVolatileTimerHandle;
 }
 
-export interface IMigrationDefinition<State extends IMigrationState = IMigrationState, Context = unknown> {
+export interface IMigrationDefinition<OldState extends IMigrationState = IMigrationState, Context = unknown> {
     version: string;
     name: string;
-    migrator: (persistable: IPersistable<State>, context: Context) => Promise<Context | void>;
+    migrator: (persistable: IPersistable<OldState>, context: Context) => Promise<Context | void>;
 }
 
 export interface IMigrationState {

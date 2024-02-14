@@ -38,6 +38,7 @@ export class MigrationPersistable<T extends IMigrationState> extends CustomPersi
         if (value === undefined) {
             this.superPersistable.clear();
         } else {
+            this.controller.enforceMigrationInfoOnState(value);
             this.superPersistable.change(value);
         }
         const result = await this.superPersistable.persist('always');

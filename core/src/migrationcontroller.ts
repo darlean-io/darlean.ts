@@ -12,12 +12,12 @@ import { encodeNumber, notifier } from '@darlean/utils';
 export interface IMigrationController<T extends IMigrationState, Context = undefined> {
     checkCompatibility(persistable: IPersistable<unknown>): Promise<string | undefined>;
     getContext(c: Context): IMigrationContext<T, Context>;
-    enforceMigrationInfo(info: string | undefined, persistable: IPersistable<unknown>): void;
+    enforceMigrationInfoOnState(state: IMigrationState): boolean;
     extractMigrationInfo(value: IMigrationState | undefined): string | undefined;
 }
 
 export class MigrationController<T extends IMigrationState, Context = undefined> {
-    constructor(private migrations: IMigrationDefinition<T, Context>[]) {}
+    constructor(private migrations: IMigrationDefinition<IMigrationState, Context>[]) {}
 
     /**
      * Loads the provided persistable and checks whether the known list of migrations supports
@@ -38,7 +38,7 @@ export class MigrationController<T extends IMigrationState, Context = undefined>
 
         const stateVersion = this.extractMigrationVersion(info);
         const stateVersionMajor = this.extractMajor(stateVersion);
-        const supportedVersion = this.migrations?.[this.migrations.length - 1]?.version;
+        const supportedVersion = this.obtainLatestSupportedVersion();
         const supportedVersionMajor = this.extractMajor(supportedVersion);
 
         if (supportedVersionMajor < stateVersionMajor) {
@@ -81,6 +81,17 @@ export class MigrationController<T extends IMigrationState, Context = undefined>
         }
     }
 
+    public enforceMigrationInfoOnState(state: IMigrationState): boolean {
+        // Only set the state when it was not present yet. This avoids issues durihg mmigration when
+        // the migration framework sets an explicit version less than the latest supported version. 
+        if (!state.migrationInfo) {
+            const encoded = this.encodeMigrationVersion(this.obtainLatestSupportedVersion());
+            state.migrationInfo = encoded;
+            return true;
+        }
+        return false;
+    }
+
     public extractMigrationInfo(value: IMigrationState | undefined): string | undefined {
         return value ? (value as IMigrationState).migrationInfo : undefined;
     }
@@ -93,6 +104,10 @@ export class MigrationController<T extends IMigrationState, Context = undefined>
 
     public encodeMigrationVersion(version: string): string {
         return version;
+    }
+
+    private obtainLatestSupportedVersion() {
+        return this.migrations?.[this.migrations.length - 1]?.version
     }
 
     private async perform(
