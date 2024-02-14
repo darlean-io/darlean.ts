@@ -26,7 +26,8 @@
     "precommit": "npm run format && npm run lint && npm run build",
     "npm:version:alpha": "npm version prerelease --preid=alpha --git-tag-version=false",
     "npm:publish": "npm publish --access=public",
-    "doc": "npx typedoc --skipErrorChecking --json typedoc-out.json &  npx docgen typedoc-out.json ./docs/"
+    "doc": "npx typedoc --skipErrorChecking --json typedoc-out.json &  npx docgen typedoc-out.json ./docs/",
+    "update-base-alpha": "npm install @darlean/base@2.0.0-alpha.%npm_config_baseversion%"
   },
   "keywords": [
     "Darlean",
@@ -55,7 +56,7 @@
     "NOTICE"
   ],
   "dependencies": {
-    "@darlean/base": "^2.0.0-alpha.16",
+    "@darlean/base": "^2.0.0-alpha.17",
     "@darlean/utils": "^2.0.0-alpha.14",
     "json5": "^2.2.3",
     "nats": "^2.18.0",

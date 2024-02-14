@@ -55,7 +55,7 @@
     "tsconfig": "./tsconfig.json"
   },
   "dependencies": {
-    "@darlean/base": "^2.0.0-alpha.0",
+    "@darlean/base": "^2.0.0-alpha.17",
     "@darlean/utils": "^2.0.0-alpha.0",
     "uuid": "^9.0.1"
   }
