@@ -106,6 +106,10 @@ At regular times, the most recently generated documentation is uploaded to https
 ```
 $ npm run npm:version:alpha -w <workspace>
 $ npm run npm:publish -w <workspace>
-$ npm run update-base-alpha  --baseversion=123
-$ npm run update-core-alpha  --coreversion=123
+
+$ npm run update-base-alpha  --baseversion=123    // Updates package.json of all libraries that depend on base
+$ npm run updated-base-alpha-version              // Updates version of all libraries that depend on base
+$ npm run updated-base-alpha-publish              // Publishes all libraries that depend on base
+
+$ npm run update-core-alpha  --coreversion=123    // Updates package.json of all libraries that depend on core
 ```
