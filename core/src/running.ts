@@ -383,11 +383,16 @@ export class ActorRunnerBuilder {
                                     for (const timer of timers) {
                                         timer.setWrapper(wrapper);
                                     }
+                                    context.performFinalization = () => {
+                                        return wrapper.deactivate();
+                                    }
                                 }
                             };
                         },
                         actor.capacity ?? DEFAULT_CAPACITY,
-                        actor.kind === 'singular' ? actorLock : undefined
+                        actor.kind === 'singular' ? actorLock : undefined,
+                        this.time,
+                        actor.maxAgeSeconds
                     );
                 multiContainer.register(actor.type, container);
             }
@@ -547,6 +552,9 @@ export class ActorRunnerBuilder {
             deser: this.deser!,
             migrationContext: <Context = undefined>(c: Context) => {
                 return (mc as IMigrationController<MigrationState, Context>).getContext(c);
+            },
+            performFinalization: async () => {
+                // Will be uverruled in fillContainers where we have access to the wrapper
             }
         };
     }

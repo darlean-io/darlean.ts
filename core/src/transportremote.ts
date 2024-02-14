@@ -210,7 +210,11 @@ export class TransportRemote implements IRemote {
                         `${request.actorType}::${request.actorId}::${request.actionName}`
                     ).perform(async () => {
                         try {
-                            const wrapper = this.instanceContainer.wrapper(request.actorType, request.actorId);
+                            const wrapper = this.instanceContainer.wrapper(
+                                request.actorType,
+                                request.actorId,
+                                request.lazy ?? false
+                            );
                             try {
                                 const result = await wrapper.invoke(request.actionName, request.arguments);
                                 const response: IActorCallResponse = {

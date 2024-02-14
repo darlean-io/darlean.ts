@@ -323,9 +323,18 @@ export class RemotePortal implements IPortal {
                             minMigrationVersion: undefined
                         };
 
-                        const placement = self.registry.findPlacement(type)?.placement;
+                        let lazy = false;
+                        let wasLazy = false;
+
+                        const placementInfo = self.registry.findPlacement(type);
+                        const placement = placementInfo?.placement;
                         if (placement?.sticky && self.placementCache) {
                             info.suggestion = self.placementCache.get(actorType, id);
+                            // Optimization: do not invoke lazily when there are no other nodes that can serve the actor type. It would not
+                            // make sense, because the one we are targetting is the only one known to us. No other node can take over.
+                            const havePlacementOptions =
+                                (placementInfo?.destinations.findIndex((x) => x.destination !== info.suggestion) ?? -1) >= 0;
+                            lazy = havePlacementOptions;
                         }
 
                         const backoff = self.backoff.begin(5000);
@@ -339,6 +348,7 @@ export class RemotePortal implements IPortal {
                             }
                             idx++;
 
+                            wasLazy = false;
                             let haveResult = false;
                             const result = await deeper('io.darlean.remoteinvocation.try-one-destination', destination).perform(
                                 async () => {
@@ -360,6 +370,10 @@ export class RemotePortal implements IPortal {
                                     if (destination !== '') {
                                         info.suggestion = undefined;
                                         subAborter = aborter ? new Aborter() : undefined;
+
+                                        content.lazy = lazy;
+                                        wasLazy = lazy;
+                                        lazy = false;
 
                                         const options: IInvokeOptions = {
                                             destination,
@@ -449,7 +463,7 @@ export class RemotePortal implements IPortal {
                                     currentScope().debug('Aborted? [Aborted]', () => ({ Aborted: aborted }));
 
                                     if (!aborted) {
-                                        const skip = idx < 2 && info.suggestion;
+                                        const skip = idx < 2 && (info.suggestion || wasLazy);
                                         if (!skip) {
                                             subAborter = aborter ? new Aborter() : undefined;
                                             try {
