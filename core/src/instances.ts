@@ -75,7 +75,14 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
     protected actorLock?: IActorLock;
     protected actorType: string;
 
-    constructor(actorType: string, creator: InstanceCreator<T>, capacity: number, actorLock: IActorLock | undefined, private time: ITime | undefined, private maxAgeSeconds?: number) {
+    constructor(
+        actorType: string,
+        creator: InstanceCreator<T>,
+        capacity: number,
+        actorLock: IActorLock | undefined,
+        private time: ITime | undefined,
+        private maxAgeSeconds?: number
+    ) {
         this.actorType = normalizeActorType(actorType);
         this.creator = creator;
         this.capacity = capacity;
@@ -131,7 +138,13 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
         const instanceWrapperActorLock: InstanceWrapperActorLock | undefined = actorLock
             ? (onBroken: () => void) => actorLock.acquire([this.actorType, ...id], onBroken)
             : undefined;
-        const wrapper = new InstanceWrapper(this.actorType, instanceinfo.instance, instanceWrapperActorLock, this.time, this.maxAgeSeconds);
+        const wrapper = new InstanceWrapper(
+            this.actorType,
+            instanceinfo.instance,
+            instanceWrapperActorLock,
+            this.time,
+            this.maxAgeSeconds
+        );
         wrapper?.on('deactivated', () => {
             this.instances.delete(idt);
             this.cleaning.delete(idt);
@@ -290,7 +303,13 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
      * @throws {@link FrameworkError} with code {@link FRAMEWORK_ERROR_UNKNOWN_ACTION}
      * when methods on this object are invokes that do not exist in the underlying instance.
      */
-    public constructor(actorType: string, instance: T, actorLock: InstanceWrapperActorLock | undefined, time?: ITime, maxAgeSeconds?: number) {
+    public constructor(
+        actorType: string,
+        instance: T,
+        actorLock: InstanceWrapperActorLock | undefined,
+        time?: ITime,
+        maxAgeSeconds?: number
+    ) {
         super();
         this.actorType = actorType;
         this.instance = instance;
@@ -330,21 +349,27 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
         this.lock = new SharedExclusiveLock('exclusive');
         this.callCounter = 0;
 
-        if ((maxAgeSeconds !== undefined) && time) {
-            this.finalizeTimer = time.repeat(async () => {
-                try {
-                    this.deactivate();
-                } catch (e) {
-                    currentScope().info(
-                        'Error during automatic deactivation of actor of type [ActorType] after [MaxAge] seconds: [Error]',
-                        () => ({
-                            Error: e,
-                            ActorType: this.actorType,
-                            MaxAge: maxAgeSeconds
-                        })
-                    );
-                }
-            }, 'Actor auto finalize', -1, maxAgeSeconds, 0);
+        if (maxAgeSeconds !== undefined && time) {
+            this.finalizeTimer = time.repeat(
+                async () => {
+                    try {
+                        this.deactivate();
+                    } catch (e) {
+                        currentScope().info(
+                            'Error during automatic deactivation of actor of type [ActorType] after [MaxAge] seconds: [Error]',
+                            () => ({
+                                Error: e,
+                                ActorType: this.actorType,
+                                MaxAge: maxAgeSeconds
+                            })
+                        );
+                    }
+                },
+                'Actor auto finalize',
+                -1,
+                maxAgeSeconds,
+                0
+            );
         }
     }
 
@@ -359,7 +384,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 deeper('io.darlean.instances.try-acquire-lifecycle-mutex').performSync(() => this.lifecycleMutex.tryAcquire()) ||
                     (await deeper('io.darlean.instances.acquire-lifecycle-mutex').perform(() => this.lifecycleMutex.acquire()));
             }
-            
+
             this.finalizeTimer?.cancel();
 
             try {

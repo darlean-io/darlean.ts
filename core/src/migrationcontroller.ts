@@ -83,7 +83,7 @@ export class MigrationController<T extends IMigrationState, Context = undefined>
 
     public enforceMigrationInfoOnState(state: IMigrationState): boolean {
         // Only set the state when it was not present yet. This avoids issues durihg mmigration when
-        // the migration framework sets an explicit version less than the latest supported version. 
+        // the migration framework sets an explicit version less than the latest supported version.
         if (!state.migrationInfo) {
             const encoded = this.encodeMigrationVersion(this.obtainLatestSupportedVersion());
             state.migrationInfo = encoded;
@@ -107,7 +107,7 @@ export class MigrationController<T extends IMigrationState, Context = undefined>
     }
 
     private obtainLatestSupportedVersion() {
-        return this.migrations?.[this.migrations.length - 1]?.version
+        return this.migrations?.[this.migrations.length - 1]?.version;
     }
 
     private async perform(

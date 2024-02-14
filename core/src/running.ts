@@ -385,7 +385,7 @@ export class ActorRunnerBuilder {
                                     }
                                     context.performFinalization = () => {
                                         return wrapper.deactivate();
-                                    }
+                                    };
                                 }
                             };
                         },
