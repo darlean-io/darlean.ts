@@ -21,7 +21,7 @@ describe('Nats', () => {
         const nats0 = new NatsTransport(deser);
         const container0 = new MultiTypeInstanceContainer();
         const persistence = new MemoryPersistence<string>();
-        const cont0 = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10);
+        const cont0 = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10, undefined);
         container0.register('myactor', cont0);
         const remote0 = new TransportRemote('app0', nats0, container0);
         const p0 = new RemotePortal(remote0, backoff, registry);
@@ -30,7 +30,7 @@ describe('Nats', () => {
 
         const nats1 = new NatsTransport(deser);
         const container1 = new MultiTypeInstanceContainer();
-        const cont1 = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10);
+        const cont1 = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10, undefined);
         container1.register('myactor', cont1);
         const remote1 = new TransportRemote('app1', nats1, container1);
         new RemotePortal(remote1, backoff, registry);

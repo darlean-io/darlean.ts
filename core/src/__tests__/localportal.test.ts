@@ -19,7 +19,7 @@ describe('Local portal', () => {
         const remote = new TransportRemote('local', transport, mc);
         const persistence = new MemoryPersistence<string>();
         const p = new RemotePortal(remote, backoff, registry);
-        const cont = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10);
+        const cont = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10, undefined);
         mc.register('MyActor', cont);
         mc.register('AnotherActor', cont);
         registry.addMapping('MyActor', 'local');
@@ -54,7 +54,8 @@ describe('Local portal', () => {
         const cont = new InstanceContainer<IEchoActor>(
             'EchoActor',
             (_id) => ({ instance: new EchoActor(persistence, undefined, false) }),
-            10
+            10,
+            undefined
         );
         mc.register('MyActor', cont);
         registry.addMapping('MyActor', 'local');

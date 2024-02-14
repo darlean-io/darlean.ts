@@ -53,8 +53,8 @@ export class MyActor implements IMyActor, IActivatable, IDeactivatable {
 describe('Instance container', () => {
     test('InstanceContainer - Basic action test', async () => {
         const persistence = new MemoryPersistence<string>();
-        const f = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10);
-        const i = f.obtain(['123']);
+        const f = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10, undefined );
+        const i = f.obtain(['123'], false);
 
         expect(await i.echo('a')).toBe('a');
         // Check that we access the same actor instance on subsequent call
@@ -69,14 +69,14 @@ describe('Instance container', () => {
 
         // Obtain a new instance. It should load the previously stored state of 5 degrees, so
         // adding 6 degrees should yield 11 degrees.
-        const j = f.obtain(['123']);
+        const j = f.obtain(['123'], false);
         expect(await j.getLastValue()).toBe('a');
     });
 
     test('InstanceContainer - Basic action test - Error', async () => {
         // Tests that errors within an actor action are wrapped into ActorError objects.
-        const f = new InstanceContainer<IErrorActor>('ErrorActor', (_d) => ({ instance: new ErrorActor() }), 10);
-        const i = f.obtain(['123']);
+        const f = new InstanceContainer<IErrorActor>('ErrorActor', (_d) => ({ instance: new ErrorActor() }), 10, undefined);
+        const i = f.obtain(['123'], false);
 
         let error: IActionError | undefined;
         try {

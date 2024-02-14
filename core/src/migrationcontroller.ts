@@ -86,6 +86,9 @@ export class MigrationController<T extends IMigrationState, Context = undefined>
         // the migration framework sets an explicit version less than the latest supported version.
         if (!state.migrationInfo) {
             const encoded = this.encodeMigrationVersion(this.obtainLatestSupportedVersion());
+            if (typeof state !== 'object') {
+                return false;
+            }
             state.migrationInfo = encoded;
             return true;
         }
