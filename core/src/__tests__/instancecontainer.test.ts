@@ -53,7 +53,12 @@ export class MyActor implements IMyActor, IActivatable, IDeactivatable {
 describe('Instance container', () => {
     test('InstanceContainer - Basic action test', async () => {
         const persistence = new MemoryPersistence<string>();
-        const f = new InstanceContainer<IEchoActor>('EchoActor', (_id) => ({ instance: new EchoActor(persistence) }), 10, undefined );
+        const f = new InstanceContainer<IEchoActor>(
+            'EchoActor',
+            (_id) => ({ instance: new EchoActor(persistence) }),
+            10,
+            undefined
+        );
         const i = f.obtain(['123'], false);
 
         expect(await i.echo('a')).toBe('a');
