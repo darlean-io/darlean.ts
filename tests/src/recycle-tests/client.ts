@@ -1,6 +1,6 @@
 import { ConfigRunnerBuilder } from '@darlean/core';
 import { sleep, Time } from '@darlean/utils';
-import { RecycleActor, RECYCLE_ACTOR, IInvokeResult, RECYCLE_ACTOR_WITH_MAX_AGE } from './actor.impl';
+import { RecycleActor, RECYCLE_ACTOR, RECYCLE_ACTOR_WITH_MAX_AGE } from './actor.impl';
 import { ITypedPortal } from '@darlean/base';
 
 async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: ITypedPortal<RecycleActor>) {
