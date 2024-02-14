@@ -101,3 +101,11 @@ $ npm run doc
 Please ignore all the warnings, that still has to be fixed.
 
 At regular times, the most recently generated documentation is uploaded to https://docs.darlean.io/latest/.
+
+## Versioning
+```
+$ npm run npm:version:alpha -w <workspace>
+$ npm run npm:publish -w <workspace>
+$ npm run update-base-alpha  --baseversion=123
+$ npm run update-core-alpha  --coreversion=123
+```
