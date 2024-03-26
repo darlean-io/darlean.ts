@@ -146,13 +146,13 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
                     }
                 }
 
-                if (req.headers?.cookies) {
+                if (req.headers?.cookie) {
                     request.cookies = [];
-                    for (const cookie of req.headers.cookies) {
-                        request.cookies.push(cookie);
+                    for (const cookie of req.headers.cookie.split(';')) {
+                        request.cookies.push(cookie.trim());
                     }
                 }
-
+                
                 if (matches.length > 0) {
                     const placeholders: { [name: string]: string } = {};
                     for (let idx = 0; idx < matches.length; idx++) {
