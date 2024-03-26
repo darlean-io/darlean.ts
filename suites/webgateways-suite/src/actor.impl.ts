@@ -152,7 +152,7 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
                         request.cookies.push(cookie.trim());
                     }
                 }
-                
+
                 if (matches.length > 0) {
                     const placeholders: { [name: string]: string } = {};
                     for (let idx = 0; idx < matches.length; idx++) {
