@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { Response } from './wrapper';
+import { WebResponse } from './wrapper';
 import mime from 'mime-types';
 import { IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
 
@@ -47,7 +47,7 @@ export class StaticFileHandler {
     }
 
     public async handle(req: IWebGatewayRequest): Promise<IWebGatewayResponse> {
-        const resp = new Response(req);
+        const resp = new WebResponse(req);
         const path = req.placeholders?.['*'] ?? '';
         const parts = path.split('/').filter((x) => x !== '.' && x !== '..');
         for (const basePath of this.basePaths) {
