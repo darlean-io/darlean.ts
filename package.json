@@ -21,9 +21,9 @@
 		"doc:scan": "npx typedoc --skipErrorChecking --json typedoc-out.json",
 		"doc:generate": "npx docgen typedoc-out.json ./docs/",
 		"doc": "npm run doc:scan & npm run doc:generate",
-	    "update-base-alpha": "npm install @darlean/base@2.0.0-alpha.%npm_config_baseversion% -w core -w webservices -w suites/actor-lock-suite -w suites/actor-registry-suite -w suites/persistence-suite -w suites/fs-persistence-suite -w suites/tables-suite -w suites/webgateways-suite -w timers-suite -w runtime-suite",
-	    "updated-base-alpha-version": "npm run npm:version:alpha -w core -w webservices -w suites/actor-lock-suite -w suites/actor-registry-suite -w suites/persistence-suite -w suites/fs-persistence-suite -w suites/tables-suite -w suites/webgateways-suite -w timers-suite -w runtime-suite",
-	    "updated-base-alpha-publish": "npm run npm:publish -w core -w webservices -w suites/actor-lock-suite -w suites/actor-registry-suite -w suites/persistence-suite -w suites/fs-persistence-suite -w suites/tables-suite -w suites/webgateways-suite -w timers-suite -w runtime-suite",
-	    "update-core-alpha": "npm install @darlean/core@2.0.0-alpha.%npm_config_coreversion% -w test -w examples"
+		"update-base-alpha": "npm install @darlean/base@2.0.0-alpha.%npm_config_baseversion% -w core -w webservices -w suites/actor-lock-suite -w suites/actor-registry-suite -w suites/persistence-suite -w suites/fs-persistence-suite -w suites/tables-suite -w suites/webgateways-suite -w timers-suite -w runtime-suite",
+		"updated-base-alpha-version": "npm run npm:version:alpha -w core -w webservices -w suites/actor-lock-suite -w suites/actor-registry-suite -w suites/persistence-suite -w suites/fs-persistence-suite -w suites/tables-suite -w suites/webgateways-suite -w timers-suite -w runtime-suite",
+		"updated-base-alpha-publish": "npm run npm:publish -w core -w webservices -w suites/actor-lock-suite -w suites/actor-registry-suite -w suites/persistence-suite -w suites/fs-persistence-suite -w suites/tables-suite -w suites/webgateways-suite -w timers-suite -w runtime-suite",
+		"update-core-alpha": "npm install @darlean/core@2.0.0-alpha.%npm_config_coreversion% -w test -w examples"
 	}
 }
