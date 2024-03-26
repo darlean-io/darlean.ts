@@ -19,7 +19,7 @@ export class WebRequest {
         }
         const contents = cookie.substring(prefix.length).trim();
         if (contents.length >= 2) {
-            if ((contents[0] === '"') && (contents.at(-1) === '"')) {
+            if (contents[0] === '"' && contents.at(-1) === '"') {
                 return contents.substring(1, contents.length - 1);
             }
         }
