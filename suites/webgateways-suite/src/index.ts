@@ -64,7 +64,8 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
                                     return await actor[actionName](req);
                                 }
                             },
-                            flow: handler.flow
+                            flow: handler.flow,
+                            placeholders: handler.placeholders
                         };
                         cfg.handlers?.push(h);
                     }
