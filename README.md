@@ -10,6 +10,7 @@ The following basic packages are part of this monorepo:
 * [@darlean/core](core) with the core framework needed for hosting (running) actors ([api-doc](https://docs.darlean.io/latest/@darlean_core.html))
 * [@darlean/utils](utils) with all kind of utilities that do not directly relate to virtual actors ([api-doc](https://docs.darlean.io/latest/@darlean_utils.html))
 * [@darlean/docgen](docgen) with a preprocessor for [typedoc](https://www.npmjs.com/package/typedoc) to generate the [documentation](https://docs.darlean.io/latest) the way we like it
+* [@darlean/webservices](webservices) with useful classes to handle web gateway requests serverside ([api-doc](https://docs.darlean.io/latest/@darlean_websevices.html))
 
 ### Suite packages
 The following actor suite packages are part of this monorepo:
@@ -19,6 +20,8 @@ The following actor suite packages are part of this monorepo:
   actor registry provides applications in the cluster with information about which actor types run on which applications, and how they should be invoked. ([api-doc](https://docs.darlean.io/latest/@darlean_actor-registry-suite.html))
 * [@darlean/persistence-suite](suites/persistence-suite) which provides access to the individual persistence implementations. ([api-doc](https://docs.darlean.io/latest/@darlean_persistence-suite.html))
 * [@darlean/fs-persistence-suite](suites/fs-persistence-suite) which provides high performing file-system based persistence. ([api-doc](https://docs.darlean.io/latest/@darlean_fs-persistence-suite.html))
+* [@darlean/webgateways-suite](suites/webgateways-suite) which provides a web gateway for invoking actors via HTTP. ([api-doc](https://docs.darlean.io/latest/@darlean_webgateways-suite.html))
+* [@darlean/websessions-suite](suites/webSessions-suite) which provides persistent HTTP sessions. ([api-doc](https://docs.darlean.io/latest/@darlean_websessions-suite.html))
 
 ### Examples
 We have also included some working examples:
@@ -40,10 +43,13 @@ Because we use a monorepo (with multiple packages in one git repo), there apply 
   * utils
   * docgen
   * examples
+  * webservices
   * suites/actor-lock-suite
   * suites/actor-registry-suite
   * suites/persistence-suite
   * suites/fs-persistence-suite
+  * suites/webgateways-suite
+  * suites/websessions-suite
 * Every workspace has its own `package.json`, but there is only one `node_modules` and one `package-lock.json` at the root of the repo
 * The `npm run install-workspaces` command automatically creates symlinks that allow all packages to see the most recent versions of all
   other packages, without the need for first committing the changes.

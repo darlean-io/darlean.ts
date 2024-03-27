@@ -6,3 +6,4 @@
 export * from './json';
 export * from './staticfile';
 export * from './wrapper';
+export * from './sessions';

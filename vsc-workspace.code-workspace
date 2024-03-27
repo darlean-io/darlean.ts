@@ -40,6 +40,9 @@
 		    "path": "suites/webgateways-suite"
 		},		
 		{
+		    "path": "suites/websessions-suite"
+		},		
+		{
 		    "path": "suites/timers-suite"
 		},		
 		{

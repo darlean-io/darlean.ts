@@ -1,5 +1,5 @@
 {
-    "entryPoints": ["base", "core", "utils", "webservices", "suites/actor-lock-suite", "suites/actor-registry-suite", "suites/persistence-suite", "suites/fs-persistence-suite", "suites/webgateways-suite", "suites/tables-suite", "suites/runtime-suite"],
+    "entryPoints": ["base", "core", "utils", "webservices", "suites/actor-lock-suite", "suites/actor-registry-suite", "suites/persistence-suite", "suites/fs-persistence-suite", "suites/webgateways-suite", "suites/websessions-suite", "suites/tables-suite", "suites/runtime-suite"],
     "entryPointStrategy": "packages",
     "excludeExternals": true
 }
