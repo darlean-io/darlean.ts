@@ -1,10 +1,10 @@
-import { ActorSuite, IActorCreateContext, IActorSuite, IPersistable, ITypedPortal, action } from "@darlean/base";
-import { IConfigEnv, ITime } from "@darlean/utils";
-import { createHash, randomBytes } from "crypto";
+import { ActorSuite, IActorCreateContext, IActorSuite, IPersistable, ITypedPortal, action } from '@darlean/base';
+import { IConfigEnv, ITime } from '@darlean/utils';
+import { createHash, randomBytes } from 'crypto';
 
 export interface ISessionState {
-    lastIssuedCookieIntervals: (number|undefined)[];
-    lastReceivedJsIntervals: (number|undefined)[];
+    lastIssuedCookieIntervals: (number | undefined)[];
+    lastReceivedJsIntervals: (number | undefined)[];
     meta?: unknown;
 }
 
@@ -21,8 +21,8 @@ export interface INewSession {
 export type ValidateReason = 'expired' | 'no-session' | 'invalid-signature' | 'conflicted' | 'no-id' | 'no-token';
 
 export interface IValidateResult<Meta> {
-    valid?: { id: string; newCookieToken?: string | undefined; meta: Meta | undefined; };
-    invalid?: { id?: string | undefined, reason: string, meta?: Meta };
+    valid?: { id: string; newCookieToken?: string | undefined; meta: Meta | undefined };
+    invalid?: { id?: string | undefined; reason: string; meta?: Meta };
 }
 
 function deriveSecret(id: string, kind: string, secret: string): string {
@@ -49,8 +49,8 @@ export function extractTokenId(token: string) {
 
 const COOKIE_VERSION = '0';
 const JS_VERSION = 0;
-const MOMENT_GRANULARITY = 60*1000;
-const MAX_AGE = 28*24*60*60*1000 / MOMENT_GRANULARITY;
+const MOMENT_GRANULARITY = 60 * 1000;
+const MAX_AGE = (28 * 24 * 60 * 60 * 1000) / MOMENT_GRANULARITY;
 
 export function momentToInterval(moment: number) {
     return Math.floor(moment / MOMENT_GRANULARITY);
@@ -150,7 +150,7 @@ export class SessionActor {
         const now = this.time.machineTime();
         const interval = momentToInterval(now);
 
-        const state: ISessionState = { lastIssuedCookieIntervals: [], lastReceivedJsIntervals: []};
+        const state: ISessionState = { lastIssuedCookieIntervals: [], lastReceivedJsIntervals: [] };
         this.state.setValue(state);
         this.state.markDirty();
         await this.state.persist();
@@ -166,20 +166,20 @@ export class SessionActor {
     @action()
     public async validate<Meta>(jsToken: string, cookieToken: string): Promise<IValidateResult<Meta>> {
         if (!this.state.hasValue()) {
-            return { invalid: { id: this.id, reason: 'no-session'} };
+            return { invalid: { id: this.id, reason: 'no-session' } };
         }
         const state = this.state.getValue();
         const now = this.time.machineTime();
         const currentInterval = momentToInterval(now);
         const jsInterval = validateJsToken(this.id, jsToken, this.secret);
         const cookieInterval = validateCookieToken(this.id, cookieToken, this.secret);
-        if ((jsInterval <= 0) || (cookieInterval <= 0)) {
+        if (jsInterval <= 0 || cookieInterval <= 0) {
             // One of the tokens is invalid: wrong signature or other error. Ignore the token.
             // Or: should we invalidate? But that would allow an attacker to invalidate other people's
-            // sessions (for which the attacker may know the id) by just sending a garbage token. 
+            // sessions (for which the attacker may know the id) by just sending a garbage token.
             return { invalid: { id: this.id, reason: 'invalid-signature' } };
         }
-        
+
         const jsAge = currentInterval - jsInterval;
         if (jsAge > 1) {
             // We have a valid JS token from the past. The chance that it comes from a legitimate user
@@ -193,7 +193,7 @@ export class SessionActor {
             }
 
             if (jsAge > MAX_AGE) {
-                return { invalid: { id: this.id, reason: 'expired' } }
+                return { invalid: { id: this.id, reason: 'expired' } };
             }
         }
         const cookieAge = currentInterval - cookieInterval;
@@ -204,12 +204,16 @@ export class SessionActor {
                 return { invalid: { id: this.id, reason: 'conflicted' } };
             }
             if (cookieAge > MAX_AGE) {
-                return { invalid: { id: this.id, reason: 'expired' } }
+                return { invalid: { id: this.id, reason: 'expired' } };
             }
         }
 
         if (!state.lastIssuedCookieIntervals.includes(currentInterval)) {
-            state.lastIssuedCookieIntervals = [state.lastIssuedCookieIntervals[1], state.lastIssuedCookieIntervals[2], currentInterval];
+            state.lastIssuedCookieIntervals = [
+                state.lastIssuedCookieIntervals[1],
+                state.lastIssuedCookieIntervals[2],
+                currentInterval
+            ];
             this.state.markDirty();
         }
 
@@ -226,7 +230,7 @@ export class SessionActor {
                 newCookieToken: deriveCookieToken(this.id, this.secret, currentInterval),
                 meta: state.meta as Meta
             }
-        }
+        };
     }
 
     @action()
@@ -270,14 +274,14 @@ export interface ISessionService {
 export class SessionService {
     constructor(private sessionActors: ITypedPortal<SessionActor>) {}
 
-    @action({locking: 'shared'})
+    @action({ locking: 'shared' })
     public async create(meta: unknown): Promise<INewSession> {
         const id = randomBytes(20).toString('base64');
         const actor = this.sessionActors.retrieve([id]);
-        return await actor.begin(meta)
+        return await actor.begin(meta);
     }
 
-    @action({locking: 'shared'})
+    @action({ locking: 'shared' })
     public async validate<Meta>(jsToken: string, cookieToken: string): Promise<IValidateResult<Meta>> {
         if (!jsToken) {
             return { invalid: { reason: 'no-token' } };
@@ -292,19 +296,19 @@ export class SessionService {
         return await actor.validate(jsToken, cookieToken);
     }
 
-    @action({locking: 'shared'})
+    @action({ locking: 'shared' })
     public async getMeta(id: string): Promise<unknown> {
         const actor = this.sessionActors.retrieve([id]);
         return actor.getMeta();
     }
-    
-    @action({locking: 'shared'})
+
+    @action({ locking: 'shared' })
     public async setMeta(id: string, meta: unknown): Promise<void> {
         const actor = this.sessionActors.retrieve([id]);
         return actor.setMeta(meta);
     }
 
-    @action({locking: 'shared'})
+    @action({ locking: 'shared' })
     public async invalidate(id: string): Promise<void> {
         const actor = this.sessionActors.retrieve([id]);
         return actor.invalidate();
@@ -320,14 +324,13 @@ function createTablePersistence(context: IActorCreateContext) {
         scope: 'cluster',
         specifier: 'sessions'
     });
-    
 }
 
 export interface IWebSessionsSuiteOptions {
     secret: string;
 }
 
-export function createWebSessionsSuite(options: IWebSessionsSuiteOptions): IActorSuite {    
+export function createWebSessionsSuite(options: IWebSessionsSuiteOptions): IActorSuite {
     return new ActorSuite([
         {
             type: SESSION_ACTOR,
@@ -335,8 +338,13 @@ export function createWebSessionsSuite(options: IWebSessionsSuiteOptions): IActo
             capacity: 1000,
             creator(context) {
                 const persistence = createTablePersistence(context);
-                return new SessionActor(context.id[0], context.time, persistence.persistable([context.id[0]], undefined), options.secret);
-            },
+                return new SessionActor(
+                    context.id[0],
+                    context.time,
+                    persistence.persistable([context.id[0]], undefined),
+                    options.secret
+                );
+            }
         },
         {
             type: SESSION_SERVICE,
@@ -344,9 +352,9 @@ export function createWebSessionsSuite(options: IWebSessionsSuiteOptions): IActo
             creator(context) {
                 const portal = context.portal.typed<SessionActor>(SESSION_ACTOR);
                 return new SessionService(portal);
-            },
+            }
         }
-    ])
+    ]);
 }
 
 export interface IWebSessionsSuiteConfig {
@@ -358,5 +366,5 @@ export function createWebSessionsSuiteFromConfig(config: IConfigEnv<IWebSessions
     if (!secret) {
         throw new Error('A secret must be configured for session management');
     }
-    return createWebSessionsSuite({secret});
+    return createWebSessionsSuite({ secret });
 }
