@@ -172,6 +172,11 @@ export class SessionActor {
         if (!this.state.hasValue()) {
             return { invalid: { id: this.id, reason: 'no-session' } };
         }
+
+        if (!jsToken || !cookieToken) {
+            return { invalid: { reason: 'no-token' } };
+        }
+
         const state = this.state.getValue();
         const now = this.time.machineTime();
         const currentInterval = momentToInterval(now);
