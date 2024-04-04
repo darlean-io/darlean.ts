@@ -50,7 +50,11 @@ export function extractTokenId(token: string) {
 const COOKIE_VERSION = '0';
 const JS_VERSION = 0;
 const MOMENT_GRANULARITY = 60 * 1000;
-const MAX_AGE = (28 * 24 * 60 * 60 * 1000) / MOMENT_GRANULARITY;
+const MAX_AGE_INTERVAL = (28 * 24 * 60 * 60 * 1000) / MOMENT_GRANULARITY;
+
+// Amount of interval-units to allow for time drift between
+// client and server.
+const ALLOWED_TIME_OFFSET_INTERVALS = 5;
 
 export function momentToInterval(moment: number) {
     return Math.floor(moment / MOMENT_GRANULARITY);
@@ -180,8 +184,8 @@ export class SessionActor {
             return { invalid: { id: this.id, reason: 'invalid-signature' } };
         }
 
-        const jsAge = currentInterval - jsInterval;
-        if (jsAge > 1) {
+        const jsAgeInterval = currentInterval - jsInterval;
+        if (jsAgeInterval > ALLOWED_TIME_OFFSET_INTERVALS) {
             // We have a valid JS token from the past. The chance that it comes from a legitimate user
             // is small, because the token is generated realtime. It must be generated before the computer
             // went to sleep, and sent after the computer woke up. Otherwise, we have fraud.
@@ -192,18 +196,18 @@ export class SessionActor {
                 return { invalid: { id: this.id, reason: 'conflicted' } };
             }
 
-            if (jsAge > MAX_AGE) {
+            if (jsAgeInterval > MAX_AGE_INTERVAL) {
                 return { invalid: { id: this.id, reason: 'expired' } };
             }
         }
-        const cookieAge = currentInterval - cookieInterval;
-        if (cookieAge > 1) {
-            // We have a cookie from the past. Only allow if equal to last or previously received token.
+        const cookieAgeInterval = currentInterval - cookieInterval;
+        if (cookieAgeInterval > ALLOWED_TIME_OFFSET_INTERVALS) {
+            // We have a cookie from the past. Only allow if equal to last or previously issued token.
             if (!state.lastIssuedCookieIntervals.includes(cookieInterval)) {
                 await this.doInvalidate();
                 return { invalid: { id: this.id, reason: 'conflicted' } };
             }
-            if (cookieAge > MAX_AGE) {
+            if (cookieAgeInterval > MAX_AGE_INTERVAL) {
                 return { invalid: { id: this.id, reason: 'expired' } };
             }
         }
