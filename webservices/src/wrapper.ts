@@ -26,6 +26,24 @@ export class WebRequest {
         return contents;
     }
 
+    public getCookies(name: string): string[] {
+        if (!this.request.cookies) {
+            return [];
+        }
+        const results: string[] = [];
+        const prefix = name + '=';
+        const cookies = this.request.cookies.filter((x) => x.startsWith(prefix));
+        for (const cookie of cookies) {
+            const contents = cookie.substring(prefix.length).trim();
+            if (contents.length >= 2 && contents[0] === '"' && contents.at(-1) === '"') {
+                results.push(contents.substring(1, contents.length - 1));
+            } else {
+                results.push(contents);
+            }
+        }
+        return results;
+    }
+
     public getRawBody(): Buffer | undefined {
         return this.request.body;
     }

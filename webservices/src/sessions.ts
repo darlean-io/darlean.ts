@@ -98,7 +98,6 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
     constructor(private service: ISessionService) {}
 
     public async process(request: WebRequest, response: WebResponse): Promise<ISession<Meta>> {
-        const cookieToken = request.getCookie(COOKIE_NAME) ?? '';
         const jsToken = request.getHeader(HEADER_SESSION_TOKEN) ?? '';
 
         if (jsToken === 'CREATE') {
@@ -110,6 +109,9 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
             response.setHeader(HEADER_SESSION_ID, newSession.id);
             return new Session(this, { valid: { id: newSession.id, newCookieToken: newSession.cookieToken, meta: undefined } });
         }
+
+        const cookieTokens = request.getCookies(COOKIE_NAME);
+        const cookieToken = this.selectCookieToken(cookieTokens, jsToken) ?? '';
 
         const validateResult = await this.service.validate<Meta>(jsToken, cookieToken);
 
@@ -129,6 +131,30 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
         }
 
         return new Session<Meta>(this, validateResult);
+    }
+
+    private selectCookieToken(tokens: string[], jsToken: string) {
+        // There may be multiple session token cookies. For other paths, for old session id's, et cetera.
+        // Select the one for the id that matches with the js-token-id. And when there are multiple,
+        // take the most recent one (greatest interval value).
+        if (!jsToken) {
+            return undefined;
+        }
+        let latestInterval = 0;
+        let bestToken: string | undefined;
+        const id = extractTokenId(jsToken);
+        for (const token of tokens) {
+            const tokenId = extractTokenId(token);
+            if (id !== tokenId) {
+                continue;
+            }
+            const interval = parseInt(extractTokenInterval(token));
+            if (interval > latestInterval) {
+                latestInterval = interval;
+                bestToken = token;
+            }
+        }
+        return bestToken;
     }
 
     public async obtainMeta(request: WebRequest): Promise<Meta> {
@@ -171,4 +197,8 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
 
 export function extractTokenId(token: string) {
     return token.split(':')[1];
+}
+
+export function extractTokenInterval(token: string) {
+    return token.split(':')[2];
 }
