@@ -104,7 +104,7 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
         if (jsToken === 'CREATE') {
             const newSession = await this.service.create();
             response.setCookie(
-                `${COOKIE_NAME}="${newSession.cookieToken}"; HttpOnly; Secure; Partitioned; SameSite=Strict; MaxAge=${MAX_AGE}; Path=/`
+                `${COOKIE_NAME}="${newSession.cookieToken}"; HttpOnly; Secure; Partitioned; SameSite=Strict; Max-Age=${MAX_AGE}; Path=/`
             );
             response.setHeader(HEADER_SESSION_JSSECRET, newSession.jsSecret);
             response.setHeader(HEADER_SESSION_ID, newSession.id);
@@ -120,7 +120,7 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
         if (validateResult.valid?.newCookieToken) {
             //console.log('NEWCOOKIE', validateResult.valid.newCookieToken);
             response.setCookie(
-                `${COOKIE_NAME}="${validateResult.valid.newCookieToken}"; HttpOnly; Secure; Partitioned; SameSite=Strict; MaxAge=${MAX_AGE}; Path=/`
+                `${COOKIE_NAME}="${validateResult.valid.newCookieToken}"; HttpOnly; Secure; Partitioned; SameSite=Strict; Max-Age=${MAX_AGE}; Path=/`
             );
         }
 
