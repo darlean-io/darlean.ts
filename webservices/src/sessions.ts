@@ -1,6 +1,6 @@
-import { WebRequest, WebResponse } from "./wrapper";
+import { WebRequest, WebResponse } from './wrapper';
 
-const MAX_AGE = 30*24*60*60;
+const MAX_AGE = 30 * 24 * 60 * 60;
 
 export const NO_SESSION = 'NO_SESSION';
 
@@ -31,33 +31,32 @@ export interface ISessionService {
 export type ValidateReason = 'expired' | 'no-session' | 'invalid-signature' | 'conflicted' | 'no-id' | 'no-token';
 
 interface IValidateResult<Meta> {
-    valid?: { id: string; newCookieToken?: string | undefined; meta: Meta | undefined; };
-    invalid?: { id?: string | undefined, reason: string, meta: Meta|undefined };
+    valid?: { id: string; newCookieToken?: string | undefined; meta: Meta | undefined };
+    invalid?: { id?: string | undefined; reason: string; meta: Meta | undefined };
 }
 
 export interface ISession<Meta> {
-    obtainMeta(): Promise<Meta|undefined>;
-    assignMeta(meta: Meta|undefined): Promise<void>;
-    valid?: { 
-        id: string; 
-        newCookieToken?: string | undefined; 
+    obtainMeta(): Promise<Meta | undefined>;
+    assignMeta(meta: Meta | undefined): Promise<void>;
+    valid?: {
+        id: string;
+        newCookieToken?: string | undefined;
         meta: Meta | undefined;
     };
-    
-    invalid?: { 
-        id?: string | undefined, 
-        reason: string, 
-        meta: Meta|undefined
+
+    invalid?: {
+        id?: string | undefined;
+        reason: string;
+        meta: Meta | undefined;
     };
 }
 
 export class Session<Meta> implements ISession<Meta> {
-
     public constructor(private manager: SessionManager<Meta>, vr: IValidateResult<Meta>) {
         this.valid = vr.valid;
         this.invalid = vr.invalid;
     }
-    
+
     public async obtainMeta(): Promise<Meta | undefined> {
         const id = this.valid?.id ?? this.invalid?.id;
         if (!id) {
@@ -74,23 +73,23 @@ export class Session<Meta> implements ISession<Meta> {
         await this.manager.assignMetaForId(id, meta);
     }
 
-    public valid?: { 
-        id: string; 
-        newCookieToken?: string | undefined; 
+    public valid?: {
+        id: string;
+        newCookieToken?: string | undefined;
         meta: Meta | undefined;
     };
 
-    public invalid?: { 
-        id?: string | undefined, 
-        reason: string, 
-        meta: Meta|undefined
+    public invalid?: {
+        id?: string | undefined;
+        reason: string;
+        meta: Meta | undefined;
     };
 }
 
 export interface ISessionManager<Meta> {
     process(request: WebRequest, response: WebResponse): Promise<ISession<Meta>>;
     obtainMeta(request: WebRequest): Promise<Meta>;
-    obtainMetaForId(id: string): Promise<Meta|undefined>;
+    obtainMetaForId(id: string): Promise<Meta | undefined>;
     assignMeta(request: WebRequest, meta: Meta | undefined): Promise<void>;
     assignMetaForId(id: string, meta: Meta | undefined): Promise<void>;
 }
@@ -104,10 +103,12 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
 
         if (jsToken === 'CREATE') {
             const newSession = await this.service.create();
-            response.setCookie(`${COOKIE_NAME}="${newSession.cookieToken}"; HttpOnly; Secure; Partitioned; SameSite=Strict; MaxAge=${MAX_AGE} Path=/`);
+            response.setCookie(
+                `${COOKIE_NAME}="${newSession.cookieToken}"; HttpOnly; Secure; Partitioned; SameSite=Strict; MaxAge=${MAX_AGE}; Path=/`
+            );
             response.setHeader(HEADER_SESSION_JSSECRET, newSession.jsSecret);
             response.setHeader(HEADER_SESSION_ID, newSession.id);
-            return new Session(this, { valid: { id: newSession.id, newCookieToken: newSession.cookieToken, meta: undefined }});
+            return new Session(this, { valid: { id: newSession.id, newCookieToken: newSession.cookieToken, meta: undefined } });
         }
 
         const validateResult = await this.service.validate<Meta>(jsToken, cookieToken);
@@ -118,7 +119,9 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
 
         if (validateResult.valid?.newCookieToken) {
             //console.log('NEWCOOKIE', validateResult.valid.newCookieToken);
-            response.setCookie(`${COOKIE_NAME}="${validateResult.valid.newCookieToken}"; HttpOnly; Secure; Partitioned; SameSite=Strict; MaxAge=${MAX_AGE} Path=/`);
+            response.setCookie(
+                `${COOKIE_NAME}="${validateResult.valid.newCookieToken}"; HttpOnly; Secure; Partitioned; SameSite=Strict; MaxAge=${MAX_AGE}; Path=/`
+            );
         }
 
         if (validateResult.valid?.id) {
@@ -127,7 +130,7 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
 
         return new Session<Meta>(this, validateResult);
     }
-    
+
     public async obtainMeta(request: WebRequest): Promise<Meta> {
         const jsToken = request.getHeader(HEADER_SESSION_TOKEN) ?? '';
         if (!jsToken) {
@@ -137,16 +140,15 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
         if (!id) {
             throw new Error('No id');
         }
- 
-        return await this.service.getMeta(id) as Meta;
+
+        return (await this.service.getMeta(id)) as Meta;
     }
 
-
-    public async obtainMetaForId(id: string): Promise<Meta|undefined> {
+    public async obtainMetaForId(id: string): Promise<Meta | undefined> {
         if (!id) {
             return undefined;
         }
-        return await this.service.getMeta(id) as Meta;
+        return (await this.service.getMeta(id)) as Meta;
     }
 
     public async assignMeta(request: WebRequest, meta: Meta | undefined) {
@@ -158,7 +160,7 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
         if (!id) {
             throw new Error('No id');
         }
- 
+
         await this.service.setMeta(id, meta);
     }
 
