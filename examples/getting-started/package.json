@@ -1,0 +1,43 @@
+{
+  "name": "organity",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx tsc",
+    "server": "node build/index.js --darlean-appid=server --darlean-runtimeapps=server",
+    "stop": "npx shx rm ./pid/app.run",
+    "tester": "node build/tester.js --darlean-appid=tester --darlean-runtimeapps=server,runtime,runtime1,runtime2,runtime3",
+
+    "start:runtime": "node build/runtime.js --darlean-appid=runtime --darlean-runtimeapps=runtime",
+    "start:echo-worker": "node build/echo-worker.js --darlean-appid=echoworker --darlean-runtimeapps=runtime",
+    "run:tester": "node build/tester.js --darlean-appid=tester --darlean-runtimeapps=runtime",
+
+    "start:runtime:1": "node build/runtime.js --darlean-appid=runtime1 --darlean-runtimeapps=runtime1,runtime2,runtime3",
+    "start:runtime:2": "node build/runtime.js --darlean-appid=runtime2 --darlean-runtimeapps=runtime1,runtime2,runtime3",
+    "start:runtime:3": "node build/runtime.js --darlean-appid=runtime3 --darlean-runtimeapps=runtime1,runtime2,runtime3",
+    "start:echo-worker:1": "node build/echo-worker.js --darlean-appid=echoworker1 --darlean-runtimeapps=runtime1,runtime2,runtime3",
+    "start:echo-worker:2": "node build/echo-worker.js --darlean-appid=echoworker2 --darlean-runtimeapps=runtime1,runtime2,runtime3",
+    "start:echo-worker:3": "node build/echo-worker.js --darlean-appid=echoworker3 --darlean-runtimeapps=runtime1,runtime2,runtime3",
+    "start:echo-worker:4": "node build/echo-worker.js --darlean-appid=echoworker4 --darlean-runtimeapps=runtime1,runtime2,runtime3",
+    "stop:runtime:1": "npx shx rm ./pid/runtime1.run",
+    "stop:runtime:2": "npx shx rm ./pid/runtime2.run",
+    "stop:runtime:3": "npx shx rm ./pid/runtime3.run",
+    "stop:echo-worker:1": "npx shx rm ./pid/echoworker1.run",
+    "stop:echo-worker:2": "npx shx rm ./pid/echoworker2.run",
+    "stop:echo-worker:3": "npx shx rm ./pid/echoworker3.run",
+    "stop:echo-worker:4": "npx shx rm ./pid/echoworker4.run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "typescript": "^5.4.4"
+  },
+  "dependencies": {
+    "@darlean/base": "^2.0.0-alpha.17",
+    "@darlean/core": "^2.0.0-alpha.23",
+    "@darlean/runtime-suite": "^2.0.0-alpha.7"
+  }
+}
