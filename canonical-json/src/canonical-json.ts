@@ -1,4 +1,15 @@
-import { ArrayCanonical, BinaryCanonical, BoolCanonical, DictCanonical, FloatCanonical, ICanonical, IntCanonical, MomentCanonical, NoneCanonical, StringCanonical } from '@darlean/canonical';
+import {
+    ArrayCanonical,
+    BinaryCanonical,
+    BoolCanonical,
+    DictCanonical,
+    FloatCanonical,
+    ICanonical,
+    IntCanonical,
+    MomentCanonical,
+    NoneCanonical,
+    StringCanonical
+} from '@darlean/canonical';
 
 export class CanonicalJsonSerializer {
     public serializeToString(canonical: ICanonical, indent?: string | number): string {
@@ -22,16 +33,23 @@ export class CanonicalJsonSerializer {
     private treeifyNode(canonical: ICanonical): unknown {
         const logicals = canonical.logicalTypes.join('.') || '-';
         switch (canonical.physicalType) {
-            case 'none': return '(' + logicals + ' -)';
-            case 'string': return canonical.stringValue + ' (' + logicals + ' s)';
-            case 'int': return canonical.intValue.toString() + ' (' + logicals + ' i)';
-            case 'float': return canonical.floatValue.toString() + ' (' + logicals + ' f)';
-            case 'bool': return canonical.boolValue.toString() + ' (' + logicals + ' b)';
-            case 'moment': return canonical.momentValue.valueOf() + ' (' + logicals + ' m)';
-            case 'binary': return Buffer.from(canonical.binaryValue).toString('base64') + ' (' + logicals + ' 6)';
+            case 'none':
+                return '(' + logicals + ' -)';
+            case 'string':
+                return canonical.stringValue + ' (' + logicals + ' s)';
+            case 'int':
+                return canonical.intValue.toString() + ' (' + logicals + ' i)';
+            case 'float':
+                return canonical.floatValue.toString() + ' (' + logicals + ' f)';
+            case 'bool':
+                return canonical.boolValue.toString() + ' (' + logicals + ' b)';
+            case 'moment':
+                return canonical.momentValue.valueOf() + ' (' + logicals + ' m)';
+            case 'binary':
+                return Buffer.from(canonical.binaryValue).toString('base64') + ' (' + logicals + ' 6)';
             case 'mapping': {
-                const obj: {[key: string]: unknown} = {};
-                obj['type'] = logicals; 
+                const obj: { [key: string]: unknown } = {};
+                obj['type'] = logicals;
                 let entry = canonical.firstMappingEntry;
                 while (entry) {
                     obj[':' + entry.key] = this.treeifyNode(entry.value);
@@ -50,7 +68,7 @@ export class CanonicalJsonSerializer {
                 return arr;
             }
         }
-        throw new Error(`Invalid type: ${canonical.physicalType}`)
+        throw new Error(`Invalid type: ${canonical.physicalType}`);
     }
 }
 
@@ -58,7 +76,7 @@ export class CanonicalJsonDeserializer {
     public async deserialize(json: Buffer): Promise<ICanonical> {
         const parsed = JSON.parse(json.toString('utf-8'));
         return this.processNode(parsed);
-    } 
+    }
 
     public deserializeFromString(json: string): ICanonical {
         const parsed = JSON.parse(json);
@@ -74,19 +92,27 @@ export class CanonicalJsonDeserializer {
             case 'string': {
                 const a = node.lastIndexOf('(');
                 const b = node.lastIndexOf(' ');
-                const logicalsRaw = node.substring(a+1, b);
+                const logicalsRaw = node.substring(a + 1, b);
                 const logicals = splitLogicalsRaw(logicalsRaw);
-                const type = node.substring(b+1, node.length-1); // Ignore trailing )
-                const core = node.substring(0, a-1); // Take space before ( into account)
+                const type = node.substring(b + 1, node.length - 1); // Ignore trailing )
+                const core = node.substring(0, a - 1); // Take space before ( into account)
                 switch (type) {
-                    case 'b': return BoolCanonical.from(core === 'true', logicals);
-                    case 'i': return IntCanonical.from(parseInt(core, 10), logicals);
-                    case 'f': return FloatCanonical.from(parseFloat(core), logicals);
-                    case 's': return StringCanonical.from(core, logicals);
-                    case '6': return BinaryCanonical.from( Buffer.from(core, 'base64'), logicals);
-                    case 'm': return MomentCanonical.from(new Date(parseFloat(core)), logicals);
-                    case '-': return NoneCanonical.from(logicals);
-                    default: throw new Error('Undefined string type: ' + type);
+                    case 'b':
+                        return BoolCanonical.from(core === 'true', logicals);
+                    case 'i':
+                        return IntCanonical.from(parseInt(core, 10), logicals);
+                    case 'f':
+                        return FloatCanonical.from(parseFloat(core), logicals);
+                    case 's':
+                        return StringCanonical.from(core, logicals);
+                    case '6':
+                        return BinaryCanonical.from(Buffer.from(core, 'base64'), logicals);
+                    case 'm':
+                        return MomentCanonical.from(new Date(parseFloat(core)), logicals);
+                    case '-':
+                        return NoneCanonical.from(logicals);
+                    default:
+                        throw new Error('Undefined string type: ' + type);
                 }
             }
             case 'object': {
@@ -96,13 +122,12 @@ export class CanonicalJsonDeserializer {
                     const values: ICanonical[] = node.map((x) => this.processNode(x));
                     return ArrayCanonical.from(values, logicals);
                 } else {
-                    const dict: {[key: string]: ICanonical} = {};
+                    const dict: { [key: string]: ICanonical } = {};
                     let logicalsRaw = '';
                     for (const [key, value] of Object.entries(node as object)) {
                         if (key === 'type') {
                             logicalsRaw = value;
-                        } else
-                        if (key.startsWith(':')) {
+                        } else if (key.startsWith(':')) {
                             dict[key.substring(1)] = this.processNode(value);
                         } else {
                             throw new Error('Invalid mapping key: ' + key);
@@ -111,7 +136,8 @@ export class CanonicalJsonDeserializer {
                     return DictCanonical.from(dict, splitLogicalsRaw(logicalsRaw));
                 }
             }
-            default: throw new Error('Unsupported json value');
+            default:
+                throw new Error('Unsupported json value');
         }
     }
 }
