@@ -5,7 +5,6 @@ import {
     DictCanonical,
     FloatCanonical,
     IntCanonical,
-    MapCanonical,
     MomentCanonical,
     StringCanonical
 } from '@darlean/canonical';
