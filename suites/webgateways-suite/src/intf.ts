@@ -12,6 +12,7 @@ export interface IGatewayHandlerCfg {
     actionName?: string;
     placeholders?: string[];
     flow?: IGatewayFlowCfg;
+    maxContentLength?: number;
 }
 
 export interface IGatewayCfg {
@@ -24,6 +25,7 @@ export interface IGatewayCfg {
      * Keep alive timeout for this web gateway. Overrides the value set by {@link IWebGatewaysCfg.keepAliveTimeout}.
      */
     keepAliveTimeout?: number;
+    maxContentLength?: number;
 }
 
 export interface IWebGatewaysCfg {

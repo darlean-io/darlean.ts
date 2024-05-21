@@ -33,17 +33,26 @@ export interface IStaticFileHandlerOptions {
      * Defaults to `false`.
      */
     recurseUp?: boolean;
+
+    /**
+     * When not explicitly set to `false`, a request for path that does not end with a slash is redirected to the same path
+     * with a trailing slash when an index file is used. This solves the issue for resolviong relative links from within a
+     * html page when the path looks like `mypath` instead of `mypath/`.
+     */
+    indexRedirect?: boolean;
 }
 
 export class StaticFileHandler {
     private basePaths: string[];
     private indexFiles: string[];
     private recurseUp: boolean;
+    private indexRedirect: boolean;
 
     constructor(options: IStaticFileHandlerOptions) {
         this.basePaths = options.basePaths;
         this.indexFiles = options.indexFiles;
         this.recurseUp = options.recurseUp ?? false;
+        this.indexRedirect = options.indexRedirect ?? true;
     }
 
     public async handle(req: IWebGatewayRequest): Promise<IWebGatewayResponse> {
@@ -61,10 +70,24 @@ export class StaticFileHandler {
                     try {
                         const mimetype = mime.lookup(fullPath2) || undefined;
                         const stream = fs.createReadStream(fullPath2);
+                  
                         if (mimetype) {
                             resp.setHeader('content-type', mimetype);
                         }
+                        
+                        let checkRedirect = this.indexRedirect;
                         for await (const chunk of stream) {
+                            // Only when the file exists (and we know that it exists when we have successfully read a chunk),
+                            // check for a path without trailing path delimiter. And then redirect to the path with trailing
+                            // path delimiter.
+                            if (checkRedirect) {
+                                if ((indexFile !== '') && (!req.path?.endsWith('/'))) {
+                                    resp.setHeader('Location', (req.path ?? '') + '/');
+                                    return resp.endWithStatusCode(301, 'Moved Permanently');
+                                }
+                                checkRedirect = false;        
+                            }
+
                             await resp.push(chunk);
                         }
                         return resp.end();
