@@ -1,43 +1,66 @@
-import { BoolValue, FloatValue, IntValue, MomentValue, PrimitiveValidator, stringv, StringValue, primitive } from '../primitive-valueobject';
+import {
+    BoolValue,
+    FloatValue,
+    IntValue,
+    MomentValue,
+    PrimitiveValidator,
+    stringv,
+    StringValue,
+    primitive
+} from '../primitive-valueobject';
 import { StructValue, objectv } from '../struct-valueobject';
 import { optional, required, stringvalidation, req, opt } from '../decorators';
 import { discriminator } from '../valueobject';
 import { BoolCanonical, FloatCanonical, IntCanonical, MomentCanonical, NoneCanonical, StringCanonical } from '@darlean/canonical';
 
 export class TextValue extends StringValue {
-    static DEF = 
-    primitive<string>(TextValue, 'text')
-    .withValidator((value) => typeof value === 'string', 'Value must be a string');
+    static DEF = primitive<string>(TextValue, 'text').withValidator(
+        (value) => typeof value === 'string',
+        'Value must be a string'
+    );
 }
 
-export class NamePart extends TextValue { NamePart: discriminator }
+export class NamePart extends TextValue {
+    NamePart: discriminator;
+}
 stringv(NamePart, 'name-part').withValidator(validateLength(2));
 
-
-export class FirstName extends NamePart { FirstName: discriminator }
-stringv(FirstName).withValidator((value) => (value.toLowerCase() !== value), 'Must have at least one uppercase character');
+export class FirstName extends NamePart {
+    FirstName: discriminator;
+}
+stringv(FirstName).withValidator((value) => value.toLowerCase() !== value, 'Must have at least one uppercase character');
 
 @stringvalidation((value) => value === value.toUpperCase(), 'Must be all uppercase')
-export class LastName extends NamePart { LastName: discriminator }
+export class LastName extends NamePart {
+    LastName: discriminator;
+}
 
 export class Person extends StructValue {
     Person: discriminator;
-    @required(FirstName) public get firstName(){ return FirstName.required() };
-    @optional(LastName)  public get lastName() { return LastName.optional() };
+    @required(FirstName) public get firstName() {
+        return FirstName.required();
+    }
+    @optional(LastName) public get lastName() {
+        return LastName.optional();
+    }
 }
 /*objectv(Person, 'person')
     .withRequiredField('first-name', FirstName.DEF)
     .withOptionalField('last-name', LastName.DEF)*/
 
-export class PersonWithAge extends Person{
+export class PersonWithAge extends Person {
     //public get age() { return this._req<IntValue>('age'); }
-    @required(IntValue) public get age() { return IntValue.required() };
+    @required(IntValue) public get age() {
+        return IntValue.required();
+    }
 }
 //objectv(PersonWithAge, 'person-with-age')
 //    .withRequiredField('age', IntValue);
 
 export class NestedPerson extends Person {
-    @optional(NestedPerson) public get partner() { return NestedPerson.optional() };
+    @optional(NestedPerson) public get partner() {
+        return NestedPerson.optional();
+    }
 }
 
 export function validateLength(minLength?: number, maxLength?: number): PrimitiveValidator<string> {
@@ -50,7 +73,7 @@ export function validateLength(minLength?: number, maxLength?: number): Primitiv
                 return `Must have maximum length of ${maxLength ?? 1}`;
             }
         }
-    }
+    };
 }
 
 describe('Value objects', () => {
@@ -63,7 +86,6 @@ describe('Value objects', () => {
     it('String should not be created from undefined', () => {
         expect(() => new StringValue(undefined as unknown as string)).toThrow();
     });
-
 
     it('String should not be created from number', () => {
         expect(() => new StringValue(42 as unknown as string)).toThrow();
@@ -136,11 +158,11 @@ describe('Value objects', () => {
         });*/
         const struct = Person.from({
             firstName: new FirstName('Jantje'),
-            lastName: new LastName('DEBOER'),
+            lastName: new LastName('DEBOER')
         });
         expect(struct.firstName.value).toBe('Jantje');
         expect(struct.lastName?.value).toBe('DEBOER');
-        
+
         const struct2 = new Person(struct.extractSlots()) as Person;
         expect(struct2.firstName.value).toBe('Jantje');
         expect(struct2.lastName?.value).toBe('DEBOER');
@@ -155,35 +177,41 @@ describe('Value objects', () => {
         const p2 = new PersonWithAge({
             ['first-name']: 'Jantje',
             ['last-name']: 'DEBOER',
-            ['age']: 12,
+            ['age']: 12
         });
         expect(p2.firstName.value).toBe('Jantje');
         expect(p2.age.value).toBe(12);
     });
 
-    it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])('Struct should validate all members for %s using object', (value) => {
-        const input = {
-            'first-name': value,
-            'last-name': value,
-        };
-        if (value === 'VALID') {
-            expect(new Person(input as any)).toBeDefined();
-        } else {
-            expect(() => new Person(input as any)).toThrow();
+    it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
+        'Struct should validate all members for %s using object',
+        (value) => {
+            const input = {
+                'first-name': value,
+                'last-name': value
+            };
+            if (value === 'VALID') {
+                expect(new Person(input as any)).toBeDefined();
+            } else {
+                expect(() => new Person(input as any)).toThrow();
+            }
         }
-    });
+    );
 
-    it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])('Struct should validate all members for %s using Map', (value) => {
-        const input = new Map([
-            ['first-name', value],
-            ['last-name', value],
-        ]);
-        if (value === 'VALID') {
-            expect(new Person(input as any)).toBeDefined();
-        } else {
-            expect(() => new Person(input as any)).toThrow();
+    it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
+        'Struct should validate all members for %s using Map',
+        (value) => {
+            const input = new Map([
+                ['first-name', value],
+                ['last-name', value]
+            ]);
+            if (value === 'VALID') {
+                expect(new Person(input as any)).toBeDefined();
+            } else {
+                expect(() => new Person(input as any)).toThrow();
+            }
         }
-    });
+    );
 
     it.each([
         StringCanonical.from('VALID'),
@@ -191,12 +219,12 @@ describe('Value objects', () => {
         BoolCanonical.from(true),
         BoolCanonical.from(false),
         IntCanonical.from(42),
-         FloatCanonical.from(-12.3),
-         StringCanonical.from('no-capitals'),
+        FloatCanonical.from(-12.3),
+        StringCanonical.from('no-capitals')
     ])('Struct should validate all members for %s using embedded canonicals', (value) => {
         const input = {
             'first-name': value,
-            'last-name': value,
+            'last-name': value
         };
         if (value.physicalType === 'string' && value.stringValue === 'VALID') {
             expect(new Person(input as any)).toBeDefined();
@@ -206,35 +234,39 @@ describe('Value objects', () => {
     });
 
     it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
-        'Struct should validate all members for %s using embedded canonical of correct type with incorrect inner value', (value) => {
-        const input = {
-            'first-name': StringCanonical.from(value as unknown as string),
-            'last-name': StringCanonical.from(value as unknown as string),
-        };
-        if (value === 'VALID') {
-            expect(new Person(input as any)).toBeDefined();
-        } else {
-            expect(() => new Person(input as any)).toThrow();
+        'Struct should validate all members for %s using embedded canonical of correct type with incorrect inner value',
+        (value) => {
+            const input = {
+                'first-name': StringCanonical.from(value as unknown as string),
+                'last-name': StringCanonical.from(value as unknown as string)
+            };
+            if (value === 'VALID') {
+                expect(new Person(input as any)).toBeDefined();
+            } else {
+                expect(() => new Person(input as any)).toThrow();
+            }
         }
-    });
+    );
 
     it.each([undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
-        'Struct should validate all members for %s using embedded canonical of incorrect type with incorrect inner value', (value) => {
-        const input = {
-            'first-name': IntCanonical.from(value as unknown as number),
-            'last-name': IntCanonical.from(value as unknown as number),
-        };
-        if (value === 'VALID') {
-            expect(new Person(input as any)).toBeDefined();
-        } else {
-            expect(() => new Person(input as any)).toThrow();
+        'Struct should validate all members for %s using embedded canonical of incorrect type with incorrect inner value',
+        (value) => {
+            const input = {
+                'first-name': IntCanonical.from(value as unknown as number),
+                'last-name': IntCanonical.from(value as unknown as number)
+            };
+            if (value === 'VALID') {
+                expect(new Person(input as any)).toBeDefined();
+            } else {
+                expect(() => new Person(input as any)).toThrow();
+            }
         }
-    });
+    );
 
     it('Struct should reject None even for optional fields (optional fields should simply not be present)', () => {
         const input = {
             'first-name': StringCanonical.from('Jantje'),
-            'last-name': NoneCanonical.from(),
+            'last-name': NoneCanonical.from()
         };
         expect(() => new Person(input)).toThrow();
     });

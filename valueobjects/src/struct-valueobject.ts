@@ -1,5 +1,15 @@
-import { ICanonical, ICanonicalSource, MapCanonical } from "@darlean/canonical";
-import { IValueDef, IValueObject, CanonicalType, CanonicalFieldName, NativePrimitive, getValueObjectDef, isValueObject, IValueClass, deriveTypeName } from "./valueobject";
+import { ICanonical, ICanonicalSource, MapCanonical } from '@darlean/canonical';
+import {
+    IValueDef,
+    IValueObject,
+    CanonicalType,
+    CanonicalFieldName,
+    NativePrimitive,
+    getValueObjectDef,
+    isValueObject,
+    IValueClass,
+    deriveTypeName
+} from './valueobject';
 
 export type UnknownFieldAction = 'keep' | 'ignore' | 'error';
 
@@ -14,129 +24,138 @@ export interface ISlotDef<TNative> {
     propName?: string;
 }
 
-export type NativeStruct = {[key: string]: ICanonical | IValueObject} | Map<string, ICanonical | IValueObject>;
+export type NativeStruct = { [key: string]: ICanonical | IValueObject } | Map<string, ICanonical | IValueObject>;
 
 export class StructDef implements IValueDef<NativeStruct> {
-  private _types: CanonicalType[];
-  private _slots: Map<string, ISlotDef<unknown>>;
-  private _requiredSlots: string[];
-  private _unknownFieldAction: UnknownFieldAction = 'keep';
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  private _template: Function;
-  private _strictFieldNames: boolean;
+    private _types: CanonicalType[];
+    private _slots: Map<string, ISlotDef<unknown>>;
+    private _requiredSlots: string[];
+    private _unknownFieldAction: UnknownFieldAction = 'keep';
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    private _template: Function;
+    private _strictFieldNames: boolean;
 
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  constructor(template: Function, type?: CanonicalType, strictFieldNames = false) {
-    this._template = template;
-    this._types = [type ?? deriveTypeName(template.name)];
-    this._slots = new Map();
-    this._requiredSlots = [];
-    this._strictFieldNames = strictFieldNames;
-    
-    const proto = Object.getPrototypeOf(template);
-    if (proto) {
-      this.withBase(proto);
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    constructor(template: Function, type?: CanonicalType, strictFieldNames = false) {
+        this._template = template;
+        this._types = [type ?? deriveTypeName(template.name)];
+        this._slots = new Map();
+        this._requiredSlots = [];
+        this._strictFieldNames = strictFieldNames;
+
+        const proto = Object.getPrototypeOf(template);
+        if (proto) {
+            this.withBase(proto);
+        }
     }
-  }
 
-  public get types() { return this._types; }
+    public get types() {
+        return this._types;
+    }
 
-  public withBase(base: IStructValueClass | StructDef): StructDef {
-    const base2 = (base instanceof StructDef) ? base : base.DEF;
-    if (!base2) {
+    public withBase(base: IStructValueClass | StructDef): StructDef {
+        const base2 = base instanceof StructDef ? base : base.DEF;
+        if (!base2) {
+            return this;
+        }
+
+        this._types = [...base2.types, ...this._types];
+        //this._validators = [...base2._validators, ...this._validators];
+        for (const slot of base2.getSlots()) {
+            if (slot.required) {
+                this.withRequiredField(slot.name, slot.def);
+            } else {
+                this.withOptionalField(slot.name, slot.def);
+            }
+        }
         return this;
     }
 
-    this._types = [...base2.types, ...this._types];
-    //this._validators = [...base2._validators, ...this._validators];
-    for (const slot of base2.getSlots()) {
-        if (slot.required) {
-            this.withRequiredField(slot.name, slot.def);
-        } else {
-            this.withOptionalField(slot.name, slot.def);
+    public withRequiredField(
+        name: CanonicalFieldName,
+        def: IValueDef<NativeStruct | NativePrimitive> | IValueClass<unknown>,
+        propName?: string
+    ): StructDef {
+        if (this._strictFieldNames) {
+            validateStrictFieldName(name);
         }
+        const def2 = (def as IValueClass<unknown>)?.DEF ?? def;
+        this._slots.set(name, { name, required: true, def: def2, propName });
+        this._requiredSlots.push(name);
+        return this;
     }
-    return this;
-  }
 
-  public withRequiredField(name: CanonicalFieldName, def: IValueDef<NativeStruct | NativePrimitive> | IValueClass<unknown>, propName?: string): StructDef {
-    if (this._strictFieldNames) {
-        validateStrictFieldName(name);
-    }
-    const def2 = (def as IValueClass<unknown>)?.DEF ?? def;
-    this._slots.set(name, { name, required: true, def: def2, propName });
-    this._requiredSlots.push(name);
-    return this;
-  }
-
-  public withOptionalField(name: CanonicalFieldName, def: IValueDef<NativeStruct | NativePrimitive> | IValueClass<unknown>,propName?: string): StructDef {
-    if (this._strictFieldNames) {
-        validateStrictFieldName(name);
-    }
-    const def2 = (def as IValueClass<unknown>)?.DEF ?? def;
-    this._slots.set(name, { name, required: false, def: def2, propName });
-    return this;
-  }
-
-  public withExtensions(action: UnknownFieldAction): StructDef {
-    this._unknownFieldAction = action;
-    return this;
-  }
-
-  public getSlotDef<T>(name: string): ISlotDef<T> | undefined {
-    const def = this._slots.get(name);
-    if (!def) {
-        if (this._unknownFieldAction === 'error') {
-            throw new Error(`Unknown field: ${name}`);
-        } else {
-            return undefined;
+    public withOptionalField(
+        name: CanonicalFieldName,
+        def: IValueDef<NativeStruct | NativePrimitive> | IValueClass<unknown>,
+        propName?: string
+    ): StructDef {
+        if (this._strictFieldNames) {
+            validateStrictFieldName(name);
         }
+        const def2 = (def as IValueClass<unknown>)?.DEF ?? def;
+        this._slots.set(name, { name, required: false, def: def2, propName });
+        return this;
     }
-    return def as ISlotDef<T>;
-  }
 
-  public getRequiredSlots(): string[] {
-    return this._requiredSlots;
-  }
+    public withExtensions(action: UnknownFieldAction): StructDef {
+        this._unknownFieldAction = action;
+        return this;
+    }
 
-  public getSlots(): IterableIterator<ISlotDef<unknown>> {
-    return this._slots.values();
-  }
-
-  public get strictFieldNames() {
-    return this._strictFieldNames;
-  }
-
-  public get unknownFieldAction() {
-    return this._unknownFieldAction;
-  }
-
-  get template() {
-    return this._template;
-  }
-
-  public construct(value:ICanonical): IValueObject {
-    return Reflect.construct(this._template, [value]);
-  }
-
-  public hasType(type: CanonicalType) {
-    return this._types.includes(type);
-  }
-
-  public from(value: ICanonical | NativeStruct): IValueObject {
-    const vo = isValueObject(value);
-    if (vo) {
-        const ourType = this._types.at(-1);
-        const voDef = getValueObjectDef(vo);
-        if (ourType && voDef.hasType(ourType)) {
-            return vo;
-        } else
-        if (ourType) {
-            throw new Error(`Value object is not compatible with ${ourType}`);
+    public getSlotDef<T>(name: string): ISlotDef<T> | undefined {
+        const def = this._slots.get(name);
+        if (!def) {
+            if (this._unknownFieldAction === 'error') {
+                throw new Error(`Unknown field: ${name}`);
+            } else {
+                return undefined;
+            }
         }
+        return def as ISlotDef<T>;
     }
-    return this.construct(value as ICanonical)
-  }
+
+    public getRequiredSlots(): string[] {
+        return this._requiredSlots;
+    }
+
+    public getSlots(): IterableIterator<ISlotDef<unknown>> {
+        return this._slots.values();
+    }
+
+    public get strictFieldNames() {
+        return this._strictFieldNames;
+    }
+
+    public get unknownFieldAction() {
+        return this._unknownFieldAction;
+    }
+
+    get template() {
+        return this._template;
+    }
+
+    public construct(value: ICanonical): IValueObject {
+        return Reflect.construct(this._template, [value]);
+    }
+
+    public hasType(type: CanonicalType) {
+        return this._types.includes(type);
+    }
+
+    public from(value: ICanonical | NativeStruct): IValueObject {
+        const vo = isValueObject(value);
+        if (vo) {
+            const ourType = this._types.at(-1);
+            const voDef = getValueObjectDef(vo);
+            if (ourType && voDef.hasType(ourType)) {
+                return vo;
+            } else if (ourType) {
+                throw new Error(`Value object is not compatible with ${ourType}`);
+            }
+        }
+        return this.construct(value as ICanonical);
+    }
 }
 
 export class StructValue implements IValueObject, ICanonicalSource {
@@ -145,30 +164,32 @@ export class StructValue implements IValueObject, ICanonicalSource {
     private _slots?: Map<string, IValueObject | ICanonical>;
 
     static required<T extends typeof StructValue>(this: T): InstanceType<T> {
-        return undefined as unknown as InstanceType<T>; 
+        return undefined as unknown as InstanceType<T>;
     }
 
     static optional<T extends typeof StructValue>(this: T): InstanceType<T> | undefined {
-        return undefined; 
+        return undefined;
     }
 
     static from<T extends typeof StructValue>(this: T, value: Partial<InstanceType<T>>): InstanceType<T> {
-        const v2: {[key: string]: unknown} = {};
+        const v2: { [key: string]: unknown } = {};
         for (const [k, v] of Object.entries(value)) {
             v2[deriveTypeName(k)] = v;
         }
         return (this as unknown as IValueClass<unknown>).DEF.from(v2) as InstanceType<T>;
     }
 
-
     constructor(value: ICanonical | NativeStruct) {
-        const proto = (this.constructor as unknown as IStructValueClass);
+        const proto = this.constructor as unknown as IStructValueClass;
         this._slots = validateStruct(proto.DEF, value, this);
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
         const slots = this._checkSlots();
-        return MapCanonical.from(slots as unknown as Map<string, ICanonical | ICanonicalSource>, (Object.getPrototypeOf(this).constructor as IStructValueClass).DEF.types);
+        return MapCanonical.from(
+            slots as unknown as Map<string, ICanonical | ICanonicalSource>,
+            (Object.getPrototypeOf(this).constructor as IStructValueClass).DEF.types
+        );
     }
 
     public extractSlots(): Map<string, ICanonical | IValueObject> {
@@ -193,27 +214,34 @@ export class StructValue implements IValueObject, ICanonicalSource {
     }
 }
 
-function validateStruct(def: StructDef, input: ICanonical | NativeStruct, target: unknown): Map<string, IValueObject | ICanonical> {
+function validateStruct(
+    def: StructDef,
+    input: ICanonical | NativeStruct,
+    target: unknown
+): Map<string, IValueObject | ICanonical> {
     const slots = new Map<string, IValueObject | ICanonical>();
 
     function addValue(key: string, value: ICanonical | IValueObject) {
         if (def.strictFieldNames) {
             validateStrictFieldName(key);
         }
-        
+
         const slotDef = def.getSlotDef(key);
         if (slotDef) {
             const instance = slotDef.def.from(value);
             slots.set(key, instance);
             //if (slotDef.propName && target) {
-                //console.log('SETTING', target, slotDef.propName);
-                //Reflect.set(target, slotDef.propName, instance);
-                //console.log('SET', target, (target as any).firstName);
+            //console.log('SETTING', target, slotDef.propName);
+            //Reflect.set(target, slotDef.propName, instance);
+            //console.log('SET', target, (target as any).firstName);
             //}
         } else {
             switch (def.unknownFieldAction) {
-                case 'keep': slots.set(key, value); break;
-                case 'error': throw new Error(`Unexpected field "${key}"`);
+                case 'keep':
+                    slots.set(key, value);
+                    break;
+                case 'error':
+                    throw new Error(`Unexpected field "${key}"`);
             }
         }
     }
@@ -227,7 +255,7 @@ function validateStruct(def: StructDef, input: ICanonical | NativeStruct, target
             entry = entry.next();
         }
     } else {
-        const slotIterator = (input instanceof Map) ? input.entries() : Object.entries(input);
+        const slotIterator = input instanceof Map ? input.entries() : Object.entries(input);
         for (const [key, value] of slotIterator) {
             addValue(key, value);
         }
@@ -252,10 +280,7 @@ export function struct(template: Function, type?: CanonicalType): StructDef {
 export function validateStrictFieldName(name: CanonicalFieldName) {
     // TODO: Add a cache for this
     for (const char of name) {
-        const ok = (
-            (char >= '0') && (char <= '9')) ||
-            ((char >= 'a') && (char <= 'z')) ||
-            (char === '-');
+        const ok = (char >= '0' && char <= '9') || (char >= 'a' && char <= 'z') || char === '-';
         if (!ok) {
             throw new Error(`Field name "${name}" contains illegal characters (allowed are a-z, 9-0 and -)`);
         }
@@ -269,4 +294,4 @@ export function objectv(template: Function, type: CanonicalType): StructDef {
     const def = new StructDef(template, type, true).withExtensions('error');
     (template as unknown as IStructValueClass).DEF = def;
     return def;
-} 
+}

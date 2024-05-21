@@ -1,4 +1,4 @@
-import { ICanonical } from "@darlean/canonical";
+import { ICanonical } from '@darlean/canonical';
 
 export type CanonicalFieldName = string;
 export type CanonicalType = string;
@@ -11,7 +11,7 @@ export function isValueObject(value: unknown): IValueObject | undefined {
         return false;
     }
     const clazz = (value as object).constructor as unknown as IValueClass<unknown>;
-    return clazz.DEF ? value as IValueObject : undefined;
+    return clazz.DEF ? (value as IValueObject) : undefined;
 }
 
 export function getValueObjectDef<T>(value: IValueObject): IValueDef<T> {
@@ -29,8 +29,7 @@ export interface IValueClass<TNative> {
 export type NativePrimitive = undefined | boolean | number | string | Buffer | Date;
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface IValueObject {
-}
+export interface IValueObject {}
 
 export interface IValueDef<TNative> {
     /**
@@ -39,7 +38,7 @@ export interface IValueDef<TNative> {
      */
     construct(value: ICanonical | TNative): IValueObject;
     /**
-     * Returns a potentially new value object from value. When value is a value object 
+     * Returns a potentially new value object from value. When value is a value object
      * compatible with this definition, from may directly return the value.
      * @param value A canonical value or value object
      */
@@ -54,19 +53,16 @@ export function deriveTypeName(name: string) {
     // TODO: Optimize
     let result = '';
     for (const char of name) {
-        if ((char >= 'A') && (char <= 'Z')) {
+        if (char >= 'A' && char <= 'Z') {
             if (result != '') {
                 result += '-';
             }
             result += char.toLowerCase();
-        } else
-        if (char === '_') {
+        } else if (char === '_') {
             result += '-';
-        } else
-        if ((char >= '0') && (char <= '9')) {
+        } else if (char >= '0' && char <= '9') {
             result += char;
-        } else
-        if ((char >= 'a') && (char <= 'z')) {
+        } else if (char >= 'a' && char <= 'z') {
             result += char;
         } else {
             throw new Error(`Invalid character "${char}" in name: ${name}`);
