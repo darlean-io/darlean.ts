@@ -181,7 +181,7 @@ export class StructValue implements IValueObject, ICanonicalSource {
 
     constructor(value: ICanonical | NativeStruct) {
         const proto = this.constructor as unknown as IStructValueClass;
-        this._slots = validateStruct(proto.DEF, value, this);
+        this._slots = validateStruct(proto.DEF, value);
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
