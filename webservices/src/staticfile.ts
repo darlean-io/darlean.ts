@@ -70,22 +70,22 @@ export class StaticFileHandler {
                     try {
                         const mimetype = mime.lookup(fullPath2) || undefined;
                         const stream = fs.createReadStream(fullPath2);
-                  
+
                         if (mimetype) {
                             resp.setHeader('content-type', mimetype);
                         }
-                        
+
                         let checkRedirect = this.indexRedirect;
                         for await (const chunk of stream) {
                             // Only when the file exists (and we know that it exists when we have successfully read a chunk),
                             // check for a path without trailing path delimiter. And then redirect to the path with trailing
                             // path delimiter.
                             if (checkRedirect) {
-                                if ((indexFile !== '') && (!req.path?.endsWith('/'))) {
+                                if (indexFile !== '' && !req.path?.endsWith('/')) {
                                     resp.setHeader('Location', (req.path ?? '') + '/');
                                     return resp.endWithStatusCode(301, 'Moved Permanently');
                                 }
-                                checkRedirect = false;        
+                                checkRedirect = false;
                             }
 
                             await resp.push(chunk);
