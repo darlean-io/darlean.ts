@@ -37,8 +37,8 @@ even supports primitive types like moments and binary data.
 
 You create value objects by calling their constructor:
 ```
-const myName = new StringValue('Alice');
-const myAge - new IntValue(42);
+const myName = StringValue.from('Alice');
+const myAge = IntValue.from(42);
 ```
 
 Once created, you can extract the value by means of `.value`:
@@ -46,34 +46,32 @@ Once created, you can extract the value by means of `.value`:
 console.log(`My name is ${myName.value} and I am ${myAge.value} years old);
 ```
 
-Nothing exciting, except that it is quite some work. And that the objects are read-only.
-
-The power comes in when we try to trick our software with illegal input (either because of a programming mistake, or by an attacker 
-that is trying to forge us by providing invalid input):
+Value objects have basic validation built in:
 ```
-new IntValue(42.5);                   // Boom! Exception.
-new IntValue('I am not an integer');  // Boom! Exception.
-new IntValue(undefined);              // Boom! Exception.
+IntValue.from(42.5);                   // Boom! Exception: 42.5 is a float, not an integer
+IntValue.from('I am not an integer');  // Boom! Exception: A string is not an integer.
+IntValue.from(undefined);              // Boom! Exception: Undefined is not a valid integer.
 ``` 
 
-It has validation built in. But the real power emerges when you define your own types:
+And you can easily add your own validation by adding custom types:
 ```
-// In vanilla JS without decorators:
+@stringvalidator((v) => (v.length >= 2), 'Must at least contain 2 characters')
+@stringvalidator((v) => (v.toLowerCase() !== v), 'Must have at least one uppercase character')
+export class FirstName extends StringValue {}
+```
+
+Or, in vanilla JS without decorators:
+```
 export class FirstName extends StringValue {}
 stringv(FirstName, 'first-name')
-  .withValidator((value) => (value.length >= 2), 'Must at least contain 2 characters');
-  .withValidator((value) => (value.toLowerCase() !== value), 'Must have at least one uppercase character');
-
-// In TypeScript with decorators:
-@stringvalidator((value) => (value.length >= 2), 'Must at least contain 2 characters')
-@stringvalidator((value) => (value.toLowerCase() !== value), 'Must have at least one uppercase character')
-export class FirstName extends StringValue {}
+  .withValidator((v) => (v.length >= 2), 'Must at least contain 2 characters');
+  .withValidator((v) => (v.toLowerCase() !== v), 'Must have at least one uppercase character');
 ```
 
 ```
-const myName = new FirstName('Alice');   // Ok
-const myName = new FirstName('A');       // Boom! Exception.
-const myName = new FirstName('alice');   // Boom! Exception.
+const myName = FirstName.from('Alice');   // Ok
+const myName = FirstName.from('A');       // Boom! Exception: Must at least contain 2 characters
+const myName = FirstName.from('alice');   // Boom! Exception: Must have at least one uppercase character
 ```
 
 So, what do we see here?
@@ -81,6 +79,10 @@ So, what do we see here?
 * The canonical name is set to `first-name`. A canonical name is the name that is used for this field when serializing.
   To achieve smooth cross-language interoperability, canonical names can only contain lowercase `'a'-'z'`, `'0'-'9'` and the dash `'-'`.
 * We add a 2 validators that check whather a name has at least 2 characters, and must at least have one uppercase character. Otherwise we consider it not a valid first name.
+
+# TODO
+
+All of the below mentioned topics are not yet documented.
 
 ## Structures
 
