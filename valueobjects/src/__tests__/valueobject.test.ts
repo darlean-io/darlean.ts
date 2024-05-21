@@ -1,37 +1,44 @@
 import { BoolCanonical, FloatCanonical, IntCanonical, MomentCanonical, NoneCanonical, StringCanonical } from '../canonical/primitives';
 import { BoolValue, FloatValue, IntValue, MomentValue, PrimitiveValidator, stringv, StringValue, primitive } from '../valueobjects/primitive-valueobject';
-import { StructValue, objectv, structv } from '../valueobjects/struct-valueobject';
+import { StructValue, objectv } from '../valueobjects/struct-valueobject';
+import { optional, required, stringvalidation, req, opt } from '../valueobjects/decorators';
+import { discriminator } from '../valueobjects/valueobject';
 
 export class TextValue extends StringValue {
     static DEF = 
     primitive<string>(TextValue, 'text')
     .withValidator((value) => typeof value === 'string', 'Value must be a string');
-
-    constructor(value: string) {
-        super(value);
-    }
 }
 
-export class NamePart extends TextValue {}
+export class NamePart extends TextValue { NamePart: discriminator }
 stringv(NamePart, 'name-part').withValidator(validateLength(2));
 
 
-export class FirstName extends NamePart {}
-stringv(FirstName, 'first-name').withValidator((value) => (value.toLowerCase() !== value), 'Must have at least one uppercase character');
+export class FirstName extends NamePart { FirstName: discriminator }
+stringv(FirstName).withValidator((value) => (value.toLowerCase() !== value), 'Must have at least one uppercase character');
+
+@stringvalidation((value) => value === value.toUpperCase(), 'Must be all uppercase')
+export class LastName extends NamePart { LastName: discriminator }
 
 export class Person extends StructValue {
-    public get firstName(){ return this._req<FirstName>('first-name');}
-    public get lastName() { return this._opt<FirstName>('last-name');}
+    Person: discriminator;
+    @required(FirstName) public get firstName(){ return FirstName.required() };
+    @optional(LastName)  public get lastName() { return LastName.optional() };
 }
-objectv(Person, 'person')
+/*objectv(Person, 'person')
     .withRequiredField('first-name', FirstName.DEF)
-    .withOptionalField('last-name', FirstName.DEF)
+    .withOptionalField('last-name', LastName.DEF)*/
 
 export class PersonWithAge extends Person{
-    public get age() { return this._req<IntValue>('age'); }
+    //public get age() { return this._req<IntValue>('age'); }
+    @required(IntValue) public get age() { return IntValue.required() };
 }
-objectv(PersonWithAge, 'person-with-age')
-    .withRequiredField('age', IntValue);
+//objectv(PersonWithAge, 'person-with-age')
+//    .withRequiredField('age', IntValue);
+
+export class NestedPerson extends Person {
+    @optional(NestedPerson) public get partner() { return NestedPerson.optional() };
+}
 
 export function validateLength(minLength?: number, maxLength?: number): PrimitiveValidator<string> {
     return (value: string) => {
@@ -71,10 +78,10 @@ describe('Value objects', () => {
         expect(() => new IntValue(NaN)).toThrow();
         expect(() => new IntValue(Infinity)).toThrow();
 
-        expect(new IntValue(12)._peekCanonicalRepresentation().type).toBe('int');
+        expect(new IntValue(12)._peekCanonicalRepresentation().physicalType).toBe('int');
         expect(new IntValue(12)._peekCanonicalRepresentation().intValue).toBe(12);
-        expect(new IntValue(new IntCanonical(12)).value).toBe(12);
-        expect(() => new IntValue(new FloatCanonical(12))).toThrow();
+        expect(new IntValue(new IntCanonical(12, ['int'])).value).toBe(12);
+        expect(() => new IntValue(new FloatCanonical(12, ['int']))).toThrow();
     });
 
     test('float', () => {
@@ -86,10 +93,10 @@ describe('Value objects', () => {
         expect(() => new FloatValue(NaN)).toThrow();
         expect(() => new FloatValue(Infinity)).toThrow();
 
-        expect(new FloatValue(12.5)._peekCanonicalRepresentation().type).toBe('float');
+        expect(new FloatValue(12.5)._peekCanonicalRepresentation().physicalType).toBe('float');
         expect(new FloatValue(12.5)._peekCanonicalRepresentation().floatValue).toBeCloseTo(12.5, 5);
-        expect(new FloatValue(new FloatCanonical(12.5)).value).toBeCloseTo(12.5, 5);
-        expect(() => new FloatValue(new IntCanonical(12))).toThrow();
+        expect(new FloatValue(new FloatCanonical(12.5, ['float'])).value).toBeCloseTo(12.5, 5);
+        expect(() => new FloatValue(new IntCanonical(12, ['int']))).toThrow();
     });
 
     test('boolean', () => {
@@ -101,9 +108,9 @@ describe('Value objects', () => {
         expect(() => new BoolValue(0 as unknown as boolean)).toThrow();
         expect(() => new IntValue(undefined as unknown as number)).toThrow();
 
-        expect(new BoolValue(true)._peekCanonicalRepresentation().type).toBe('bool');
+        expect(new BoolValue(true)._peekCanonicalRepresentation().physicalType).toBe('bool');
         expect(new BoolValue(true)._peekCanonicalRepresentation().boolValue).toBe(true);
-        expect(new BoolValue(new BoolCanonical(true)).value).toBe(true);
+        expect(new BoolValue(new BoolCanonical(true, [])).value).toBe(true);
         expect(() => new BoolValue(new IntCanonical(1))).toThrow();
     });
 
@@ -114,7 +121,7 @@ describe('Value objects', () => {
         expect(() => new MomentValue('2024-06-18T17:00Z' as unknown as Date)).toThrow();
         expect(() => new MomentValue(undefined as unknown as Date)).toThrow();
 
-        expect(new MomentValue(DATE)._peekCanonicalRepresentation().type).toBe('moment');
+        expect(new MomentValue(DATE)._peekCanonicalRepresentation().physicalType).toBe('moment');
         expect(new MomentValue(DATE)._peekCanonicalRepresentation().momentValue.toISOString()).toBe(DATE.toISOString());
         expect(new MomentValue(new MomentCanonical(DATE)).value.toISOString()).toBe(DATE.toISOString());
         expect(() => new MomentValue(new IntCanonical(1))).toThrow();
@@ -123,28 +130,32 @@ describe('Value objects', () => {
     // TODO: Test string, binary, more structs and maps
 
     test('Struct', () => {
-        const struct = new Person({
+        /*const struct = new Person({
             ['first-name']: 'Jantje',
-            ['last-name']: 'DeBoer'
+            ['last-name']: 'DEBOER'
+        });*/
+        const struct = Person.from({
+            firstName: new FirstName('Jantje'),
+            lastName: new LastName('DEBOER'),
         });
         expect(struct.firstName.value).toBe('Jantje');
-        expect(struct.lastName?.value).toBe('DeBoer');
-
+        expect(struct.lastName?.value).toBe('DEBOER');
+        
         const struct2 = new Person(struct.extractSlots()) as Person;
         expect(struct2.firstName.value).toBe('Jantje');
-        expect(struct2.lastName?.value).toBe('DeBoer');
+        expect(struct2.lastName?.value).toBe('DEBOER');
         expect(() => struct.firstName).toThrow();
 
         const struct3 = new Person(struct2._peekCanonicalRepresentation());
         expect(struct3.firstName.value).toBe('Jantje');
-        expect(struct3.lastName?.value).toBe('DeBoer');
+        expect(struct3.lastName?.value).toBe('DEBOER');
     });
 
     test('Subclass', () => {
         const p2 = new PersonWithAge({
             ['first-name']: 'Jantje',
-            ['last-name']: 'DeBoer',
-            ['age']: 12
+            ['last-name']: 'DEBOER',
+            ['age']: 12,
         });
         expect(p2.firstName.value).toBe('Jantje');
         expect(p2.age.value).toBe(12);
@@ -187,7 +198,7 @@ describe('Value objects', () => {
             'first-name': value,
             'last-name': value,
         };
-        if (value.type === 'string' && value.stringValue === 'VALID') {
+        if (value.physicalType === 'string' && value.stringValue === 'VALID') {
             expect(new Person(input as any)).toBeDefined();
         } else {
             expect(() => new Person(input as any)).toThrow();

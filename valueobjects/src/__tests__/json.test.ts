@@ -1,6 +1,6 @@
 import { IntValue, PrimitiveValidator, stringv, StringValue, primitive } from '../valueobjects/primitive-valueobject';
 import { objectv, structv, StructValue } from '../valueobjects/struct-valueobject';
-import { CanonicalJsonSerializer, CanonicalJsonDeserializer } from '../json/canonical-json';
+import { CanonicalJsonSerializer, CanonicalJsonDeserializer } from '../json/canonical-json-2';
 
 export class TextValue extends StringValue {
     static DEF = 
@@ -61,6 +61,7 @@ describe('JSON', () => {
         const ser = new CanonicalJsonSerializer();
         const deser = new CanonicalJsonDeserializer();
         const json = ser.serialize(struct._peekCanonicalRepresentation());
+        console.log('JSON', json);
         const p2 = deser.deserialize(json, pwa) as PersonWithAge;
         expect(p2.firstName.value).toBe('Jantje');
         expect(p2.lastName?.value).toBe('DeBoer');

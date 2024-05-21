@@ -1,7 +1,7 @@
-import { BaseCanonical, ICanonical, ICanonicalSource, IMappingItem } from "./base";
+import { BaseCanonical, CanonicalLogicalTypes, ICanonical, ICanonicalSource, IMappingItem } from "./base";
 
 export class MapCanonical extends BaseCanonical {
-    constructor(private value: Map<string, ICanonical | ICanonicalSource>) { super('mapping'); }
+    constructor(private value: Map<string, ICanonical | ICanonicalSource>, logicalTypes: CanonicalLogicalTypes = []) { super('mapping', logicalTypes); }
     
     public get firstMappingItem(): IMappingItem | undefined {
         const entries = this.value.entries();
@@ -50,7 +50,7 @@ export function toCanonical(value: ICanonical | ICanonicalSource) {
 }
 
 export class DictCanonical extends BaseCanonical {
-    constructor(private value: {[key: string]: ICanonical}) { super('mapping'); }
+    constructor(private value: {[key: string]: ICanonical}, logicalTypes: CanonicalLogicalTypes = []) { super('mapping', logicalTypes); }
     
     public get firstMappingItem(): IMappingItem | undefined {
         const entries = Object.entries(this.value).values();

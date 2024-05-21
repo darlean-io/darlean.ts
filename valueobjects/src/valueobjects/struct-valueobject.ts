@@ -1,6 +1,6 @@
 import { ICanonical, ICanonicalSource } from "../canonical/base";
 import { MapCanonical } from "../canonical/mappings";
-import { IValueDef, IValueObject, CanonicalType, CanonicalFieldName, NativePrimitive, getValueObjectDef, isValueObject, IValueClass } from "./valueobject";
+import { IValueDef, IValueObject, CanonicalType, CanonicalFieldName, NativePrimitive, getValueObjectDef, isValueObject, IValueClass, deriveTypeName } from "./valueobject";
 
 export type UnknownFieldAction = 'keep' | 'ignore' | 'error';
 
@@ -12,6 +12,7 @@ export interface ISlotDef<TNative> {
     name: string;
     required: boolean;
     def: IValueDef<TNative>;
+    propName?: string;
 }
 
 export type NativeStruct = {[key: string]: ICanonical | IValueObject} | Map<string, ICanonical | IValueObject>;
@@ -26,9 +27,9 @@ export class StructDef implements IValueDef<NativeStruct> {
   private _strictFieldNames: boolean;
 
   // eslint-disable-next-line @typescript-eslint/ban-types
-  constructor(template: Function, type: CanonicalType, strictFieldNames = false) {
+  constructor(template: Function, type?: CanonicalType, strictFieldNames = false) {
     this._template = template;
-    this._types = [type];
+    this._types = [type ?? deriveTypeName(template.name)];
     this._slots = new Map();
     this._requiredSlots = [];
     this._strictFieldNames = strictFieldNames;
@@ -59,22 +60,22 @@ export class StructDef implements IValueDef<NativeStruct> {
     return this;
   }
 
-  public withRequiredField(name: CanonicalFieldName, def: IValueDef<NativeStruct | NativePrimitive> | IValueClass<unknown>): StructDef {
+  public withRequiredField(name: CanonicalFieldName, def: IValueDef<NativeStruct | NativePrimitive> | IValueClass<unknown>, propName?: string): StructDef {
     if (this._strictFieldNames) {
         validateStrictFieldName(name);
     }
     const def2 = (def as IValueClass<unknown>)?.DEF ?? def;
-    this._slots.set(name, { name, required: true, def: def2 });
+    this._slots.set(name, { name, required: true, def: def2, propName });
     this._requiredSlots.push(name);
     return this;
   }
 
-  public withOptionalField(name: CanonicalFieldName, def: IValueDef<NativeStruct | NativePrimitive> | IValueClass<unknown>): StructDef {
+  public withOptionalField(name: CanonicalFieldName, def: IValueDef<NativeStruct | NativePrimitive> | IValueClass<unknown>,propName?: string): StructDef {
     if (this._strictFieldNames) {
         validateStrictFieldName(name);
     }
     const def2 = (def as IValueClass<unknown>)?.DEF ?? def;
-    this._slots.set(name, { name, required: false, def: def2 });
+    this._slots.set(name, { name, required: false, def: def2, propName });
     return this;
   }
 
@@ -111,6 +112,10 @@ export class StructDef implements IValueDef<NativeStruct> {
     return this._unknownFieldAction;
   }
 
+  get template() {
+    return this._template;
+  }
+
   public construct(value:ICanonical): IValueObject {
     return Reflect.construct(this._template, [value]);
   }
@@ -126,6 +131,9 @@ export class StructDef implements IValueDef<NativeStruct> {
         const voDef = getValueObjectDef(vo);
         if (ourType && voDef.hasType(ourType)) {
             return vo;
+        } else
+        if (ourType) {
+            throw new Error(`Value object is not compatible with ${ourType}`);
         }
     }
     return this.construct(value as ICanonical)
@@ -133,16 +141,35 @@ export class StructDef implements IValueDef<NativeStruct> {
 }
 
 export class StructValue implements IValueObject, ICanonicalSource {
+    static DEF = struct(StructValue, undefined);
+
     private _slots?: Map<string, IValueObject | ICanonical>;
-    
+
+    static required<T extends typeof StructValue>(this: T): InstanceType<T> {
+        return undefined as unknown as InstanceType<T>; 
+    }
+
+    static optional<T extends typeof StructValue>(this: T): InstanceType<T> | undefined {
+        return undefined; 
+    }
+
+    static from<T extends typeof StructValue>(this: T, value: Partial<InstanceType<T>>): InstanceType<T> {
+        const v2: {[key: string]: unknown} = {};
+        for (const [k, v] of Object.entries(value)) {
+            v2[deriveTypeName(k)] = v;
+        }
+        return (this as unknown as IValueClass<unknown>).DEF.from(v2) as InstanceType<T>;
+    }
+
+
     constructor(value: ICanonical | NativeStruct) {
         const proto = (this.constructor as unknown as IStructValueClass);
-        this._slots = validateStruct(proto.DEF, value);
+        this._slots = validateStruct(proto.DEF, value, this);
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
         const slots = this._checkSlots();
-        return new MapCanonical(slots as unknown as Map<string, ICanonical | ICanonicalSource>);
+        return new MapCanonical(slots as unknown as Map<string, ICanonical | ICanonicalSource>, (Object.getPrototypeOf(this).constructor as IStructValueClass).DEF.types);
     }
 
     public extractSlots(): Map<string, ICanonical | IValueObject> {
@@ -151,11 +178,11 @@ export class StructValue implements IValueObject, ICanonicalSource {
         return slots;
     }
 
-    protected _req<T>(name: string): T {
+    public _req<T>(name: string): T {
         return this._checkSlots()?.get(name) as T;
     }
 
-    protected _opt<T>(name: string): T | undefined {
+    public _opt<T>(name: string): T | undefined {
         return this._checkSlots().get(name) as T | undefined;
     }
 
@@ -167,7 +194,7 @@ export class StructValue implements IValueObject, ICanonicalSource {
     }
 }
 
-function validateStruct(def: StructDef, input: ICanonical | NativeStruct): Map<string, IValueObject | ICanonical> {
+function validateStruct(def: StructDef, input: ICanonical | NativeStruct, target: unknown): Map<string, IValueObject | ICanonical> {
     const slots = new Map<string, IValueObject | ICanonical>();
 
     function addValue(key: string, value: ICanonical | IValueObject) {
@@ -179,6 +206,11 @@ function validateStruct(def: StructDef, input: ICanonical | NativeStruct): Map<s
         if (slotDef) {
             const instance = slotDef.def.from(value);
             slots.set(key, instance);
+            //if (slotDef.propName && target) {
+                //console.log('SETTING', target, slotDef.propName);
+                //Reflect.set(target, slotDef.propName, instance);
+                //console.log('SET', target, (target as any).firstName);
+            //}
         } else {
             switch (def.unknownFieldAction) {
                 case 'keep': slots.set(key, value); break;
@@ -212,7 +244,7 @@ function validateStruct(def: StructDef, input: ICanonical | NativeStruct): Map<s
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export function struct(template: Function, type: CanonicalType): StructDef {
+export function struct(template: Function, type?: CanonicalType): StructDef {
     const def = new StructDef(template, type);
     (template as unknown as IStructValueClass).DEF = def;
     return def;

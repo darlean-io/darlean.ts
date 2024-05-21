@@ -1,6 +1,6 @@
 import { ICanonical, ICanonicalSource } from "../canonical/base";
 import { BinaryCanonical, BoolCanonical, FloatCanonical, IntCanonical, MomentCanonical, NoneCanonical, StringCanonical } from "../canonical/primitives";
-import { NativePrimitive, IValueObject, IValueDef, CanonicalType, getValueObjectDef, isValueObject } from "./valueobject";
+import { NativePrimitive, IValueObject, IValueDef, CanonicalType, getValueObjectDef, isValueObject, deriveTypeName, IValueClass } from "./valueobject";
 
 export interface IPrimitiveValueClass<TNative extends NativePrimitive> {
     DEF: PrimitiveDef<TNative>;
@@ -10,10 +10,22 @@ export abstract class PrimitiveValue<TNative extends NativePrimitive> implements
     protected _value: TNative;
 
     constructor(value: TNative) {
-        const proto = (this.constructor as unknown as IPrimitiveValueClass<TNative>);
-        validatePrimitive(proto.DEF, value);
+        const constr = (this.constructor as unknown as IPrimitiveValueClass<TNative>);
+        validatePrimitive(constr.DEF, value);
         this._value = value;
     }
+
+    static required<T, X extends NativePrimitive>(this: new (value: X | ICanonical) => T): T {
+        return undefined as unknown as T; 
+    }
+
+    static optional<T, X extends NativePrimitive>(this: new (value: X | ICanonical) => T): T | undefined {
+        return undefined; 
+    }
+
+    //static optional<T extends typeof PrimitiveValue<NativePrimitive>>(this: T): InstanceType<T> | undefined {
+    //    return undefined; 
+    //}
 
     public get value() { return this._value }
 
@@ -31,9 +43,9 @@ export class PrimitiveDef<TNative extends NativePrimitive> implements IValueDef<
     private _template: Function;
 
     // eslint-disable-next-line @typescript-eslint/ban-types
-    constructor(template: Function, type: CanonicalType) {
+    constructor(template: Function, type?: CanonicalType) {
         this._template = template;
-        this._types = [type];
+        this._types = [type ?? deriveTypeName(template.name)];
         this._validators = [];
 
         const proto = Object.getPrototypeOf(template);
@@ -44,6 +56,7 @@ export class PrimitiveDef<TNative extends NativePrimitive> implements IValueDef<
 
     public get types() { return this._types; }
     public get validators() { return this._validators; }
+    public get template() { return this._template; }
 
     public withBase(base: IPrimitiveValueClass<TNative> | PrimitiveDef<TNative>): PrimitiveDef<TNative> {
         const base2 = (base instanceof PrimitiveDef) ? base : base.DEF;
@@ -68,14 +81,28 @@ export class PrimitiveDef<TNative extends NativePrimitive> implements IValueDef<
 
     public from(value: TNative | ICanonical | IValueObject): IValueObject {
         const vo = isValueObject(value);
+        const ourType = this._types.at(-1);
         if (vo) {
-            const ourType = this._types.at(-1);
             const voDef = getValueObjectDef(vo);
-            if (ourType && voDef.hasType(ourType)) {
-                return vo;
+            const incomingTypes = voDef.types;
+            if ((incomingTypes.length > 0) && (ourType)) {
+                if (!incomingTypes.includes(ourType)) {
+                    throw new Error(`Value object with type "${incomingTypes.join('.')}" is not compatible with "${ourType}"`);
+                }
             }
+            return vo;
+        } else
+        if ((value as ICanonical)?.logicalTypes) {
+            const incomingTypes = (value as ICanonical).logicalTypes;
+            if ((incomingTypes.length > 0) && (ourType)) {
+                if (!incomingTypes.includes(ourType)) {
+                    throw new Error(`Canonical object with type "${incomingTypes.join('.')}" is not compatible with "${ourType}"`);
+                }
+            }
+            return this.construct(value as ICanonical);
         }
-        return this.construct(value as TNative | ICanonical);
+
+        return this.construct(value as TNative);
     }
 
     public hasType(type: CanonicalType): boolean {
@@ -107,7 +134,7 @@ export function validatePrimitive<TNative extends NativePrimitive>(def: Primitiv
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export function primitive<TNative extends NativePrimitive>(template: Function, type: CanonicalType): PrimitiveDef<TNative> {
+export function primitive<TNative extends NativePrimitive>(template: Function, type?: CanonicalType): PrimitiveDef<TNative> {
     const def = new PrimitiveDef<TNative>(template, type);
     (template as unknown as IPrimitiveValueClass<TNative>).DEF = def;
     return def;
@@ -118,7 +145,7 @@ export const nonev = primitive<undefined>;
 export const intv = primitive<number>;
 export const floatv = primitive<number>;
 export const boolv = primitive<boolean>;
-export const binaryv = primitive<Uint8Array>;
+export const binaryv = primitive<Buffer>;
 export const momentv = primitive<Date>;
 
 /*// eslint-disable-next-line @typescript-eslint/ban-types
@@ -136,95 +163,119 @@ export class NoneValue extends PrimitiveValue<undefined> {
       .withValidator((value) => typeof value === 'undefined', 'Must be a undefined');
 
     constructor(value: undefined | ICanonical) {
-        super(typeof value === 'undefined' ? value : value.noneValue);
+        super(typeof value === 'undefined' ? value : value?.noneValue);
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new NoneCanonical();
+        return new NoneCanonical((Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
     }
 }
 
 export class StringValue extends PrimitiveValue<string> {
     static DEF = primitive<string>(StringValue, 'string')
-      .withValidator((value) => typeof value === 'string', 'Must be a string');
+      .withValidator((value) => typeof value === 'string' ? true : `Must be a string, not ${typeof value}`);
 
     constructor(value: string | ICanonical) {
-        super(typeof value === 'string' ? value : value.stringValue);
+        super(typeof value === 'string' ? value : value?.stringValue);
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new StringCanonical(this._value);
+        return new StringCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+    }
+
+    static from<T extends typeof StringValue>(this: T, value: string): InstanceType<T> {
+        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
     }
 }
 
 export class IntValue extends PrimitiveValue<number> {
     static DEF = primitive<number>(IntValue, 'int')
-      .withValidator((value) => typeof value === 'number', 'Must be a number')
+      .withValidator((value) => typeof value === 'number' ? true : `Must be a number, not ${typeof value}`)
       .withValidator((value) => Number.isInteger(value), 'Must be an integer');
 
     constructor(value: number | ICanonical) {
-        super(typeof value === 'number' ? value : value.intValue);
+        super(typeof value === 'number' ? value : value?.intValue);
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new IntCanonical(this._value);
+        return new IntCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+    }
+
+    static from<T extends typeof IntValue>(this: T, value: number): InstanceType<T> {
+        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
     }
 }
 
 export class FloatValue extends PrimitiveValue<number> {
     static DEF = primitive<number>(FloatValue, 'float')
-      .withValidator((value) => typeof value === 'number', 'Must be a number')
+      .withValidator((value) => typeof value === 'number' ? true : `Must be a number, not ${typeof value}`)
       .withValidator((value) => Number.isFinite(value), 'Must be finite')
       .withValidator((value) => !Number.isNaN(value), 'Must not be NaN');
       
     constructor(value: number | ICanonical) {
-        super(typeof value === 'number' ? value : value.floatValue);
+        super(typeof value === 'number' ? value : value?.floatValue);
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new FloatCanonical(this._value);
+        return new FloatCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+    }
+
+    static from<T extends typeof FloatValue>(this: T, value: number): InstanceType<T> {
+        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
     }
 }
 
 export class BoolValue extends PrimitiveValue<boolean> {
     static DEF = primitive<boolean>(BoolValue, 'bool')
-    .withValidator((value) => typeof value === 'boolean', 'Must be a boolean');
+    .withValidator((value) => typeof value === 'boolean' ? true : `Must be a boolean, not ${typeof value}`);
 
     constructor(value: boolean | ICanonical) {
-        super(typeof value === 'boolean' ? value : value.boolValue);
+        super(typeof value === 'boolean' ? value : value?.boolValue);
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new BoolCanonical(this._value);
+        return new BoolCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+    }
+
+    static from<T extends typeof BoolValue>(this: T, value: boolean): InstanceType<T> {
+        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
     }
 }
 
 export class MomentValue extends PrimitiveValue<Date> {
     static DEF = primitive<Date>(MomentValue, 'moment')
-    .withValidator((value) => value instanceof Date, 'Must be a Date')
+    .withValidator((value) => value instanceof Date ? true : `Must be a Date, not ${typeof value}`)
 
     constructor(value: Date | ICanonical) {
-        super(value instanceof Date ? value : value.momentValue);
+        super(value instanceof Date ? value : value?.momentValue);
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new MomentCanonical(this._value);
+        return new MomentCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+    }
+
+    static from<T extends typeof MomentValue>(this: T, value: Date): InstanceType<T> {
+        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
     }
 }
 
-export class BinaryValue extends PrimitiveValue<Uint8Array> {
-    static DEF = primitive<Uint8Array>(BinaryValue, 'binary')
-    .withValidator((value) => Array.isArray(value), 'Must be an array');
+export class BinaryValue extends PrimitiveValue<Buffer> {
+    static DEF = primitive<Buffer>(BinaryValue, 'binary')
+    .withValidator((value) => value instanceof Buffer ? true : `Must be a Buffer, not ${typeof value}`);
 
-    constructor(value: Uint8Array | ICanonical) {
-        if (Array.isArray(value)) {
-            super(value as Uint8Array);
+    constructor(value: Buffer | ICanonical) {
+        if (Buffer.isBuffer(value)) {
+            super(value);
         } else {
-            super((value as ICanonical).binaryValue);
+            super((value as ICanonical)?.binaryValue);
         }
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new BinaryCanonical(this._value);
+        return new BinaryCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+    }
+
+    static from<T extends typeof BinaryValue>(this: T, value: Buffer): InstanceType<T> {
+        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
     }
 }

@@ -1,7 +1,7 @@
-import { BaseCanonical, ICanonical, ISequenceItem } from "./base";
+import { BaseCanonical, CanonicalLogicalTypes, ICanonical, ISequenceItem } from "./base";
 
 export class ArrayCanonical extends BaseCanonical {
-    constructor(private value: ICanonical[]) { super('sequence'); }
+    constructor(private value: ICanonical[], logcalTypes: CanonicalLogicalTypes = []) { super('sequence', logcalTypes); }
     
     public get firstSequenceItem(): ISequenceItem | undefined {
         return this.getSequenceItem(0);
