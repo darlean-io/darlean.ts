@@ -1,18 +1,18 @@
-import { ICanonical } from '../canonical/base';
-import { DictCanonical, MapCanonical } from '../canonical/mappings';
-import { StringCanonical } from '../canonical/primitives';
-import { ArrayCanonical } from '../canonical/sequences';
+import { ICanonical } from '../canonical';
+import { DictCanonical, MapCanonical } from '../mappings';
+import { StringCanonical } from '../primitives';
+import { ArrayCanonical } from '../sequences';
 
 describe('Canonicals', () => {
     test('Basics', () => {
-        const str = new StringCanonical('Hello');
+        const str = StringCanonical.from('Hello');
         expect(() => str.binaryValue).toThrow();
         expect(str.stringValue).toBe('Hello');
     });
 
     test('Sequence from array', () => {
-        const value = [new StringCanonical('A'), new StringCanonical('B')];
-        const seq = new ArrayCanonical(value);
+        const value = [StringCanonical.from('A'), StringCanonical.from('B')];
+        const seq = ArrayCanonical.from(value);
         const items: string[] = [];
         let item = seq.firstSequenceItem;
         while (item) {
@@ -29,12 +29,12 @@ describe('Canonicals', () => {
 
     test('Mapping from map', () => {
         const value = new Map([
-            ['a', new StringCanonical('A')],
-            ['b', new StringCanonical('B')]
+            ['a', StringCanonical.from('A')],
+            ['b', StringCanonical.from('B')]
         ]);
-        const mapping = new MapCanonical(value);
+        const mapping = MapCanonical.from(value);
         const entries: string[] = [];
-        let entry = mapping.firstMappingItem;
+        let entry = mapping.firstMappingEntry;
         while (entry) {
             entries.push(entry.key);
             entries.push(entry.value.stringValue);
@@ -54,12 +54,12 @@ describe('Canonicals', () => {
 
     test('Mapping from dict', () => {
         const value = {
-            a: new StringCanonical('A'),
-            b: new StringCanonical('B')
+            a: StringCanonical.from('A'),
+            b: StringCanonical.from('B')
         };
-        const mapping = new DictCanonical(value);
+        const mapping = DictCanonical.from(value);
         const entries: string[] = [];
-        let entry = mapping.firstMappingItem;
+        let entry = mapping.firstMappingEntry;
         while (entry) {
             entries.push(entry.key);
             entries.push(entry.value.stringValue);

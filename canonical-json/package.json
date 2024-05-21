@@ -1,7 +1,7 @@
 {
-  "name": "@darlean/valueobjects",
+  "name": "@darlean/canonical-json",
   "version": "2.0.0-alpha.1",
-  "description": "Library for DDD-like value objects that can be validated, serialized and represented in other programming languages as native objects with native naming.",
+  "description": "Library to (de)serialize canonical value objects from/to JSON.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
@@ -14,19 +14,20 @@
     "prepublish": "npm run build",
     "prepublishOnly": "npm run build && npm test && npm run lint",
     "preversion": "npm run format && npm install && npm run lint && npm run build && npm test",
-    "version": "git add -A src && git add package.json && git add ../package-lock.json && git -C .. tag valueobjects-%npm_package_version%",
-    "postversion": "git commit -m \"Version upgrade to valueobjects-%npm_package_version%\" && git push && git push --tags",
+    "version": "git add -A src && git add package.json && git add ../package-lock.json && git -C .. tag canonical-json-%npm_package_version%",
+    "postversion": "git commit -m \"Version upgrade to canonical-json-%npm_package_version%\" && git push && git push --tags",
     "precommit": "npm run format && npm run lint && npm run build",
     "npm:version:alpha": "npm version prerelease --preid=alpha --git-tag-version=false",
     "npm:publish": "npm publish --access=public",
     "doc": "npx typedoc --skipErrorChecking --json typedoc-out.json &  npx docgen typedoc-out.json ./docs/"
   },
   "keywords": [
+    "Canonical",
+    "JSON",
+    "Serialization",
     "Valueobject",
     "DDD",
-    "Domain Driven Design",
-    "Value",
-    "Object"
+    "Domain Driven Design"
   ],
   "author": "Theo van der Donk",
   "license": "Apache-2.0",
@@ -52,8 +53,5 @@
   "typedoc": {
     "entryPoint": "./src/index.ts",
     "tsconfig": "./tsconfig.json"
-  },
-  "dependencies": {
-    "@darlean/canonical": "^2.0.0-alpha.1"
   }
 }

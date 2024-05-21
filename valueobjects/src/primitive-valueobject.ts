@@ -1,5 +1,4 @@
-import { ICanonical, ICanonicalSource } from "../canonical/base";
-import { BinaryCanonical, BoolCanonical, FloatCanonical, IntCanonical, MomentCanonical, NoneCanonical, StringCanonical } from "../canonical/primitives";
+import { BinaryCanonical, BoolCanonical, FloatCanonical, ICanonical, ICanonicalSource, IntCanonical, MomentCanonical, NoneCanonical, StringCanonical } from "@darlean/canonical";
 import { NativePrimitive, IValueObject, IValueDef, CanonicalType, getValueObjectDef, isValueObject, deriveTypeName, IValueClass } from "./valueobject";
 
 export interface IPrimitiveValueClass<TNative extends NativePrimitive> {
@@ -167,7 +166,7 @@ export class NoneValue extends PrimitiveValue<undefined> {
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new NoneCanonical((Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+        return NoneCanonical.from((Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
     }
 }
 
@@ -180,7 +179,7 @@ export class StringValue extends PrimitiveValue<string> {
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new StringCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+        return StringCanonical.from(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
     }
 
     static from<T extends typeof StringValue>(this: T, value: string): InstanceType<T> {
@@ -198,7 +197,7 @@ export class IntValue extends PrimitiveValue<number> {
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new IntCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+        return IntCanonical.from(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
     }
 
     static from<T extends typeof IntValue>(this: T, value: number): InstanceType<T> {
@@ -217,7 +216,7 @@ export class FloatValue extends PrimitiveValue<number> {
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new FloatCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+        return FloatCanonical.from(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
     }
 
     static from<T extends typeof FloatValue>(this: T, value: number): InstanceType<T> {
@@ -234,7 +233,7 @@ export class BoolValue extends PrimitiveValue<boolean> {
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new BoolCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+        return BoolCanonical.from(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
     }
 
     static from<T extends typeof BoolValue>(this: T, value: boolean): InstanceType<T> {
@@ -251,7 +250,7 @@ export class MomentValue extends PrimitiveValue<Date> {
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new MomentCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+        return MomentCanonical.from(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
     }
 
     static from<T extends typeof MomentValue>(this: T, value: Date): InstanceType<T> {
@@ -272,7 +271,7 @@ export class BinaryValue extends PrimitiveValue<Buffer> {
     }
 
     public _peekCanonicalRepresentation(): ICanonical {
-        return new BinaryCanonical(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
+        return BinaryCanonical.from(this._value, (Object.getPrototypeOf(this).constructor as IPrimitiveValueClass<undefined>).DEF.types);
     }
 
     static from<T extends typeof BinaryValue>(this: T, value: Buffer): InstanceType<T> {

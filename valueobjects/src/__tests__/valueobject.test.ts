@@ -1,8 +1,8 @@
-import { BoolCanonical, FloatCanonical, IntCanonical, MomentCanonical, NoneCanonical, StringCanonical } from '../canonical/primitives';
-import { BoolValue, FloatValue, IntValue, MomentValue, PrimitiveValidator, stringv, StringValue, primitive } from '../valueobjects/primitive-valueobject';
-import { StructValue, objectv } from '../valueobjects/struct-valueobject';
-import { optional, required, stringvalidation, req, opt } from '../valueobjects/decorators';
-import { discriminator } from '../valueobjects/valueobject';
+import { BoolValue, FloatValue, IntValue, MomentValue, PrimitiveValidator, stringv, StringValue, primitive } from '../primitive-valueobject';
+import { StructValue, objectv } from '../struct-valueobject';
+import { optional, required, stringvalidation, req, opt } from '../decorators';
+import { discriminator } from '../valueobject';
+import { BoolCanonical, FloatCanonical, IntCanonical, MomentCanonical, NoneCanonical, StringCanonical } from '@darlean/canonical';
 
 export class TextValue extends StringValue {
     static DEF = 
@@ -80,8 +80,8 @@ describe('Value objects', () => {
 
         expect(new IntValue(12)._peekCanonicalRepresentation().physicalType).toBe('int');
         expect(new IntValue(12)._peekCanonicalRepresentation().intValue).toBe(12);
-        expect(new IntValue(new IntCanonical(12, ['int'])).value).toBe(12);
-        expect(() => new IntValue(new FloatCanonical(12, ['int']))).toThrow();
+        expect(new IntValue(IntCanonical.from(12, ['int'])).value).toBe(12);
+        expect(() => new IntValue(FloatCanonical.from(12, ['int']))).toThrow();
     });
 
     test('float', () => {
@@ -95,8 +95,8 @@ describe('Value objects', () => {
 
         expect(new FloatValue(12.5)._peekCanonicalRepresentation().physicalType).toBe('float');
         expect(new FloatValue(12.5)._peekCanonicalRepresentation().floatValue).toBeCloseTo(12.5, 5);
-        expect(new FloatValue(new FloatCanonical(12.5, ['float'])).value).toBeCloseTo(12.5, 5);
-        expect(() => new FloatValue(new IntCanonical(12, ['int']))).toThrow();
+        expect(new FloatValue(FloatCanonical.from(12.5, ['float'])).value).toBeCloseTo(12.5, 5);
+        expect(() => new FloatValue(IntCanonical.from(12, ['int']))).toThrow();
     });
 
     test('boolean', () => {
@@ -110,8 +110,8 @@ describe('Value objects', () => {
 
         expect(new BoolValue(true)._peekCanonicalRepresentation().physicalType).toBe('bool');
         expect(new BoolValue(true)._peekCanonicalRepresentation().boolValue).toBe(true);
-        expect(new BoolValue(new BoolCanonical(true, [])).value).toBe(true);
-        expect(() => new BoolValue(new IntCanonical(1))).toThrow();
+        expect(new BoolValue(BoolCanonical.from(true, [])).value).toBe(true);
+        expect(() => new BoolValue(IntCanonical.from(1))).toThrow();
     });
 
     test('moment', () => {
@@ -123,8 +123,8 @@ describe('Value objects', () => {
 
         expect(new MomentValue(DATE)._peekCanonicalRepresentation().physicalType).toBe('moment');
         expect(new MomentValue(DATE)._peekCanonicalRepresentation().momentValue.toISOString()).toBe(DATE.toISOString());
-        expect(new MomentValue(new MomentCanonical(DATE)).value.toISOString()).toBe(DATE.toISOString());
-        expect(() => new MomentValue(new IntCanonical(1))).toThrow();
+        expect(new MomentValue(MomentCanonical.from(DATE)).value.toISOString()).toBe(DATE.toISOString());
+        expect(() => new MomentValue(IntCanonical.from(1))).toThrow();
     });
 
     // TODO: Test string, binary, more structs and maps
@@ -186,13 +186,13 @@ describe('Value objects', () => {
     });
 
     it.each([
-        new StringCanonical('VALID'),
-        new NoneCanonical(),
-        new BoolCanonical(true),
-        new BoolCanonical(false),
-        new IntCanonical(42),
-        new FloatCanonical(-12.3),
-        new StringCanonical('no-capitals'),
+        StringCanonical.from('VALID'),
+        NoneCanonical.from(),
+        BoolCanonical.from(true),
+        BoolCanonical.from(false),
+        IntCanonical.from(42),
+         FloatCanonical.from(-12.3),
+         StringCanonical.from('no-capitals'),
     ])('Struct should validate all members for %s using embedded canonicals', (value) => {
         const input = {
             'first-name': value,
@@ -208,8 +208,8 @@ describe('Value objects', () => {
     it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
         'Struct should validate all members for %s using embedded canonical of correct type with incorrect inner value', (value) => {
         const input = {
-            'first-name': new StringCanonical(value as unknown as string),
-            'last-name': new StringCanonical(value as unknown as string),
+            'first-name': StringCanonical.from(value as unknown as string),
+            'last-name': StringCanonical.from(value as unknown as string),
         };
         if (value === 'VALID') {
             expect(new Person(input as any)).toBeDefined();
@@ -221,8 +221,8 @@ describe('Value objects', () => {
     it.each([undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
         'Struct should validate all members for %s using embedded canonical of incorrect type with incorrect inner value', (value) => {
         const input = {
-            'first-name': new IntCanonical(value as unknown as number),
-            'last-name': new IntCanonical(value as unknown as number),
+            'first-name': IntCanonical.from(value as unknown as number),
+            'last-name': IntCanonical.from(value as unknown as number),
         };
         if (value === 'VALID') {
             expect(new Person(input as any)).toBeDefined();
@@ -233,15 +233,15 @@ describe('Value objects', () => {
 
     it('Struct should reject None even for optional fields (optional fields should simply not be present)', () => {
         const input = {
-            'first-name': new StringCanonical('Jantje'),
-            'last-name': new NoneCanonical(),
+            'first-name': StringCanonical.from('Jantje'),
+            'last-name': NoneCanonical.from(),
         };
         expect(() => new Person(input)).toThrow();
     });
 
     it('Struct should accept optional fields that are not present', () => {
         const input = {
-            'first-name': new StringCanonical('Jantje')
+            'first-name': StringCanonical.from('Jantje')
         };
         const p = new Person(input);
         expect(p.lastName).toBeUndefined;

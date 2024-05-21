@@ -1,5 +1,4 @@
-import { ICanonical, ICanonicalSource } from "../canonical/base";
-import { MapCanonical } from "../canonical/mappings";
+import { ICanonical, ICanonicalSource, MapCanonical } from "@darlean/canonical";
 import { IValueDef, IValueObject, CanonicalType, CanonicalFieldName, NativePrimitive, getValueObjectDef, isValueObject, IValueClass, deriveTypeName } from "./valueobject";
 
 export type UnknownFieldAction = 'keep' | 'ignore' | 'error';
@@ -169,7 +168,7 @@ export class StructValue implements IValueObject, ICanonicalSource {
 
     public _peekCanonicalRepresentation(): ICanonical {
         const slots = this._checkSlots();
-        return new MapCanonical(slots as unknown as Map<string, ICanonical | ICanonicalSource>, (Object.getPrototypeOf(this).constructor as IStructValueClass).DEF.types);
+        return MapCanonical.from(slots as unknown as Map<string, ICanonical | ICanonicalSource>, (Object.getPrototypeOf(this).constructor as IStructValueClass).DEF.types);
     }
 
     public extractSlots(): Map<string, ICanonical | IValueObject> {
@@ -219,13 +218,13 @@ function validateStruct(def: StructDef, input: ICanonical | NativeStruct, target
         }
     }
 
-    if ((input as ICanonical).firstMappingItem) {
-        let item = (input as ICanonical).firstMappingItem;
-        while (item) {
-            const key = item.key;
-            const value = item.value;
+    if ((input as ICanonical).firstMappingEntry) {
+        let entry = (input as ICanonical).firstMappingEntry;
+        while (entry) {
+            const key = entry.key;
+            const value = entry.value;
             addValue(key, value);
-            item = item.next();
+            entry = entry.next();
         }
     } else {
         const slotIterator = (input instanceof Map) ? input.entries() : Object.entries(input);

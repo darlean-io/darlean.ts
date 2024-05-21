@@ -1,4 +1,4 @@
-import { ICanonical } from "../canonical/base";
+import { ICanonical } from "@darlean/canonical";
 
 export type CanonicalFieldName = string;
 export type CanonicalType = string;

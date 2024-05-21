@@ -1,49 +1,9 @@
-export type CanonicalPhysicalType = 'none' | 'bool' | 'int' | 'float' | 'string' | 'moment' | 'binary' | 'sequence' | 'mapping';
-export type CanonicalLogicalType = string;
-// Most generic type first
-export type CanonicalLogicalTypes = CanonicalLogicalType[];
+import { CanonicalLogicalTypes, CanonicalPhysicalType, ICanonical, IMappingEntry, ISequenceItem } from "./canonical";
 
 /**
- * Represents an object (typically a value object) than can be represented as a canonical value.
+ * BaseCanonical is a base class for specific subtypes of ICanonical implementations. It should not be
+ * instantiated directly.
  */
-export interface ICanonicalSource {
-    /**
-     * For use by the framework. Returns the internal canonical value. The returned value may not be modified, as that would
-     * harm the integrity of the value object. The main purpose for peeking is to be able to serialize the value object.
-     */
-    _peekCanonicalRepresentation(): ICanonical;
-}
-
-export interface ISequenceItem {
-    get value(): ICanonical;
-    next: () => ISequenceItem | undefined;
-}
-
-export interface IMappingItem {
-    get key(): string;
-    get value(): ICanonical;
-    next: () => IMappingItem | undefined;
-}
-
-export interface ICanonical {
-    get physicalType(): CanonicalPhysicalType;
-    get logicalTypes(): CanonicalLogicalType[];
-
-    get noneValue(): undefined;
-    get boolValue(): boolean;
-    get intValue(): number;
-    get floatValue(): number;
-    get stringValue(): string;
-    get momentValue(): Date;
-    get binaryValue(): Buffer;
-    get firstSequenceItem(): ISequenceItem | undefined;
-    get firstMappingItem(): IMappingItem | undefined;
-
-    asArray(): ICanonical[];
-    asMap(): Map<string, ICanonical>;
-    asDict(): {[key: string]: ICanonical};
-}
-
 export class BaseCanonical implements ICanonical {
     protected _physicalType: CanonicalPhysicalType = 'none';
     protected _logicalTypes: CanonicalLogicalTypes;
@@ -93,7 +53,7 @@ export class BaseCanonical implements ICanonical {
         throw new Error(`The canonical value with type "${this._physicalType}" is not a sequence`);
     }
 
-    public get firstMappingItem(): IMappingItem | undefined {
+    public get firstMappingEntry(): IMappingEntry | undefined {
         throw new Error(`The canonical value with type "${this._physicalType}" is not a mapping`);
     }
 
