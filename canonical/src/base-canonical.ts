@@ -1,4 +1,4 @@
-import { CanonicalLogicalTypes, CanonicalPhysicalType, ICanonical, IMappingEntry, ISequenceItem } from "./canonical";
+import { CanonicalLogicalTypes, CanonicalPhysicalType, ICanonical, IMappingEntry, ISequenceItem } from './canonical';
 
 /**
  * BaseCanonical is a base class for specific subtypes of ICanonical implementations. It should not be
@@ -60,12 +60,12 @@ export class BaseCanonical implements ICanonical {
     public asArray(): ICanonical[] {
         throw new Error(`The canonical value with type "${this._physicalType}" is not a sequence`);
     }
-    
+
     public asMap(): Map<string, ICanonical> {
         throw new Error(`The canonical value with type "${this._physicalType}" is not a mapping`);
     }
-    
-    public asDict(): {[key: string]: ICanonical} {
+
+    public asDict(): { [key: string]: ICanonical } {
         throw new Error(`The canonical value with type "${this._physicalType}" is not a mapping`);
     }
 }
