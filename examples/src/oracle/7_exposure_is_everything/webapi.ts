@@ -1,7 +1,8 @@
 import { action, ActorSuite, IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 import * as htmlEntities from 'html-entities';
-import { JsonRequestParser, JsonResponseEncoder, StaticFileHandler, Request, Response } from '@darlean/webservices';
+import { JsonRequestParser, JsonResponseEncoder, StaticFileHandler, WebRequest } from '@darlean/webservices';
+import { WebResponse } from '@darlean/webservices';
 
 export const WEB_API_SERVICE = 'WebApiService';
 
@@ -40,7 +41,7 @@ export class WebApiService {
 
     @action({ locking: 'shared' })
     public async ask(req: IWebGatewayRequest): Promise<IWebGatewayResponse> {
-        const resp = new Response(req);
+        const resp = new WebResponse(req);
         const topic = req.placeholders?.['*'];
         const question = req.searchParams?.question[0];
         if (!topic) {
@@ -65,8 +66,8 @@ export class WebApiService {
 
     @action({ locking: 'exclusive' })
     public async teach(req: IWebGatewayRequest): Promise<IWebGatewayResponse> {
-        const r = new Request(req);
-        const resp = new Response(req);
+        const r = new WebRequest(req);
+        const resp = r.response();
 
         const teachReq = await this.teachDecoder.parse(r);
 

@@ -39,7 +39,8 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
                         name: gatewaycfg.id ?? 'default',
                         port: gatewaycfg.port ?? 80,
                         handlers: [],
-                        keepAliveTimeout: gatewaycfg.keepAliveTimeout ?? config.keepAliveTimeout ?? DEFAULT_KEEPALIVETIMEOUT
+                        keepAliveTimeout: gatewaycfg.keepAliveTimeout ?? config.keepAliveTimeout ?? DEFAULT_KEEPALIVETIMEOUT,
+                        maxContentLength: gatewaycfg.maxContentLength
                     };
                     for (const handler of gatewaycfg.handlers ?? []) {
                         const actorType = handler.actorType ?? gatewaycfg.actorType;
@@ -65,7 +66,8 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
                                 }
                             },
                             flow: handler.flow,
-                            placeholders: handler.placeholders
+                            placeholders: handler.placeholders,
+                            maxContentLength: handler.maxContentLength
                         };
                         cfg.handlers?.push(h);
                     }
@@ -95,7 +97,8 @@ export function createWebGatewaysSuiteFromConfig(config: IConfigEnv<IWebGateways
                 actorId: gateway.actorId,
                 actorType: gateway.actorType,
                 handlers: gateway.handlers,
-                keepAliveTimeout: gateway.keepAliveTimeout
+                keepAliveTimeout: gateway.keepAliveTimeout,
+                maxContentLength: gateway.maxContentLength
             });
 
             first = false;

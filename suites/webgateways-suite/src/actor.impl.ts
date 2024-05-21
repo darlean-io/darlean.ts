@@ -13,6 +13,7 @@ export interface IHandler {
     action: (req: IWebGatewayRequest) => Promise<IWebGatewayResponse>;
     placeholders?: string[];
     flow?: IGatewayFlowCfg;
+    maxContentLength?: number;
 }
 
 export interface IGateway {
@@ -20,6 +21,7 @@ export interface IGateway {
     port: number;
     handlers: IHandler[];
     keepAliveTimeout: number;
+    maxContentLength?: number;
 }
 
 export class WebGatewayActor implements IActivatable, IDeactivatable {
@@ -107,9 +109,11 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
                 for await (const data of req) {
                     const buf = data as Buffer;
                     len += buf.length;
-                    if (len > MAX_BODY_LENGTH) {
+                    const maxContentLength = handler.maxContentLength ?? this.config.maxContentLength ?? MAX_BODY_LENGTH;
+                    if (len > maxContentLength) {
                         res.statusCode = 413;
                         res.statusMessage = 'Payload too large';
+                        res.end();
                         return;
                     }
                     buffers.push(data);
