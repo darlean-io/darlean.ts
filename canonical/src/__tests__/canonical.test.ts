@@ -76,5 +76,4 @@ describe('Canonicals', () => {
         expect(dict['a'].stringValue).toBe('A');
         expect(dict['b'].stringValue).toBe('B');
     });
-
 });

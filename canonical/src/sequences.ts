@@ -1,9 +1,11 @@
-import { BaseCanonical } from "./base-canonical";
-import { CanonicalLogicalTypes, ICanonical, ISequenceItem } from "./canonical";
+import { BaseCanonical } from './base-canonical';
+import { CanonicalLogicalTypes, ICanonical, ISequenceItem } from './canonical';
 
 export class ArrayCanonical extends BaseCanonical {
-    private constructor(private value: ICanonical[], logcalTypes: CanonicalLogicalTypes = []) { super('sequence', logcalTypes); }
-    
+    private constructor(private value: ICanonical[], logcalTypes: CanonicalLogicalTypes = []) {
+        super('sequence', logcalTypes);
+    }
+
     public get firstSequenceItem(): ISequenceItem | undefined {
         return this.getSequenceItem(0);
     }
@@ -12,7 +14,7 @@ export class ArrayCanonical extends BaseCanonical {
         return this.value;
     }
 
-    public static from(value: ICanonical[], logcalTypes: CanonicalLogicalTypes = []) { 
+    public static from(value: ICanonical[], logcalTypes: CanonicalLogicalTypes = []) {
         return new ArrayCanonical(value, logcalTypes);
     }
 
@@ -23,6 +25,6 @@ export class ArrayCanonical extends BaseCanonical {
         return {
             next: () => this.getSequenceItem(idx + 1),
             value: this.value[idx]
-        }
+        };
     }
 }

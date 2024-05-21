@@ -45,5 +45,5 @@ export interface ICanonical {
 
     asArray(): ICanonical[];
     asMap(): Map<string, ICanonical>;
-    asDict(): {[key: string]: ICanonical};
+    asDict(): { [key: string]: ICanonical };
 }
