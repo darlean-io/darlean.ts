@@ -214,10 +214,7 @@ export class StructValue implements IValueObject, ICanonicalSource {
     }
 }
 
-function validateStruct(
-    def: StructDef,
-    input: ICanonical | NativeStruct,
-): Map<string, IValueObject | ICanonical> {
+function validateStruct(def: StructDef, input: ICanonical | NativeStruct): Map<string, IValueObject | ICanonical> {
     const slots = new Map<string, IValueObject | ICanonical>();
 
     function addValue(key: string, value: ICanonical | IValueObject) {
