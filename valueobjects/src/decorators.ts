@@ -1,6 +1,6 @@
 import { IPrimitiveValueClass, PrimitiveValidator, stringv } from './primitive-valueobject';
 import { IStructValueClass, NativeStruct, StructValue, structv } from './struct-valueobject';
-import { CanonicalFieldName, CanonicalType, IValueClass, IValueDef, NativePrimitive, deriveTypeName } from './valueobject';
+import { CanonicalFieldName, IValueClass, IValueDef, NativePrimitive, deriveTypeName } from './valueobject';
 
 export function stringvalidation(validator: PrimitiveValidator<string>, description?: string) {
     // eslint-disable-next-line @typescript-eslint/ban-types
@@ -18,6 +18,7 @@ export function required(
     fieldName?: CanonicalFieldName
 ) {
     // eslint-disable-next-line @typescript-eslint/ban-types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return function (prototype: any, name: string, descriptor: PropertyDescriptor): void {
         const constr = prototype.constructor;
         let def = (constr as unknown as IStructValueClass).DEF;
@@ -38,6 +39,7 @@ export function optional(
     fieldName?: CanonicalFieldName
 ) {
     // eslint-disable-next-line @typescript-eslint/ban-types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return function (prototype: any, name: string, descriptor: PropertyDescriptor): void {
         const constr = prototype.constructor;
         let def = (constr as unknown as IStructValueClass).DEF;

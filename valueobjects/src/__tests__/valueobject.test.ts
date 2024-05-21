@@ -8,8 +8,8 @@ import {
     StringValue,
     primitive
 } from '../primitive-valueobject';
-import { StructValue, objectv } from '../struct-valueobject';
-import { optional, required, stringvalidation, req, opt } from '../decorators';
+import { StructValue } from '../struct-valueobject';
+import { optional, required, stringvalidation } from '../decorators';
 import { discriminator } from '../valueobject';
 import { BoolCanonical, FloatCanonical, IntCanonical, MomentCanonical, NoneCanonical, StringCanonical } from '@darlean/canonical';
 
@@ -191,8 +191,10 @@ describe('Value objects', () => {
                 'last-name': value
             };
             if (value === 'VALID') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 expect(new Person(input as any)).toBeDefined();
             } else {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 expect(() => new Person(input as any)).toThrow();
             }
         }
@@ -206,8 +208,10 @@ describe('Value objects', () => {
                 ['last-name', value]
             ]);
             if (value === 'VALID') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 expect(new Person(input as any)).toBeDefined();
             } else {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 expect(() => new Person(input as any)).toThrow();
             }
         }
@@ -227,8 +231,10 @@ describe('Value objects', () => {
             'last-name': value
         };
         if (value.physicalType === 'string' && value.stringValue === 'VALID') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             expect(new Person(input as any)).toBeDefined();
         } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             expect(() => new Person(input as any)).toThrow();
         }
     });
@@ -241,8 +247,10 @@ describe('Value objects', () => {
                 'last-name': StringCanonical.from(value as unknown as string)
             };
             if (value === 'VALID') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 expect(new Person(input as any)).toBeDefined();
             } else {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 expect(() => new Person(input as any)).toThrow();
             }
         }
@@ -256,8 +264,10 @@ describe('Value objects', () => {
                 'last-name': IntCanonical.from(value as unknown as number)
             };
             if (value === 'VALID') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 expect(new Person(input as any)).toBeDefined();
             } else {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 expect(() => new Person(input as any)).toThrow();
             }
         }
