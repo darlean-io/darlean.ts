@@ -19,6 +19,15 @@
 			"path": "utils"
 		},
 		{
+			"path": "canonical"
+		},
+		{
+			"path": "canonical-json"
+		},
+		{
+			"path": "valueobjects"
+		},
+		{
 			"path": "webservices"
 		},
 		{
