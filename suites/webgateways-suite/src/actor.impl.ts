@@ -42,7 +42,7 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
         });
         server.keepAliveTimeout = config.keepAliveTimeout;
         this.server = server;
-        this.close = graceful(server)
+        this.close = graceful(server);
     }
 
     public async activate(): Promise<void> {
