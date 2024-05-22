@@ -4,6 +4,9 @@ import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import url from 'url';
 import querystring from 'querystring';
 import { IGatewayFlowCfg } from './intf';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import graceful from 'graceful-http';
 
 const MAX_BODY_LENGTH = 100 * 1000;
 
@@ -28,6 +31,7 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
     protected server: Server;
     protected config: IGateway;
     protected port?: number;
+    private close: () => void;
 
     constructor(config: IGateway) {
         this.config = config;
@@ -38,6 +42,7 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
         });
         server.keepAliveTimeout = config.keepAliveTimeout;
         this.server = server;
+        this.close = graceful(server)
     }
 
     public async activate(): Promise<void> {
@@ -52,14 +57,10 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
 
     public async deactivate(): Promise<void> {
         if (this.port) {
-            await new Promise<void>((resolve, error) => {
-                this.server.close((err) => {
-                    if (err) {
-                        error(err);
-                    }
-                    resolve();
-                });
-            });
+            // When calling server.close or even server.closeAllConnections, connections with keep-alive open
+            // (for example, those when used for long-polling) are not actively ended. See https://github.com/nodejs/node/issues/2642.
+            // The graceful-http library solves this.
+            this.close();
         }
         notifier().info('io.darlean.webgateways.StoppedListening', 'Web gateway [Name] stopped listening on port [Port]', () => ({
             Name: this.config.name,

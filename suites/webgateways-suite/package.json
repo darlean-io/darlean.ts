@@ -62,6 +62,7 @@
   },
   "dependencies": {
     "@darlean/base": "^2.0.0-alpha.17",
-    "@darlean/utils": "^2.0.0-alpha.0"
+    "@darlean/utils": "^2.0.0-alpha.0",
+    "graceful-http": "^1.0.1"
   }
 }
