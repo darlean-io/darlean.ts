@@ -6,12 +6,34 @@ import {
     PrimitiveValidator,
     stringv,
     StringValue,
-    primitive
+    primitive,
+    BinaryValue
 } from '../primitive-valueobject';
-import { StructValue } from '../struct-valueobject';
-import { optional, required, stringvalidation } from '../decorators';
-import { discriminator } from '../valueobject';
-import { BoolCanonical, FloatCanonical, IntCanonical, MomentCanonical, NoneCanonical, StringCanonical } from '@darlean/canonical';
+import { ObjectValue } from '../struct-valueobject';
+import {
+    binaryvalue,
+    boolvalue,
+    floatvalue,
+    intvalidation,
+    intvalue,
+    momentvalue,
+    objectvalue,
+    stringvalidation,
+    stringvalue,
+    typedarrayvalue
+} from '../decorators';
+import { discriminative } from '../valueobject';
+import {
+    ArrayCanonical,
+    BoolCanonical,
+    DictCanonical,
+    FloatCanonical,
+    IntCanonical,
+    MomentCanonical,
+    NoneCanonical,
+    StringCanonical
+} from '@darlean/canonical';
+import { ArrayValue } from '../array-valueobject';
 
 export class TextValue extends StringValue {
     static DEF = primitive<string>(TextValue, 'text').withValidator(
@@ -21,44 +43,42 @@ export class TextValue extends StringValue {
 }
 
 export class NamePart extends TextValue {
-    NamePart: discriminator;
+    NamePart: discriminative;
 }
 stringv(NamePart, 'name-part').withValidator(validateLength(2));
 
 export class FirstName extends NamePart {
-    FirstName: discriminator;
+    FirstName: discriminative;
 }
 stringv(FirstName).withValidator((value) => value.toLowerCase() !== value, 'Must have at least one uppercase character');
 
 @stringvalidation((value) => value === value.toUpperCase(), 'Must be all uppercase')
 export class LastName extends NamePart {
-    LastName: discriminator;
+    LastName: discriminative;
 }
 
-export class Person extends StructValue {
-    Person: discriminator;
-    @required(FirstName) public get firstName() {
+@objectvalue()
+export class Person extends ObjectValue {
+    person: discriminative;
+
+    public get firstName() {
         return FirstName.required();
     }
-    @optional(LastName) public get lastName() {
+    public get lastName() {
         return LastName.optional();
     }
 }
-/*objectv(Person, 'person')
-    .withRequiredField('first-name', FirstName.DEF)
-    .withOptionalField('last-name', LastName.DEF)*/
 
+@objectvalue()
 export class PersonWithAge extends Person {
-    //public get age() { return this._req<IntValue>('age'); }
-    @required(IntValue) public get age() {
+    public get age() {
         return IntValue.required();
     }
 }
-//objectv(PersonWithAge, 'person-with-age')
-//    .withRequiredField('age', IntValue);
 
+@objectvalue()
 export class NestedPerson extends Person {
-    @optional(NestedPerson) public get partner() {
+    public get partner() {
         return NestedPerson.optional();
     }
 }
@@ -152,10 +172,6 @@ describe('Value objects', () => {
     // TODO: Test string, binary, more structs and maps
 
     test('Struct', () => {
-        /*const struct = new Person({
-            ['first-name']: 'Jantje',
-            ['last-name']: 'DEBOER'
-        });*/
         const struct = Person.from({
             firstName: new FirstName('Jantje'),
             lastName: new LastName('DEBOER')
@@ -163,7 +179,7 @@ describe('Value objects', () => {
         expect(struct.firstName.value).toBe('Jantje');
         expect(struct.lastName?.value).toBe('DEBOER');
 
-        const struct2 = new Person(struct.extractSlots()) as Person;
+        const struct2 = Person.fromSlots(struct.extractSlots());
         expect(struct2.firstName.value).toBe('Jantje');
         expect(struct2.lastName?.value).toBe('DEBOER');
         expect(() => struct.firstName).toThrow();
@@ -175,20 +191,49 @@ describe('Value objects', () => {
 
     test('Subclass', () => {
         const p2 = new PersonWithAge({
-            ['first-name']: 'Jantje',
-            ['last-name']: 'DEBOER',
+            ['firstName']: 'Jantje',
+            ['lastName']: 'DEBOER',
             ['age']: 12
         });
         expect(p2.firstName.value).toBe('Jantje');
         expect(p2.age.value).toBe(12);
     });
 
+    test('Array', () => {
+        @typedarrayvalue(() => Person)
+        class Persons extends ArrayValue<Person> {}
+
+        {
+            const persons = Persons.from([
+                Person.from({
+                    firstName: new FirstName('Jantje'),
+                    lastName: new LastName('DEBOER')
+                })
+            ]);
+            expect(persons.length).toBe(1);
+            expect(persons.get(0)).toBeInstanceOf(Person);
+            expect((persons.get(0) as Person).firstName.value).toBe('Jantje');
+        }
+
+        {
+            const persons = Persons.from([
+                {
+                    firstName: new FirstName('Jantje'),
+                    lastName: new LastName('DEBOER')
+                }
+            ]);
+            expect(persons.length).toBe(1);
+            expect(persons.get(0)).toBeInstanceOf(Person);
+            expect((persons.get(0) as Person).firstName.value).toBe('Jantje');
+        }
+    });
+
     it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
         'Struct should validate all members for %s using object',
         (value) => {
             const input = {
-                'first-name': value,
-                'last-name': value
+                firstName: value,
+                lastName: value
             };
             if (value === 'VALID') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -204,8 +249,8 @@ describe('Value objects', () => {
         'Struct should validate all members for %s using Map',
         (value) => {
             const input = new Map([
-                ['first-name', value],
-                ['last-name', value]
+                ['firstName', value],
+                ['lastName', value]
             ]);
             if (value === 'VALID') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -227,8 +272,8 @@ describe('Value objects', () => {
         StringCanonical.from('no-capitals')
     ])('Struct should validate all members for %s using embedded canonicals', (value) => {
         const input = {
-            'first-name': value,
-            'last-name': value
+            firstName: value,
+            lastName: value
         };
         if (value.physicalType === 'string' && value.stringValue === 'VALID') {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,8 +288,8 @@ describe('Value objects', () => {
         'Struct should validate all members for %s using embedded canonical of correct type with incorrect inner value',
         (value) => {
             const input = {
-                'first-name': StringCanonical.from(value as unknown as string),
-                'last-name': StringCanonical.from(value as unknown as string)
+                firstName: StringCanonical.from(value as unknown as string),
+                lastName: StringCanonical.from(value as unknown as string)
             };
             if (value === 'VALID') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -260,8 +305,8 @@ describe('Value objects', () => {
         'Struct should validate all members for %s using embedded canonical of incorrect type with incorrect inner value',
         (value) => {
             const input = {
-                'first-name': IntCanonical.from(value as unknown as number),
-                'last-name': IntCanonical.from(value as unknown as number)
+                firstName: IntCanonical.from(value as unknown as number),
+                lastName: IntCanonical.from(value as unknown as number)
             };
             if (value === 'VALID') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -275,17 +320,230 @@ describe('Value objects', () => {
 
     it('Struct should reject None even for optional fields (optional fields should simply not be present)', () => {
         const input = {
-            'first-name': StringCanonical.from('Jantje'),
-            'last-name': NoneCanonical.from()
+            firstName: StringCanonical.from('Jantje'),
+            lastName: NoneCanonical.from()
         };
         expect(() => new Person(input)).toThrow();
     });
 
     it('Struct should accept optional fields that are not present', () => {
         const input = {
-            'first-name': StringCanonical.from('Jantje')
+            firstName: StringCanonical.from('Jantje')
         };
         const p = new Person(input);
         expect(p.lastName).toBeUndefined;
+    });
+});
+
+describe('Complex object', () => {
+    test('Complex structure', () => {
+        @stringvalue
+        class Name extends StringValue {
+            name: discriminative;
+        }
+        @stringvalue
+        class FirstName extends Name {
+            first_name: discriminative;
+        }
+        @stringvalue
+        class LastName extends StringValue {
+            last_name: discriminative;
+        }
+        @intvalidation((v) => v >= 0, 'Must not be negative')
+        @intvalue
+        class Age extends IntValue {
+            age: discriminative;
+        }
+        @typedarrayvalue(() => Fact)
+        class Facts extends ArrayValue<Fact> {}
+        @boolvalue
+        class Fact extends BoolValue {
+            fact: discriminative;
+        }
+        @floatvalue
+        class Meters extends FloatValue {
+            meters: discriminative;
+        }
+        @momentvalue
+        class Birthday extends MomentValue {
+            birthday: discriminative;
+        }
+        @binaryvalue
+        class BinaryData extends BinaryValue {
+            binary_data: discriminative;
+        }
+
+        @objectvalue()
+        class Person extends ObjectValue {
+            get firstName() {
+                return FirstName.required();
+            }
+            get lastName() {
+                return LastName.required();
+            }
+            get age() {
+                return Age.required();
+            }
+            get facts() {
+                return Facts.required();
+            }
+            get length() {
+                return Meters.required();
+            }
+            get born() {
+                return Birthday.required();
+            }
+            get data() {
+                return BinaryData.required();
+            }
+        }
+
+        const person = Person.from({
+            firstName: FirstName.from('Jantje'),
+            lastName: LastName.from('DeBoer'),
+            age: Age.from(21),
+            length: Meters.from(180.5),
+            facts: Facts.from([true, Fact.from(false)]),
+            born: Birthday.from(new Date('2000-12-31T18:30:00.000Z')),
+            data: BinaryData.from(Buffer.from('BINARY'))
+        });
+
+        const cloned = new Person(person._peekCanonicalRepresentation());
+
+        for (const p of [person, cloned]) {
+            expect(p.firstName.value).toBe('Jantje');
+            expect(p.firstName instanceof FirstName).toBe(true);
+            expect(p.lastName.value).toBe('DeBoer');
+            expect(p.age.value).toBe(21);
+            expect(p.facts.length).toBe(2);
+            expect(p.facts.getTyped(0).value).toBe(true);
+            expect(p.facts.getTyped(1).value).toBe(false);
+            expect(p.length.value).toBe(180.5);
+            expect(p.born.value.toISOString()).toBe('2000-12-31T18:30:00.000Z');
+            expect(p.data.value.toString()).toBe('BINARY');
+        }
+    });
+});
+
+describe('ObjectValue Decorator', () => {
+    it('Must return all fields', () => {
+        @typedarrayvalue(() => Person)
+        class Persons extends ArrayValue<Person> {}
+
+        @objectvalue()
+        class Person extends ObjectValue {
+            get firstName() {
+                return FirstName.required();
+            }
+            get lastName() {
+                return LastName.optional();
+            }
+            get partner() {
+                return Person.optional();
+            }
+            get friends() {
+                return Persons.optional();
+            }
+        }
+
+        const partner = Person.from({
+            firstName: FirstName.from('Alice')
+        });
+        const p = new Person(
+            DictCanonical.from({
+                'first-name': StringCanonical.from('Jantje', ['first-name']),
+                'last-name': StringCanonical.from('DEBOER', ['last-name']),
+                partner: partner._peekCanonicalRepresentation(),
+                friends: ArrayCanonical.from([
+                    Person.from({ firstName: FirstName.from('Bob') })._peekCanonicalRepresentation(),
+                    Person.from({ firstName: FirstName.from('Charlie') })._peekCanonicalRepresentation()
+                ])
+            })
+        );
+
+        expect(p.firstName.value).toBe('Jantje');
+        expect(p.firstName).toBeInstanceOf(FirstName);
+        expect(p.lastName?.value).toBe('DEBOER');
+        expect(p.partner?.firstName.value).toBe('Alice');
+        expect(p.friends?.getTyped(0).firstName.value).toBe('Bob');
+        expect(p.friends?.getTyped(1).firstName.value).toBe('Charlie');
+    });
+
+    it('Must support derived fields', () => {
+        @objectvalue()
+        class Person extends ObjectValue {
+            get firstName() {
+                return FirstName.required();
+            }
+            get lastName() {
+                return LastName.optional();
+            }
+            get fullName() {
+                return this.firstName.value + ' ' + this.lastName?.value;
+            }
+        }
+
+        const p = new Person(
+            DictCanonical.from({
+                'first-name': StringCanonical.from('Jantje', ['first-name']),
+                'last-name': StringCanonical.from('DEBOER', ['last-name'])
+            })
+        );
+
+        expect(p.firstName.value).toBe('Jantje');
+        expect(p.firstName).toBeInstanceOf(FirstName);
+        expect(p.lastName?.value).toBe('DEBOER');
+        expect(p.fullName).toBe('Jantje DEBOER');
+    });
+
+    it('Must allow missing optional fields', () => {
+        @objectvalue()
+        class Person extends ObjectValue {
+            get firstName() {
+                return FirstName.required();
+            }
+            get lastName() {
+                return LastName.optional();
+            }
+        }
+
+        const p = new Person(
+            DictCanonical.from({
+                'first-name': StringCanonical.from('Jantje', ['first-name'])
+            })
+        );
+
+        expect(p.firstName.value).toBe('Jantje');
+        expect(p.firstName).toBeInstanceOf(FirstName);
+        expect(p.lastName).toBeUndefined();
+    });
+
+    it('Must not allow missing required fields', () => {
+        @objectvalue()
+        class Person extends ObjectValue {
+            get firstName() {
+                return FirstName.required();
+            }
+        }
+
+        expect(() => new Person(DictCanonical.from({}))).toThrow();
+    });
+
+    it('Must not allow fields of incorrect type', () => {
+        @objectvalue()
+        class Person extends ObjectValue {
+            get firstName() {
+                return FirstName.required();
+            }
+        }
+
+        expect(
+            () =>
+                new Person(
+                    DictCanonical.from({
+                        'first-name': StringCanonical.from('Jantje', ['not-a-first-name'])
+                    })
+                )
+        ).toThrow();
     });
 });

@@ -24,7 +24,7 @@ export interface IPrimitiveValueClass<TNative extends NativePrimitive> {
     DEF: PrimitiveDef<TNative>;
 }
 
-export abstract class PrimitiveValue<TNative extends NativePrimitive> implements IValueObject, ICanonicalSource {
+export abstract class PrimitiveValue<TNative extends NativePrimitive> implements IValueObject, ICanonicalSource<TNative> {
     protected _value: TNative;
 
     constructor(value: TNative) {
@@ -34,11 +34,11 @@ export abstract class PrimitiveValue<TNative extends NativePrimitive> implements
     }
 
     static required<T, X extends NativePrimitive>(this: new (value: X | ICanonical) => T): T {
-        return undefined as unknown as T;
+        return { required: true, clazz: this } as unknown as T;
     }
 
     static optional<T, X extends NativePrimitive>(this: new (value: X | ICanonical) => T): T | undefined {
-        return undefined;
+        return { required: false, clazz: this } as unknown as T;
     }
 
     //static optional<T extends typeof PrimitiveValue<NativePrimitive>>(this: T): InstanceType<T> | undefined {
@@ -215,7 +215,7 @@ export class StringValue extends PrimitiveValue<string> {
     }
 
     static from<T extends typeof StringValue>(this: T, value: string): InstanceType<T> {
-        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
     }
 }
 
@@ -236,7 +236,7 @@ export class IntValue extends PrimitiveValue<number> {
     }
 
     static from<T extends typeof IntValue>(this: T, value: number): InstanceType<T> {
-        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
     }
 }
 
@@ -258,7 +258,7 @@ export class FloatValue extends PrimitiveValue<number> {
     }
 
     static from<T extends typeof FloatValue>(this: T, value: number): InstanceType<T> {
-        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
     }
 }
 
@@ -279,7 +279,7 @@ export class BoolValue extends PrimitiveValue<boolean> {
     }
 
     static from<T extends typeof BoolValue>(this: T, value: boolean): InstanceType<T> {
-        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
     }
 }
 
@@ -300,7 +300,7 @@ export class MomentValue extends PrimitiveValue<Date> {
     }
 
     static from<T extends typeof MomentValue>(this: T, value: Date): InstanceType<T> {
-        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
     }
 }
 
@@ -325,6 +325,6 @@ export class BinaryValue extends PrimitiveValue<Buffer> {
     }
 
     static from<T extends typeof BinaryValue>(this: T, value: Buffer): InstanceType<T> {
-        return (this as unknown as IValueClass<unknown>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
     }
 }
