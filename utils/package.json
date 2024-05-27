@@ -50,8 +50,8 @@
     "tsconfig": "./tsconfig.json"
   },
   "dependencies": {
-    "@darlean/canonical": "^2.0.0-alpha.3",
-    "@darlean/canonical-json": "^2.0.0-alpha.3",
+    "@darlean/canonical": "^2.0.0-alpha.5",
+    "@darlean/canonical-json": "^2.0.0-alpha.4",
     "bson": "^4.7.2"
   }
 }
