@@ -19,7 +19,7 @@ export class CanonicalJsonSerializer {
         return JSON.stringify(root, undefined, indent);
     }
 
-    public async serialize(canonical: ICanonical): Promise<Buffer> {
+    public serialize(canonical: ICanonical): Buffer {
         // Naive implementation that first constructs an in-memory tree,
         // and then dumps that tree into json.
         const root = this.treeifyNode(canonical);
@@ -73,7 +73,7 @@ export class CanonicalJsonSerializer {
 }
 
 export class CanonicalJsonDeserializer {
-    public async deserialize(json: Buffer): Promise<ICanonical> {
+    public deserialize(json: Buffer): ICanonical {
         const parsed = JSON.parse(json.toString('utf-8'));
         return this.processNode(parsed);
     }

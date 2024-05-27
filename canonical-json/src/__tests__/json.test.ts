@@ -30,11 +30,9 @@ describe('JSON', () => {
 
         const ser = new CanonicalJsonSerializer();
         const deser = new CanonicalJsonDeserializer();
-        const json = await ser.serialize(struct);
+        const json = ser.serialize(struct);
 
-        //console.log('JSON', json.toString());
-
-        const p2 = await deser.deserialize(json);
+        const p2 = deser.deserialize(json);
         const struct2 = p2.asDict();
         expect(struct2['first-name'].stringValue).toBe('Jantje');
         expect(struct2['first-name'].logicalTypes).toEqual(['name', 'first-name']);
