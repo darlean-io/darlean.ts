@@ -6,12 +6,12 @@ export type CanonicalLogicalTypes = CanonicalLogicalType[];
 /**
  * Represents an object (typically a value object) than can be represented as a canonical value.
  */
-export interface ICanonicalSource {
+export interface ICanonicalSource<T> {
     /**
      * For use by the framework. Returns the internal canonical value. The returned value may not be modified, as that would
      * harm the integrity of the value object. The main purpose for peeking is to be able to serialize the value object.
      */
-    _peekCanonicalRepresentation(): ICanonical;
+    _peekCanonicalRepresentation(): ICanonical<T>;
 }
 
 export interface ISequenceItem {
@@ -29,7 +29,7 @@ export interface IMappingEntry {
  * ICanonicaL represents an immutable canonical value with a logical and a physical type. The various
  * getters provide acces to the canonical value.
  */
-export interface ICanonical {
+export interface ICanonical<T = unknown> {
     get physicalType(): CanonicalPhysicalType;
     get logicalTypes(): CanonicalLogicalType[];
 

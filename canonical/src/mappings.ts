@@ -4,8 +4,8 @@ import { CanonicalLogicalTypes, ICanonical, ICanonicalSource, IMappingEntry } fr
 /**
  * MapCanonical represents a canonical value backed by a map. The map must not be modified anymore.
  */
-export class MapCanonical extends BaseCanonical {
-    private constructor(private value: Map<string, ICanonical | ICanonicalSource>, logicalTypes: CanonicalLogicalTypes = []) {
+export class MapCanonical<T = unknown> extends BaseCanonical {
+    private constructor(private value: Map<string, ICanonical | ICanonicalSource<T>>, logicalTypes: CanonicalLogicalTypes = []) {
         super('mapping', logicalTypes);
     }
 
@@ -30,11 +30,16 @@ export class MapCanonical extends BaseCanonical {
         return result;
     }
 
-    public static from(value: Map<string, ICanonical | ICanonicalSource>, logicalTypes: CanonicalLogicalTypes = []) {
+    public static from<T = unknown>(
+        value: Map<string, ICanonical | ICanonicalSource<T>>,
+        logicalTypes: CanonicalLogicalTypes = []
+    ) {
         return new MapCanonical(value, logicalTypes);
     }
 
-    private getMapItem(iterator: IterableIterator<[string, ICanonical | ICanonicalSource]>): IMappingEntry | undefined {
+    private getMapItem<T = unknown>(
+        iterator: IterableIterator<[string, ICanonical | ICanonicalSource<T>]>
+    ): IMappingEntry | undefined {
         const result = iterator.next();
         if (result.done) {
             return undefined;
@@ -52,9 +57,9 @@ export class MapCanonical extends BaseCanonical {
     }
 }
 
-export function toCanonical(value: ICanonical | ICanonicalSource) {
-    if ((value as ICanonicalSource)._peekCanonicalRepresentation) {
-        return (value as ICanonicalSource)._peekCanonicalRepresentation();
+export function toCanonical<T = unknown>(value: ICanonical | ICanonicalSource<T>) {
+    if ((value as ICanonicalSource<T>)._peekCanonicalRepresentation) {
+        return (value as ICanonicalSource<T>)._peekCanonicalRepresentation();
     }
     return value as ICanonical;
 }
