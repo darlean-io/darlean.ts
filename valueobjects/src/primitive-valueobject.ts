@@ -17,7 +17,8 @@ import {
     getValueObjectDef,
     isValueObject,
     deriveTypeName,
-    IValueClass
+    IValueClass,
+    NativeType
 } from './valueobject';
 
 export interface IPrimitiveValueClass<TNative extends NativePrimitive> {
@@ -215,7 +216,7 @@ export class StringValue extends PrimitiveValue<string> {
     }
 
     static from<T extends typeof StringValue>(this: T, value: string): InstanceType<T> {
-        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<NativeType>).DEF.from(value) as InstanceType<T>;
     }
 }
 
@@ -236,7 +237,7 @@ export class IntValue extends PrimitiveValue<number> {
     }
 
     static from<T extends typeof IntValue>(this: T, value: number): InstanceType<T> {
-        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<NativeType>).DEF.from(value) as InstanceType<T>;
     }
 }
 
@@ -258,7 +259,7 @@ export class FloatValue extends PrimitiveValue<number> {
     }
 
     static from<T extends typeof FloatValue>(this: T, value: number): InstanceType<T> {
-        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<NativeType>).DEF.from(value) as InstanceType<T>;
     }
 }
 
@@ -279,7 +280,7 @@ export class BoolValue extends PrimitiveValue<boolean> {
     }
 
     static from<T extends typeof BoolValue>(this: T, value: boolean): InstanceType<T> {
-        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<NativeType>).DEF.from(value) as InstanceType<T>;
     }
 }
 
@@ -300,7 +301,7 @@ export class MomentValue extends PrimitiveValue<Date> {
     }
 
     static from<T extends typeof MomentValue>(this: T, value: Date): InstanceType<T> {
-        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<NativeType>).DEF.from(value) as InstanceType<T>;
     }
 }
 
@@ -325,6 +326,6 @@ export class BinaryValue extends PrimitiveValue<Buffer> {
     }
 
     static from<T extends typeof BinaryValue>(this: T, value: Buffer): InstanceType<T> {
-        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<NativeType>).DEF.from(value) as InstanceType<T>;
     }
 }

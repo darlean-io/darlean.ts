@@ -29,6 +29,7 @@ export interface IMappingEntry {
  * ICanonicaL represents an immutable canonical value with a logical and a physical type. The various
  * getters provide acces to the canonical value.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface ICanonical<T = unknown> {
     get physicalType(): CanonicalPhysicalType;
     get logicalTypes(): CanonicalLogicalType[];

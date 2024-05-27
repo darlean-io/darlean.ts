@@ -1,4 +1,4 @@
-import { ArrayCanonical, ICanonical, ICanonicalSource, MapCanonical } from '@darlean/canonical';
+import { ArrayCanonical, ICanonical, ICanonicalSource } from '@darlean/canonical';
 import {
     IValueDef,
     IValueObject,
@@ -96,7 +96,7 @@ export class ArrayValue<TNative extends NativeType> implements IValueObject, ICa
     }
 
     static from<U extends NativeType, T extends typeof ArrayValue<U>>(this: T, value: unknown[]): InstanceType<T> {
-        return (this as unknown as IValueClass<any>).DEF.from(value) as InstanceType<T>;
+        return (this as unknown as IValueClass<NativeType>).DEF.from(value) as InstanceType<T>;
     }
 
     constructor(value: ICanonical | NativeArray) {
@@ -121,7 +121,7 @@ export class ArrayValue<TNative extends NativeType> implements IValueObject, ICa
         const items = this._checkItems();
         return ArrayCanonical.from(
             items as unknown as ICanonical[],
-            (Object.getPrototypeOf(this).constructor as IArrayValueClass<any>).DEF.types
+            (Object.getPrototypeOf(this).constructor as IArrayValueClass<NativeType>).DEF.types
         );
     }
 
@@ -173,6 +173,7 @@ function validateArray<TNative extends NativeType>(
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export function array<TNative extends NativeType>(
+    // eslint-disable-next-line @typescript-eslint/ban-types
     template: Function,
     type?: CanonicalType,
     elementTypeDef?: ValueDefLike<TNative>

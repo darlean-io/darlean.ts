@@ -29,7 +29,7 @@ export function isValueObject(value: unknown): IValueObject | undefined {
     if (value === undefined) {
         return false;
     }
-    const clazz = (value as object).constructor as unknown as IValueClass<any>;
+    const clazz = (value as object).constructor as unknown as IValueClass<NativeType>;
     return clazz.DEF ? (value as IValueObject) : undefined;
 }
 
@@ -58,7 +58,7 @@ export function extractValueDef<TNative extends NativeType>(value: ValueDefLike<
     if (typeof value === 'function' && !value.prototype) {
         defLike = value();
     }
-    return (defLike as IValueClass<any>)?.DEF ?? defLike;
+    return (defLike as IValueClass<NativeType>)?.DEF ?? defLike;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -86,6 +86,7 @@ export interface IValueDef<TNative> {
     hasType(type: CanonicalType): boolean;
 
     get types(): string[];
+    // eslint-disable-next-line @typescript-eslint/ban-types
     get template(): Function;
 }
 

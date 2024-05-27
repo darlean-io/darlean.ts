@@ -29,7 +29,7 @@ export interface ISlotDef<TNative extends NativeType> {
 
 export class StructDef implements IValueDef<NativeStruct> {
     private _types: CanonicalType[];
-    private _slots: Map<string, ISlotDef<any>>;
+    private _slots: Map<string, ISlotDef<NativeType>>;
     private _requiredSlots: string[];
     private _unknownFieldAction: UnknownFieldAction = 'keep';
     // eslint-disable-next-line @typescript-eslint/ban-types
@@ -110,7 +110,7 @@ export class StructDef implements IValueDef<NativeStruct> {
         return this._requiredSlots;
     }
 
-    public getSlots(): IterableIterator<ISlotDef<any>> {
+    public getSlots(): IterableIterator<ISlotDef<NativeType>> {
         return this._slots.values();
     }
 
@@ -179,7 +179,7 @@ export class StructValue<T = unknown> implements IValueObject, ICanonicalSource<
         for (const [k, v] of Object.entries(value)) {
             v2[k] = v;
         }
-        const def = (this as unknown as IValueClass<any>).DEF;
+        const def = (this as unknown as IValueClass<NativeType>).DEF;
         return def.from(v2) as InstanceType<T>;
     }
 

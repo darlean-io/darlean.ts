@@ -90,6 +90,7 @@ export function binaryvalidation(validator: PrimitiveValidator<Buffer>, descript
 
 ////////////// Helpers ////////////////
 
+// eslint-disable-next-line @typescript-eslint/ban-types
 function ensureStringDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<string>).DEF;
     if (def?.template !== constructor) {
@@ -98,6 +99,7 @@ function ensureStringDefForConstructor(constructor: Function) {
     return def;
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-types
 function ensureIntDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<number>).DEF;
     if (def?.template !== constructor) {
@@ -106,6 +108,7 @@ function ensureIntDefForConstructor(constructor: Function) {
     return def;
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-types
 function ensureFloatDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<number>).DEF;
     if (def?.template !== constructor) {
@@ -114,6 +117,7 @@ function ensureFloatDefForConstructor(constructor: Function) {
     return def;
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-types
 function ensureBoolDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<boolean>).DEF;
     if (def?.template !== constructor) {
@@ -122,6 +126,7 @@ function ensureBoolDefForConstructor(constructor: Function) {
     return def;
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-types
 function ensureMomentDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<Date>).DEF;
     if (def?.template !== constructor) {
@@ -130,6 +135,7 @@ function ensureMomentDefForConstructor(constructor: Function) {
     return def;
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-types
 function ensureBinaryDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<Buffer>).DEF;
     if (def?.template !== constructor) {
@@ -138,113 +144,24 @@ function ensureBinaryDefForConstructor(constructor: Function) {
     return def;
 }
 
-/**
- * @param typeDef
- * @param fieldName
- * @returns
- */
-/*
-export function required(
-    typeDef: NativeTypeDef,
-    fieldName?: CanonicalFieldName
-) {
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return function (prototype: any, name: string, descriptor: PropertyDescriptor): void {
-        const constr = prototype.constructor;
-        let def = (constr as unknown as IStructValueClass).DEF;
-        //console.log('OPT', typeof constructor, typeof Object.getPrototypeOf(constructor), constructor === Object.getPrototypeOf(constructor), constructor, def);
-        if (def?.template !== constr) {
-            def = (constr as unknown as IValueClass<unknown>).DEF = structv(constr);
-        }
-        const canonicalName = fieldName ?? deriveTypeName(name);
-        def.withRequiredField(canonicalName, typeDef);
-        descriptor.get = function () {
-            return (this as StructValue)._req(canonicalName);
-        };
-    };
-}
-
-export function optional(
-    typeDef: NativeTypeDef,
-    fieldName?: CanonicalFieldName
-) {
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return function (prototype: any, name: string, descriptor: PropertyDescriptor): void {
-        const constr = prototype.constructor;
-        let def = (constr as unknown as IStructValueClass).DEF;
-        //console.log('OPT', typeof constructor, typeof Object.getPrototypeOf(constructor), constructor === Object.getPrototypeOf(constructor), constructor, def);
-        if (def?.template !== constr) {
-            def = (constr as unknown as IValueClass<unknown>).DEF = structv(constr);
-        }
-        const canonicalName = fieldName ?? deriveTypeName(name);
-        def.withOptionalField(canonicalName, typeDef);
-        descriptor.get = function () {
-            return (this as StructValue)._opt(canonicalName);
-        };
-    };
-}
-*/
-
-/*
-export function prop(
-    fieldName?: CanonicalFieldName
-) {
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return function (prototype: any, name: string, descriptor: PropertyDescriptor): void {
-        const originalGetter = descriptor.get;
-        if (!originalGetter) {
-            throw new Error('No getter for prop ' + name);
-        }
-        const info = originalGetter() as { required: boolean, clazz: Function};
-        
-        const constr = prototype.constructor;
-        let def = (constr as unknown as IStructValueClass).DEF;
-        //console.log('OPT', typeof constructor, typeof Object.getPrototypeOf(constructor), constructor === Object.getPrototypeOf(constructor), constructor, def);
-        if (def?.template !== constr) {
-            def = (constr as unknown as IValueClass<unknown>).DEF = structv(constr);
-        }
-        const canonicalName = fieldName ?? deriveTypeName(name);
-        def.withRequiredField(canonicalName, (info.clazz as unknown as IValueClass<unknown>).DEF);
-        descriptor.get = function () {
-            return (this as StructValue)._req(canonicalName);
-        };
-    };
-}*/
-
-/*
-export function req<T>(): T {
-    console.log('REQ');
-    return undefined as unknown as T;
-}
-
-export function opt<T>(): T | undefined {
-    return undefined;
-}
-*/
-
 /////////////////// Arrays //////////////
 
-export function typedarrayvalue(elementTypeDef: ValueDefLike<any>) {
+export function typedarrayvalue(elementTypeDef: ValueDefLike<NativeType>) {
     // eslint-disable-next-line @typescript-eslint/ban-types
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return function (constr: Function): void {
-        let def = (constr as unknown as IValueClass<any>).DEF;
+        let def = (constr as unknown as IValueClass<NativeType>).DEF;
         if (def?.template !== constr) {
-            def = (constr as unknown as IValueClass<any>).DEF = arrayv(constr, undefined, elementTypeDef);
+            def = (constr as unknown as IValueClass<NativeType>).DEF = arrayv(constr, undefined, elementTypeDef);
         }
     };
 }
 
 export function untypedarrayvalue() {
     // eslint-disable-next-line @typescript-eslint/ban-types
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return function (constr: Function): void {
-        let def = (constr as unknown as IValueClass<any>).DEF;
+        let def = (constr as unknown as IValueClass<NativeType>).DEF;
         if (def?.template !== constr) {
-            def = (constr as unknown as IValueClass<any>).DEF = arrayv(constr, undefined, undefined);
+            def = (constr as unknown as IValueClass<NativeType>).DEF = arrayv(constr, undefined, undefined);
         }
     };
 }
@@ -275,12 +192,11 @@ export function mapvalue() {
 
 function structvalue(options?: { extensions: 'keep' | 'error' | 'ignore' }) {
     // eslint-disable-next-line @typescript-eslint/ban-types
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return function (constr: Function): void {
-        let def = (constr as unknown as IValueClass<any>).DEF as StructDef;
+        let def = (constr as unknown as IValueClass<NativeType>).DEF as StructDef;
         //console.log('OPT', typeof constructor, typeof Object.getPrototypeOf(constructor), constructor === Object.getPrototypeOf(constructor), constructor, def);
         if (def?.template !== constr) {
-            def = (constr as unknown as IValueClass<any>).DEF = structv(constr);
+            def = (constr as unknown as IValueClass<NativeType>).DEF = structv(constr);
         }
 
         if (options?.extensions) {
@@ -298,8 +214,10 @@ function structvalue(options?: { extensions: 'keep' | 'error' | 'ignore' }) {
             if (!originalGetter) {
                 continue;
             }
+            // eslint-disable-next-line @typescript-eslint/ban-types
             let info: { required: boolean; clazz: Function } | undefined;
             try {
+                // eslint-disable-next-line @typescript-eslint/ban-types
                 info = originalGetter() as { required: boolean; clazz: Function };
             } catch (e) {
                 // As we do not provide a value for "this", most derived fields will simply throw a TypeError.
@@ -311,9 +229,9 @@ function structvalue(options?: { extensions: 'keep' | 'error' | 'ignore' }) {
             }
             const canonicalName = deriveTypeName(name);
             if (info.required) {
-                def.withRequiredField(canonicalName, info.clazz as unknown as IValueClass<any>);
+                def.withRequiredField(canonicalName, info.clazz as unknown as IValueClass<NativeType>);
             } else {
-                def.withOptionalField(canonicalName, info.clazz as unknown as IValueClass<any>);
+                def.withOptionalField(canonicalName, info.clazz as unknown as IValueClass<NativeType>);
             }
             const required = info.required;
             descriptor.get = function () {
