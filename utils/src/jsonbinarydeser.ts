@@ -128,6 +128,10 @@ export class JBDeSer implements IDeSer {
         }
     }
 
+    public trySerialize(value: unknown): Buffer | undefined {
+        return this.serialize(value);
+    }
+
     public deserialize(buffer: Buffer, options?: IDeserializeOptions): unknown {
         if (buffer === undefined) {
             return undefined;

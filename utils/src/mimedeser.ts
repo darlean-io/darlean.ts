@@ -47,6 +47,10 @@ export class MimeDeSer implements IDeSer {
         }
     }
 
+    public trySerialize(value: unknown): Buffer | undefined {
+        return this.serialize(value);
+    }
+
     public deserialize(buffer: Buffer): unknown {
         if (buffer === undefined) {
             return undefined;

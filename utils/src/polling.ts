@@ -1,4 +1,4 @@
-import { Aborter } from "./util";
+import { Aborter } from './util';
 
 export interface IPollRequest {
     cancel(): void;
@@ -54,13 +54,13 @@ export class PollController<T> {
      * Interrupts any waiters with the provided value.
      * The value is not stored internally. So later waiters will *not* receive this value but instead
      * will wait for the next value.
-     * @param value 
+     * @param value
      */
     public interrupt(value: T) {
         if (this.finalized) {
             return;
         }
-        
+
         const interrupteds = this.interrupteds;
         this.interrupteds = [];
         for (const interrupted of interrupteds) {
@@ -89,7 +89,7 @@ export class PollController<T> {
      * Registers a set of 2 functions that are invoked as soon as there is a value (interrupted) or when
      * the timeout expires.
      * Returns an objecty that can be used to cancel the polling.
-     */    
+     */
     private register(timeout: number, interrupted: (value: T) => void, expired: () => void): IPollRequest {
         const item = {
             interrupted: (value: T) => {
@@ -121,5 +121,5 @@ export class PollController<T> {
                 expired();
             }
         };
-    }    
+    }
 }
