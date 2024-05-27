@@ -53,5 +53,8 @@
   "typedoc": {
     "entryPoint": "./src/index.ts",
     "tsconfig": "./tsconfig.json"
+  },
+  "dependencies": {
+    "@darlean/canonical": "^2.0.0-alpha.5"
   }
 }
