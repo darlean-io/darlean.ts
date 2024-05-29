@@ -71,7 +71,9 @@ export class WebRequest {
         if (!this.request.pathRemainder) {
             return [];
         }
-        const remainder = (this.request.pathRemainder.startsWith('/')) ? this.request.pathRemainder.substring(1) : this.request.pathRemainder;
+        const remainder = this.request.pathRemainder.startsWith('/')
+            ? this.request.pathRemainder.substring(1)
+            : this.request.pathRemainder;
 
         const parts = remainder.split('/');
         return parts.map((part) => decodeURIComponent(part));
