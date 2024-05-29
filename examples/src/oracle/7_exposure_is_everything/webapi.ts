@@ -2,7 +2,6 @@ import { action, ActorSuite, IWebGatewayRequest, IWebGatewayResponse } from '@da
 import { IOracleService, ORACLE_SERVICE } from './oracle.intf';
 import * as htmlEntities from 'html-entities';
 import { JsonRequestParser, JsonResponseEncoder, StaticFileHandler, WebRequest } from '@darlean/webservices';
-import { WebResponse } from '@darlean/webservices';
 
 export const WEB_API_SERVICE = 'WebApiService';
 
@@ -41,8 +40,9 @@ export class WebApiService {
 
     @action({ locking: 'shared' })
     public async ask(req: IWebGatewayRequest): Promise<IWebGatewayResponse> {
-        const resp = new WebResponse(req);
-        const topic = req.placeholders?.['*'];
+        const request = WebRequest.from(req);
+        const resp = request.response();
+        const topic = request.getRemainingPathElements()[0];
         const question = req.searchParams?.question[0];
         if (!topic) {
             return resp.endWithStatusCode(400, 'Topic is missing');
@@ -66,7 +66,7 @@ export class WebApiService {
 
     @action({ locking: 'exclusive' })
     public async teach(req: IWebGatewayRequest): Promise<IWebGatewayResponse> {
-        const r = new WebRequest(req);
+        const r = WebRequest.from(req);
         const resp = r.response();
 
         const teachReq = await this.teachDecoder.parse(r);

@@ -3,8 +3,12 @@ import { IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
 export class WebRequest {
     protected request: IWebGatewayRequest;
 
-    constructor(request: IWebGatewayRequest) {
+    private constructor(request: IWebGatewayRequest) {
         this.request = request;
+    }
+
+    public static from(request: IWebGatewayRequest) {
+        return new WebRequest(request);
     }
 
     public getHeader(header: string): string | undefined {
@@ -57,7 +61,20 @@ export class WebRequest {
     }
 
     public response(): WebResponse {
-        return new WebResponse(this.request);
+        return WebResponse.from(this.request);
+    }
+
+    /**
+     * Returns the url-decoded path elements that remain after having been prefix-matched by the web gateway.
+     */
+    public getRemainingPathElements(): string[] {
+        if (!this.request.pathRemainder) {
+            return [];
+        }
+        const remainder = (this.request.pathRemainder.startsWith('/')) ? this.request.pathRemainder.substring(1) : this.request.pathRemainder;
+
+        const parts = remainder.split('/');
+        return parts.map((part) => decodeURIComponent(part));
     }
 }
 
@@ -67,7 +84,7 @@ export class WebResponse {
     protected headersSent = false;
     protected bodyParts: Buffer[];
 
-    constructor(request: IWebGatewayRequest) {
+    private constructor(request: IWebGatewayRequest) {
         this.request = request;
         this.response = {
             statusCode: 200,
@@ -75,6 +92,10 @@ export class WebResponse {
             headers: {}
         };
         this.bodyParts = [];
+    }
+
+    public static from(request: IWebGatewayRequest) {
+        return new WebResponse(request);
     }
 
     public async endWithStatusCode(statusCode: number, statusMessage: string): Promise<IWebGatewayResponse> {

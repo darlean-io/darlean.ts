@@ -1,5 +1,5 @@
 import { action, IActivatable, IDeactivatable, IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
-import { notifier, wildcardMatch } from '@darlean/utils';
+import { notifier } from '@darlean/utils';
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import url from 'url';
 import querystring from 'querystring';
@@ -7,6 +7,7 @@ import { IGatewayFlowCfg } from './intf';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import graceful from 'graceful-http';
+import { PathPrefixMatcher } from './path-prefix-matcher';
 
 const MAX_BODY_LENGTH = 100 * 1000;
 
@@ -14,7 +15,6 @@ export interface IHandler {
     method?: string;
     path?: string;
     action: (req: IWebGatewayRequest) => Promise<IWebGatewayResponse>;
-    placeholders?: string[];
     flow?: IGatewayFlowCfg;
     maxContentLength?: number;
 }
@@ -32,9 +32,15 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
     protected config: IGateway;
     protected port?: number;
     private close: () => void;
-
+    private pathMatchers: (PathPrefixMatcher | undefined)[];
+    
     constructor(config: IGateway) {
         this.config = config;
+        this.pathMatchers = [];
+        for (const handler of this.config.handlers) {
+            this.pathMatchers.push( handler.path ? new PathPrefixMatcher(handler.path) : undefined);
+        }
+        
         const server = createServer((req, res) => {
             setImmediate(async () => {
                 await this.handleRequest(req, res);
@@ -77,17 +83,19 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
         try {
             const urlobj = new url.URL(req.url ?? '', 'http://' + req.headers.host);
 
-            // Also decodes special characters like %2f to '/'. The wildcard matching should not depend on percent-encodings.
-            const pathname = decodeURIComponent(urlobj.pathname);
+            for (let handlerIdx = 0; handlerIdx < this.config.handlers.length; handlerIdx++) {
+                const handler = this.config.handlers[handlerIdx];
 
-            for (const handler of this.config.handlers) {
                 if (!!handler.method && handler.method !== req.method) {
                     continue;
                 }
 
-                const matches: string[] = [];
-                if (handler.path) {
-                    if (!wildcardMatch(pathname, handler.path, matches)) {
+                let remainingPath: string | undefined;
+                const matcher = this.pathMatchers[handlerIdx];
+                if (matcher) {
+                    remainingPath = matcher.match(urlobj.pathname);
+
+                    if (remainingPath === undefined) {
                         continue;
                     }
                 }
@@ -105,6 +113,7 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
                         }
                     }
                 }
+
                 const buffers = [];
                 let len = 0;
                 for await (const data of req) {
@@ -129,7 +138,8 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
                     username: decodeURIComponent(urlobj.username),
                     method: req.method,
                     headers: {},
-                    path: pathname,
+                    path: urlobj.pathname,
+                    pathRemainder: remainingPath,
                     body: finalBuffer
                 };
 
@@ -156,15 +166,6 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
                     for (const cookie of req.headers.cookie.split(';')) {
                         request.cookies.push(cookie.trim());
                     }
-                }
-
-                if (matches.length > 0) {
-                    const placeholders: { [name: string]: string } = {};
-                    for (let idx = 0; idx < matches.length; idx++) {
-                        const name = handler.placeholders?.[idx] ?? ''.padEnd(idx + 1, '*');
-                        placeholders[name] = matches[idx];
-                    }
-                    request.placeholders = placeholders;
                 }
 
                 const response = await handler.action(request);

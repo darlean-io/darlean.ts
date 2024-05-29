@@ -12,7 +12,7 @@ export class JsonRequestParser<T, D extends Record<string, unknown> = Record<str
 
     public async parse(request: WebRequest | IWebGatewayRequest): Promise<T> {
         if (!(request instanceof WebRequest)) {
-            request = new WebRequest(request);
+            request = WebRequest.from(request);
         }
         // This call is async because for long body, we may have to perform
         // async calls to webserver in the future to fetch next chunk

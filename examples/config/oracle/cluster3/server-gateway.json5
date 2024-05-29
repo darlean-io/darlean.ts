@@ -17,9 +17,9 @@
                     port: 8080,
                     actorType: 'WebApiService',
                     handlers: [
-                        { path: '/ask/*/', actionName: 'ask' },
+                        { path: '/ask+', actionName: 'ask' },
                         { path: '/teach', actionName: 'teach' },
-                        { path: '/*', actionName: 'file' }
+                        { path: '+', actionName: 'file' }
                     ]
                 }
             ]

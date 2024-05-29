@@ -44,7 +44,7 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
                     };
                     for (const handler of gatewaycfg.handlers ?? []) {
                         const actorType = handler.actorType ?? gatewaycfg.actorType;
-                        const actionName = handler.actionName;
+                        const actionName = handler.actionName ?? gatewaycfg.actionName;
                         if (!handler.flow) {
                             if (!actorType) {
                                 throw new Error(`No actor type configured for Web Gateway handler`);
@@ -54,6 +54,11 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
                             }
                         }
                         const actorId = handler.actorId ?? gatewaycfg.actorId ?? [];
+
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        if ((handler as any).placeholders) {
+                            throw new Error('Placeholders are not supported anymore in web gateways');
+                        }
 
                         const h: IHandler = {
                             method: handler.method,
@@ -66,7 +71,6 @@ export function createWebGatewaysSuite(config: IWebGatewaysCfg, appId: string) {
                                 }
                             },
                             flow: handler.flow,
-                            placeholders: handler.placeholders,
                             maxContentLength: handler.maxContentLength
                         };
                         cfg.handlers?.push(h);

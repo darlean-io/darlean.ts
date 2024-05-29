@@ -8,12 +8,12 @@ export interface IWebGatewayRequest {
     // Percent-decoded search params. When there is no value, it is [].
     searchParams?: { [key: string]: string[] };
     method?: string;
-    // Percent-decoded path.
+    // Percent-encoded path.
     path?: string;
+    // Any remaining path (percent-encoded) after a prefix matching
+    pathRemainder?: string;
     // Percent-decoded user name
     username?: string;
-    // Percent-decoded placeholders
-    placeholders?: { [name: string]: string };
     // Headers except for cookies header.
     headers?: { [header: string]: string };
     cookies?: string[];
