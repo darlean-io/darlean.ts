@@ -33,14 +33,14 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
     protected port?: number;
     private close: () => void;
     private pathMatchers: (PathPrefixMatcher | undefined)[];
-    
+
     constructor(config: IGateway) {
         this.config = config;
         this.pathMatchers = [];
         for (const handler of this.config.handlers) {
-            this.pathMatchers.push( handler.path ? new PathPrefixMatcher(handler.path) : undefined);
+            this.pathMatchers.push(handler.path ? new PathPrefixMatcher(handler.path) : undefined);
         }
-        
+
         const server = createServer((req, res) => {
             setImmediate(async () => {
                 await this.handleRequest(req, res);

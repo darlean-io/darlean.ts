@@ -1,6 +1,6 @@
 /**
  * Matcher that matches url paths against a certain prefix pattern.
- * 
+ *
  * The prefix pattern can:
  * * End with `*`: a prefix match is performed.
  * * End with `+`: similar to the or of a match without the `+` and a match with the `+` replaced by `/*`.
@@ -8,7 +8,7 @@
  */
 export class PathPrefixMatcher {
     constructor(private pattern: string) {}
-    
+
     /**
      * Checks whether path matches this matcher's prefix pattern.
      * @param path The path to be matched.
@@ -41,5 +41,5 @@ export class PathPrefixMatcher {
         if (path === this.pattern) {
             return '';
         }
-   }
+    }
 }
