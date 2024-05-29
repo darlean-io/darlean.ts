@@ -100,6 +100,7 @@ export function createWebGatewaysSuiteFromConfig(config: IConfigEnv<IWebGateways
                 port,
                 actorId: gateway.actorId,
                 actorType: gateway.actorType,
+                actionName: gateway.actionName,
                 handlers: gateway.handlers,
                 keepAliveTimeout: gateway.keepAliveTimeout,
                 maxContentLength: gateway.maxContentLength
