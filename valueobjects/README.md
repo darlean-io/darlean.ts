@@ -135,6 +135,29 @@ Notes:
 
 For use without typescript, it is possible to work without decorators. Please see the tests for examples.
 
+## Object values
+
+To make defining objects and their fields as simple as possible, we use a clever (but dirty) trick.
+
+Let's take the following value object as an example:
+
+```ts
+@objectvalue() class Person extends ObjectValue {
+    get firstName() { return FirstName.required() }
+    get age() { return Age.optional() }
+}
+```
+
+The getter implementations (`return FirstName.required()`) play a double role:
+* During class definition, the `@objectvalue` decorator invokes each getter once. The getter
+  returns an internally used object that describes whether the field is optional and what the
+  type of the field is.
+* Also during class definition, the same `@objectvalue` decorator silently replaces the current getter
+  implementation with a new one that does actually return the corresponding field value.
+
+So, when you request `somePerson.age`, javascript does not run your getter (`return Age.optional()`), but it
+will invoke the replaced getter stub that will fetch the proper value and return it.
+
 ## Structural typing
 
 Javascript is a nominally-typed (aka duck-typed) language. And typescripts mimics that.
