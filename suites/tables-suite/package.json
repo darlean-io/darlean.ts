@@ -1,6 +1,6 @@
 {
   "name": "@darlean/tables-suite",
-  "version": "2.0.0-alpha.9",
+  "version": "2.0.0-alpha.10",
   "description": "Tables Suite that provides fast, indexed access to structured data",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
