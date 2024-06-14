@@ -48,7 +48,7 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
         this.server = server;
         this.close = graceful(this.server, {
             forceExit: false,
-            signals: undefined,
+            signals: '',
             timeout: 10_000
         });
     }
