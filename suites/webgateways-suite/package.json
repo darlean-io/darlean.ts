@@ -1,6 +1,6 @@
 {
   "name": "@darlean/webgateways-suite",
-  "version": "2.0.0-alpha.15",
+  "version": "2.0.0-alpha.16",
   "description": "Web Gateways Suite that acts as Web/API Gateway that invokes actors to serve HTTP requests",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
