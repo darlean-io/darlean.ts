@@ -393,9 +393,11 @@ export class TableActor implements ITablesService {
                 break;
             case 'gte':
                 sortKeyFrom = sortKey;
+                sortKeyTo = (sortKey?.length ?? 0) > 0 ? sortKey?.slice(0, sortKey.length - 1) : undefined;
                 break;
             case 'lte':
                 sortKeyTo = sortKey;
+                sortKeyFrom = (sortKey?.length ?? 0) > 0 ? sortKey?.slice(0, sortKey.length - 1) : undefined;
                 break;
             case 'prefix':
                 sortKeyFrom = sortKey;
