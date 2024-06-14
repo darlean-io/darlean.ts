@@ -4,9 +4,7 @@ import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import url from 'url';
 import querystring from 'querystring';
 import { IGatewayFlowCfg } from './intf';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import graceful from 'graceful-http';
+import graceful from 'http-graceful-shutdown';
 import { PathPrefixMatcher } from './path-prefix-matcher';
 
 const MAX_BODY_LENGTH = 100 * 1000;
@@ -31,7 +29,7 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
     protected server: Server;
     protected config: IGateway;
     protected port?: number;
-    private close: () => void;
+    private close: () => Promise<void>;
     private pathMatchers: (PathPrefixMatcher | undefined)[];
 
     constructor(config: IGateway) {
@@ -48,7 +46,11 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
         });
         server.keepAliveTimeout = config.keepAliveTimeout;
         this.server = server;
-        this.close = graceful(server);
+        this.close = graceful(this.server, {
+            forceExit: false,
+            signals: undefined,
+            timeout: 10_000
+        });
     }
 
     public async activate(): Promise<void> {
@@ -66,7 +68,7 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
             // When calling server.close or even server.closeAllConnections, connections with keep-alive open
             // (for example, those when used for long-polling) are not actively ended. See https://github.com/nodejs/node/issues/2642.
             // The graceful-http library solves this.
-            this.close();
+            await this.close();
         }
         notifier().info('io.darlean.webgateways.StoppedListening', 'Web gateway [Name] stopped listening on port [Port]', () => ({
             Name: this.config.name,
@@ -121,6 +123,11 @@ export class WebGatewayActor implements IActivatable, IDeactivatable {
                     len += buf.length;
                     const maxContentLength = handler.maxContentLength ?? this.config.maxContentLength ?? MAX_BODY_LENGTH;
                     if (len > maxContentLength) {
+                        // We break the iteration over the request data. When we do not destroy the request, request.socket becomes
+                        // null by NodeJS, and this gives errors in the graceful shutdown library.
+                        // See https://github.com/nodejs/undici/issues/1115
+                        req.destroy();
+
                         res.statusCode = 413;
                         res.statusMessage = 'Payload too large';
                         res.end();
