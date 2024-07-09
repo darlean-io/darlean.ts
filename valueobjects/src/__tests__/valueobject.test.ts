@@ -11,16 +11,19 @@ import {
 } from '../primitive-valueobject';
 import { ObjectValue } from '../struct-valueobject';
 import {
+    arrayvalidation,
     binaryvalue,
     boolvalue,
     floatvalue,
     intvalidation,
     intvalue,
     momentvalue,
+    objectvalidation,
     objectvalue,
     stringvalidation,
     stringvalue,
-    typedarrayvalue
+    typedarrayvalidation,
+    typedarrayvalue,
 } from '../decorators';
 import { discriminative } from '../valueobject';
 import {
@@ -34,6 +37,7 @@ import {
     StringCanonical
 } from '@darlean/canonical';
 import { ArrayValue } from '../array-valueobject';
+import { MapValue } from '../../lib/map-valueobject';
 
 export class TextValue extends StringValue {
     static DEF = primitive<string>(TextValue, 'text').withValidator(
@@ -111,6 +115,13 @@ describe('Value objects', () => {
         expect(() => new StringValue(42 as unknown as string)).toThrow();
     });
 
+    it('String equality', () => {
+        expect(StringValue.from('A').equals(StringValue.from('A'))).toBe(true);
+        expect(StringValue.from('A').equals(StringValue.from('B'))).toBe(false);
+        expect(StringValue.from('A').equals(undefined)).toBe(false);
+        expect(StringValue.from('').equals(undefined)).toBe(false);
+    });
+
     test('int', () => {
         expect(new IntValue(12).value).toBe(12);
         expect(new IntValue(0).value).toBe(0);
@@ -124,6 +135,10 @@ describe('Value objects', () => {
         expect(new IntValue(12)._peekCanonicalRepresentation().intValue).toBe(12);
         expect(new IntValue(IntCanonical.from(12, ['int'])).value).toBe(12);
         expect(() => new IntValue(FloatCanonical.from(12, ['int']))).toThrow();
+
+        expect(IntValue.from(2).equals(IntValue.from(2))).toBe(true);
+        expect(IntValue.from(2).equals(IntValue.from(3))).toBe(false);
+        expect(IntValue.from(2).equals(undefined)).toBe(false);
     });
 
     test('float', () => {
@@ -139,6 +154,10 @@ describe('Value objects', () => {
         expect(new FloatValue(12.5)._peekCanonicalRepresentation().floatValue).toBeCloseTo(12.5, 5);
         expect(new FloatValue(FloatCanonical.from(12.5, ['float'])).value).toBeCloseTo(12.5, 5);
         expect(() => new FloatValue(IntCanonical.from(12, ['int']))).toThrow();
+
+        expect(FloatValue.from(2.5).equals(FloatValue.from(2.5))).toBe(true);
+        expect(FloatValue.from(2.5).equals(FloatValue.from(2.4))).toBe(false);
+        expect(FloatValue.from(2.5).equals(undefined)).toBe(false);
     });
 
     test('boolean', () => {
@@ -154,6 +173,10 @@ describe('Value objects', () => {
         expect(new BoolValue(true)._peekCanonicalRepresentation().boolValue).toBe(true);
         expect(new BoolValue(BoolCanonical.from(true, [])).value).toBe(true);
         expect(() => new BoolValue(IntCanonical.from(1))).toThrow();
+
+        expect(BoolValue.from(true).equals(BoolValue.from(true))).toBe(true);
+        expect(BoolValue.from(true).equals(BoolValue.from(false))).toBe(false);
+        expect(BoolValue.from(true).equals(undefined)).toBe(false);
     });
 
     test('moment', () => {
@@ -167,6 +190,12 @@ describe('Value objects', () => {
         expect(new MomentValue(DATE)._peekCanonicalRepresentation().momentValue.toISOString()).toBe(DATE.toISOString());
         expect(new MomentValue(MomentCanonical.from(DATE)).value.toISOString()).toBe(DATE.toISOString());
         expect(() => new MomentValue(IntCanonical.from(1))).toThrow();
+
+        const DATE2 = new Date(100001);
+        expect(MomentValue.from(DATE).equals(MomentValue.from(DATE))).toBe(true);
+        expect(MomentValue.from(DATE).equals(MomentValue.from(DATE2))).toBe(false);
+        expect(MomentValue.from(DATE).equals(undefined)).toBe(false);
+
     });
 
     // TODO: Test string, binary, more structs and maps
@@ -179,21 +208,45 @@ describe('Value objects', () => {
         expect(struct.firstName.value).toBe('Jantje');
         expect(struct.lastName?.value).toBe('DEBOER');
 
-        const struct2 = Person.fromSlots(struct.extractSlots());
+        const struct2 = Person.fromSlots(struct._extractSlots());
         expect(struct2.firstName.value).toBe('Jantje');
         expect(struct2.lastName?.value).toBe('DEBOER');
         expect(() => struct.firstName).toThrow();
 
-        const struct3 = new Person(struct2._peekCanonicalRepresentation());
+        const struct3 = new Person(struct2._peekCanonicalRepresentation(), undefined);
         expect(struct3.firstName.value).toBe('Jantje');
         expect(struct3.lastName?.value).toBe('DEBOER');
+        expect(struct3._peekCanonicalRepresentation().logicalTypes).toEqual(['struct-value', 'person']);
+    });
+
+    test('Untyped map', () => {
+        const map = MapValue.from({
+            'Hello': FirstName.from('Hello')
+        });
+        console.log('STRUCT',  map);
+        expect((map.get('Hello') as FirstName)?.value).toBe('Hello');
+
+        // TODO more map tests: typed, untyped, subclasses, add decorators
+    });
+
+    test('Object validation', () => {
+        @objectvalidation(v => v.has('a') != v.has('b'), 'Must either have a or b' )
+        class C extends ObjectValue {
+            get a() { return IntValue.optional() }
+            get b() { return IntValue.optional() }
+        }
+
+        expect(C.from({a: IntValue.from(3)})).toBeDefined();
+        expect(C.from({b: IntValue.from(4)})).toBeDefined();
+        expect(() => C.from({a: IntValue.from(3), b: IntValue.from(4)})).toThrow();
+        expect(() => C.from({})).toThrow();
     });
 
     test('Subclass', () => {
-        const p2 = new PersonWithAge({
-            ['firstName']: 'Jantje',
-            ['lastName']: 'DEBOER',
-            ['age']: 12
+        const p2 = PersonWithAge.from({
+            firstName: FirstName.from('Jantje'),
+            lastName: LastName.from('DEBOER'),
+            age: IntValue.from(12)
         });
         expect(p2.firstName.value).toBe('Jantje');
         expect(p2.age.value).toBe(12);
@@ -206,7 +259,7 @@ describe('Value objects', () => {
         {
             const persons = Persons.from([
                 Person.from({
-                    firstName: new FirstName('Jantje'),
+                    firstName: FirstName.from('Jantje'),
                     lastName: new LastName('DEBOER')
                 })
             ]);
@@ -214,18 +267,152 @@ describe('Value objects', () => {
             expect(persons.get(0)).toBeInstanceOf(Person);
             expect((persons.get(0) as Person).firstName.value).toBe('Jantje');
         }
+    });
 
-        {
-            const persons = Persons.from([
-                {
-                    firstName: new FirstName('Jantje'),
-                    lastName: new LastName('DEBOER')
-                }
-            ]);
-            expect(persons.length).toBe(1);
-            expect(persons.get(0)).toBeInstanceOf(Person);
-            expect((persons.get(0) as Person).firstName.value).toBe('Jantje');
+    test('Array from repeated sequence', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        expect(Numbers.from([] as IntValue[], 3).extractItems().map(x => (x as IntValue).value)).toEqual([]);
+        expect(Numbers.from([4], 0).extractItems().map(x => (x as IntValue).value)).toEqual([]);
+        expect(Numbers.from([3, 4], 1).extractItems().map(x => (x as IntValue).value)).toEqual([3, 4]);
+        expect(Numbers.from([3, 4], 2).extractItems().map(x => (x as IntValue).value)).toEqual([3, 4, 3, 4]);
+        expect(Numbers.from([9], 3).extractItems().map(x => (x as IntValue).value)).toEqual([9, 9, 9]);
+        expect(Numbers.from([IntValue.from(3), IntValue.from(4)], 2).extractItems().map(x => (x as IntValue).value)).toEqual([3, 4, 3, 4]);
+        expect(Numbers.from(Numbers.from([3, 4]), 2).extractItems().map(x => (x as IntValue).value)).toEqual([3, 4, 3, 4]);
+        
+    });
+
+    test('Array from concatenation', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        expect(Numbers.from([], []).extractItems().map(x => (x as IntValue).value)).toEqual([]);
+        expect(Numbers.mapFrom([1], (x) => IntValue.from(x)).extractItems().map(x => (x as IntValue).value)).toEqual([1]);
+        expect(Numbers.mapFrom([1], (x) => IntValue.from(x)).extractItems().map(x => (x as IntValue).value)).toEqual([1]);
+        expect(Numbers.from([], [2]).extractItems().map(x => (x as IntValue).value)).toEqual([2]);
+        expect(Numbers.from([1], [2]).extractItems().map(x => (x as IntValue).value)).toEqual([1, 2]);
+        expect(Numbers.from([1, 2], [3, 4], [5]).extractItems().map(x => (x as IntValue).value)).toEqual([1, 2, 3, 4, 5]);
+        expect(Numbers.from(Numbers.from([1, 2]), Numbers.from([3, 4]), Numbers.from([5])).extractItems().map(x => (x as IntValue).value)).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    test('Array validation (with explicit @typedarrayvalue)', () => {
+        @arrayvalidation(v => v.length === 2, 'Must have length 2')
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+
+        expect(() => Numbers.from([])).toThrow();
+        expect(() => Numbers.from([1])).toThrow();
+        expect(() => Numbers.from([1, 2, 3])).toThrow();
+        expect(Numbers.from([1, 2])).toBeDefined();
+    });
+
+    test('Array validation - typed (with explicit @typedarrayvalue)', () => {
+        @typedarrayvalidation<IntValue>(v => v[1]?.value === 9, 'Must have 9 for element 1')
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+
+        expect(() => Numbers.from([])).toThrow();
+        expect(() => Numbers.from([1])).toThrow();
+        expect(() => Numbers.from([1, 2, 3])).toThrow();
+        expect(Numbers.from([1, 9])).toBeDefined();
+    });
+
+    test('Array validation (without explicit @typedarrayvalue)', () => {
+        @arrayvalidation(v => v.length === 2, 'Must have length 2')
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+
+        expect(() => Numbers.from([])).toThrow();
+        expect(() => Numbers.from([1])).toThrow();
+        expect(() => Numbers.from([1, 2, 3])).toThrow();
+        expect(Numbers.from([1, 2])).toBeDefined();
+    });
+
+    test('Array mapping', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalue(StringValue) class Strings extends ArrayValue<StringValue> {}
+
+        expect(Numbers.mapFrom(Strings.from(['1', '2', '3']), (v) => { return IntValue.from(parseInt(v.value)) } ).map(x => x.value)).toEqual([1, 2, 3]);
+    });
+
+    test('Array sorting', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        const input = Numbers.from([1, 5, 2, 4, 3]);
+        const output = Numbers.sortFrom(input, (a, b) => a.value - b.value);
+        expect(output.map(x => x.value)).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    test('Array filtering', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        const input = Numbers.from([1, 5, 2, 4, 3]);
+        const output = Numbers.filterFrom(input, v => v.value % 2 === 0);
+        expect(output.map(x => x.value)).toEqual([2, 4]);
+
+        expect(input.filter(v => v.value % 2 === 0).map(x => x.value)).toEqual([2, 4]);
+    });
+
+    test('Array find', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        const input = Numbers.from([1, 5, 2, 4, 3]);
+        expect(input.find(x => x.value === 4)?.value).toEqual(4);
+        expect(input.find(x => x.value === -99)?.value).toEqual(undefined);
+    });
+
+    test('Array findIndex', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        const input = Numbers.from([1, 5, 2, 4, 3]);
+        expect(input.findIndex(x => x.value === 4)).toEqual(3);
+        expect(input.findIndex(x => x.value === -99)).toEqual(-1);
+    });
+
+    test('Array reverse', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        const input = Numbers.from([1, 2, 3, 4, 5]);
+        expect(input.reverse().map(x => x.value)).toEqual([5, 4, 3, 2, 1]);
+        expect(Numbers.reverseFrom(input).map(x => x.value)).toEqual([5, 4, 3, 2, 1]);
+    });
+
+    test('Array slice', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        const input = Numbers.from([0, 1, 2, 3, 4, 5]);
+        expect(input.slice(0, 0).map(x => x.value)).toEqual([]);
+        expect(input.slice(1, 1).map(x => x.value)).toEqual([]);
+        expect(input.slice(10, 1).map(x => x.value)).toEqual([]);
+        expect(input.slice(-2, 1).map(x => x.value)).toEqual([]);
+        expect(input.slice(0, 1).map(x => x.value)).toEqual([0]);
+        expect(input.slice(1, 2).map(x => x.value)).toEqual([1]);
+        expect(input.slice(1, 3).map(x => x.value)).toEqual([1, 2]);
+        expect(input.slice(1).map(x => x.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(input.slice(1, -1).map(x => x.value)).toEqual([1, 2, 3, 4]);
+        expect(input.slice(-2).map(x => x.value)).toEqual([4, 5]);
+        expect(input.slice(-2, -1).map(x => x.value)).toEqual([4]);
+        expect(input.slice().map(x => x.value)).toEqual([0, 1, 2, 3, 4, 5]);
+        expect(input.slice(-1, -1).map(x => x.value)).toEqual([]);
+        
+        expect(Numbers.sliceFrom(input, 0, 0).map(x => x.value)).toEqual([]);
+        expect(Numbers.sliceFrom(input, 1, 1).map(x => x.value)).toEqual([]);
+        expect(Numbers.sliceFrom(input, 10, 1).map(x => x.value)).toEqual([]);
+        expect(Numbers.sliceFrom(input, -2, 1).map(x => x.value)).toEqual([]);
+        expect(Numbers.sliceFrom(input, 0, 1).map(x => x.value)).toEqual([0]);
+        expect(Numbers.sliceFrom(input, 1, 2).map(x => x.value)).toEqual([1]);
+        expect(Numbers.sliceFrom(input, 1, 3).map(x => x.value)).toEqual([1, 2]);
+        expect(Numbers.sliceFrom(input, 1).map(x => x.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(Numbers.sliceFrom(input, 1, -1).map(x => x.value)).toEqual([1, 2, 3, 4]);
+        expect(Numbers.sliceFrom(input, -2).map(x => x.value)).toEqual([4, 5]);
+        expect(Numbers.sliceFrom(input, -2, -1).map(x => x.value)).toEqual([4]);
+        expect(Numbers.sliceFrom(input).map(x => x.value)).toEqual([0, 1, 2, 3, 4, 5]);
+        expect(Numbers.sliceFrom(input, -1, -1).map(x => x.value)).toEqual([]);
+    });
+
+    test('Array iteration', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        const input = Numbers.from([1, 2, 3, 4, 5]);
+        const values: number[] = [];
+        for (const nr of input) {
+            values.push(nr.value);
         }
+        expect(values).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    test('Array reduce', () => {
+        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        const values = Numbers.from([1, 2, 3, 4, 5]);
+        expect(values.reduce((prev, curr) => IntValue.from(prev.value + curr.value)).value).toBe(15);
+        expect(values.reduce((prev, curr) => prev + curr.value, 10)).toBe(25);
     });
 
     it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
@@ -237,10 +424,10 @@ describe('Value objects', () => {
             };
             if (value === 'VALID') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(new Person(input as any)).toBeDefined();
+                expect(Person.from(input as any)).toBeDefined();
             } else {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(() => new Person(input as any)).toThrow();
+                expect(() => Person.from(input as any)).toThrow();
             }
         }
     );
@@ -254,10 +441,10 @@ describe('Value objects', () => {
             ]);
             if (value === 'VALID') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(new Person(input as any)).toBeDefined();
+                expect(Person.from(input as any)).toBeDefined();
             } else {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(() => new Person(input as any)).toThrow();
+                expect(() => Person.from(input as any)).toThrow();
             }
         }
     );
@@ -277,10 +464,10 @@ describe('Value objects', () => {
         };
         if (value.physicalType === 'string' && value.stringValue === 'VALID') {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            expect(new Person(input as any)).toBeDefined();
+            expect(Person.from(input as any)).toBeDefined();
         } else {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            expect(() => new Person(input as any)).toThrow();
+            expect(() => Person.from(input as any)).toThrow();
         }
     });
 
@@ -293,10 +480,10 @@ describe('Value objects', () => {
             };
             if (value === 'VALID') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(new Person(input as any)).toBeDefined();
+                expect(Person.from(input as any)).toBeDefined();
             } else {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(() => new Person(input as any)).toThrow();
+                expect(() => Person.from(input as any)).toThrow();
             }
         }
     );
@@ -310,10 +497,10 @@ describe('Value objects', () => {
             };
             if (value === 'VALID') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(new Person(input as any)).toBeDefined();
+                expect(Person.from(input as any)).toBeDefined();
             } else {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(() => new Person(input as any)).toThrow();
+                expect(() => Person.from(input as any)).toThrow();
             }
         }
     );
@@ -323,14 +510,16 @@ describe('Value objects', () => {
             firstName: StringCanonical.from('Jantje'),
             lastName: NoneCanonical.from()
         };
-        expect(() => new Person(input)).toThrow();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        expect(() => Person.from(input as any)).toThrow();
     });
 
     it('Struct should accept optional fields that are not present', () => {
         const input = {
             firstName: StringCanonical.from('Jantje')
         };
-        const p = new Person(input);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const p = Person.from(input as any);
         expect(p.lastName).toBeUndefined;
     });
 });
@@ -403,12 +592,12 @@ describe('Complex object', () => {
             lastName: LastName.from('DeBoer'),
             age: Age.from(21),
             length: Meters.from(180.5),
-            facts: Facts.from([true, Fact.from(false)]),
+            facts: Facts.from([true, false]),
             born: Birthday.from(new Date('2000-12-31T18:30:00.000Z')),
             data: BinaryData.from(Buffer.from('BINARY'))
         });
 
-        const cloned = new Person(person._peekCanonicalRepresentation());
+        const cloned = new Person(person._peekCanonicalRepresentation(), undefined);
 
         for (const p of [person, cloned]) {
             expect(p.firstName.value).toBe('Jantje');
@@ -416,8 +605,8 @@ describe('Complex object', () => {
             expect(p.lastName.value).toBe('DeBoer');
             expect(p.age.value).toBe(21);
             expect(p.facts.length).toBe(2);
-            expect(p.facts.getTyped(0).value).toBe(true);
-            expect(p.facts.getTyped(1).value).toBe(false);
+            expect(p.facts.get(0).value).toBe(true);
+            expect(p.facts.get(1).value).toBe(false);
             expect(p.length.value).toBe(180.5);
             expect(p.born.value.toISOString()).toBe('2000-12-31T18:30:00.000Z');
             expect(p.data.value.toString()).toBe('BINARY');
@@ -449,7 +638,7 @@ describe('ObjectValue Decorator', () => {
         const partner = Person.from({
             firstName: FirstName.from('Alice')
         });
-        const p = new Person(
+        const p = Person.fromCanonical(
             DictCanonical.from({
                 'first-name': StringCanonical.from('Jantje', ['first-name']),
                 'last-name': StringCanonical.from('DEBOER', ['last-name']),
@@ -465,8 +654,8 @@ describe('ObjectValue Decorator', () => {
         expect(p.firstName).toBeInstanceOf(FirstName);
         expect(p.lastName?.value).toBe('DEBOER');
         expect(p.partner?.firstName.value).toBe('Alice');
-        expect(p.friends?.getTyped(0).firstName.value).toBe('Bob');
-        expect(p.friends?.getTyped(1).firstName.value).toBe('Charlie');
+        expect(p.friends?.get(0).firstName.value).toBe('Bob');
+        expect(p.friends?.get(1).firstName.value).toBe('Charlie');
     });
 
     it('Must support derived fields', () => {
@@ -483,7 +672,7 @@ describe('ObjectValue Decorator', () => {
             }
         }
 
-        const p = new Person(
+        const p = Person.fromCanonical(
             DictCanonical.from({
                 'first-name': StringCanonical.from('Jantje', ['first-name']),
                 'last-name': StringCanonical.from('DEBOER', ['last-name'])
@@ -507,7 +696,7 @@ describe('ObjectValue Decorator', () => {
             }
         }
 
-        const p = new Person(
+        const p = Person.fromCanonical(
             DictCanonical.from({
                 'first-name': StringCanonical.from('Jantje', ['first-name'])
             })
@@ -526,7 +715,7 @@ describe('ObjectValue Decorator', () => {
             }
         }
 
-        expect(() => new Person(DictCanonical.from({}))).toThrow();
+        expect(() => Person.fromCanonical(DictCanonical.from({}))).toThrow();
     });
 
     it('Must not allow fields of incorrect type', () => {
@@ -539,7 +728,7 @@ describe('ObjectValue Decorator', () => {
 
         expect(
             () =>
-                new Person(
+                Person.from(
                     DictCanonical.from({
                         'first-name': StringCanonical.from('Jantje', ['not-a-first-name'])
                     })

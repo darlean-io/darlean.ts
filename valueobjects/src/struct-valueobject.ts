@@ -1,4 +1,4 @@
-import { ICanonical, ICanonicalSource, MapCanonical } from '@darlean/canonical';
+import { CanonicalLike, ICanonical, ICanonicalSource, MapCanonical, isCanonical, toCanonical } from '@darlean/canonical';
 import {
     IValueDef,
     IValueObject,
@@ -11,7 +11,8 @@ import {
     NativeStruct,
     NativeType,
     ValueDefLike,
-    extractValueDef
+    extractValueDef,
+    ValueObject
 } from './valueobject';
 
 export type UnknownFieldAction = 'keep' | 'ignore' | 'error';
@@ -27,6 +28,8 @@ export interface ISlotDef<TNative extends NativeType> {
     propName?: string;
 }
 
+export type StructValidator = (value: Map<string, IValueObject | ICanonical>) => string | boolean | void | undefined;
+
 export class StructDef implements IValueDef<NativeStruct> {
     private _types: CanonicalType[];
     private _slots: Map<string, ISlotDef<NativeType>>;
@@ -35,7 +38,8 @@ export class StructDef implements IValueDef<NativeStruct> {
     // eslint-disable-next-line @typescript-eslint/ban-types
     private _template: Function;
     private _strictFieldNames: boolean;
-
+    private _validators: { validator: StructValidator; description?: string }[];
+    
     // eslint-disable-next-line @typescript-eslint/ban-types
     constructor(template: Function, type?: CanonicalType, strictFieldNames = false) {
         this._template = template;
@@ -43,6 +47,7 @@ export class StructDef implements IValueDef<NativeStruct> {
         this._slots = new Map();
         this._requiredSlots = [];
         this._strictFieldNames = strictFieldNames;
+        this._validators = [];
 
         const proto = Object.getPrototypeOf(template);
         if (proto) {
@@ -52,6 +57,10 @@ export class StructDef implements IValueDef<NativeStruct> {
 
     public get types() {
         return this._types;
+    }
+
+    public get validators() {
+        return this._validators;
     }
 
     public withBase(base: IStructValueClass | StructDef): StructDef {
@@ -94,6 +103,11 @@ export class StructDef implements IValueDef<NativeStruct> {
         return this;
     }
 
+    public withValidator(validator: StructValidator, description?: string): StructDef {
+        this._validators.push({ validator, description });
+        return this;
+    }
+
     public getSlotDef<T extends NativeType>(name: string): ISlotDef<T> | undefined {
         const def = this._slots.get(name);
         if (!def) {
@@ -127,11 +141,11 @@ export class StructDef implements IValueDef<NativeStruct> {
     }
 
     public construct(value: ICanonical | NativeStruct): IValueObject {
-        return Reflect.construct(this._template, [value]);
+        return Reflect.construct(this._template, [value, isCanonical(value) ? value : undefined]);
     }
 
     public constructFromSlots(value: ICanonical | NativeStruct): IValueObject {
-        return Reflect.construct(this._template, [value, true]);
+        return Reflect.construct(this._template, [value, isCanonical(value) ? value : undefined, true]);
     }
 
     public hasType(type: CanonicalType) {
@@ -157,7 +171,7 @@ export class StructDef implements IValueDef<NativeStruct> {
     }
 }
 
-export class StructValue<T = unknown> implements IValueObject, ICanonicalSource<T> {
+export class StructValue extends ValueObject implements IValueObject, ICanonicalSource<typeof this> {
     static DEF = struct(StructValue, undefined);
 
     private _slots?: Map<string, IValueObject | ICanonical>;
@@ -173,22 +187,62 @@ export class StructValue<T = unknown> implements IValueObject, ICanonicalSource<
     /**
      * Creates a new struct value from a value that is a partial (subset of the fields) of T. The fields
      * should be in the exact casing as used in T. They are internally converted into the canonical field names.
+     * Their values must be value objects (like StringValue or derived classes); not native types (like string).
      */
-    static from<T extends typeof StructValue>(this: T, value: Partial<InstanceType<T>>): InstanceType<T> {
+    static from<T extends typeof StructValue>(this: T, value: Partial<Omit<InstanceType<T>, keyof StructValue>>): InstanceType<T> {
         const v2: { [key: string]: unknown } = {};
-        for (const [k, v] of Object.entries(value)) {
-            v2[k] = v;
+        if (value instanceof Map) {
+            for (const [k, v] of value.entries()) {
+                v2[k as string] = v;
+            }
+        } else {
+            for (const [k, v] of Object.entries(value)) {
+                v2[k] = v;
+            }
         }
-        const def = (this as unknown as IValueClass<NativeType>).DEF;
+
+        const def = (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF;
         return def.from(v2) as InstanceType<T>;
+    }
+
+    /**
+     * Creates a new struct value from a map or dictionary. The casing of the field names is literally preserved: no conversions
+     * to canonical field names are performed, and the names also do not have to follow the convention for
+     * canonical field names.
+     * Their values must be value objects (like StringValue or derived classes); not native types (like string).
+     */
+    static fromMap<T extends typeof StructValue>(this: T, value: {[key: string]: ICanonical | IValueObject} | Map<string, ICanonical | IValueObject>): InstanceType<T> {
+        const v2: Map<string, ICanonical | IValueObject> = new Map();
+        if (value instanceof Map) {
+            for (const [k, v] of value.entries()) {
+                v2.set(k, v);
+            }
+        } else {
+            for (const [k, v] of Object.entries(value)) {
+                v2.set(k, v);
+            }
+        }
+
+        const def = (this as unknown as IStructValueClass).DEF;
+        return def.fromSlots(v2) as InstanceType<T>;
     }
 
     /**
      * Creates a new struct value from a map of slot keys and values. The slot names
      * should be canonicalized names.
+     * The values must be value objects (like StringValue or derived classes); not native types (like string).
      */
     static fromSlots<T extends typeof StructValue>(this: T, value: Map<string, ICanonical | IValueObject>): InstanceType<T> {
         return (this as unknown as IStructValueClass).DEF.fromSlots(value) as InstanceType<T>;
+    }
+
+    /**
+     * Creates a new struct value from a map of slot keys and values. The slot names
+     * should be canonicalized names.
+     * The values must be value objects (like StringValue or derived classes); not native types (like string).
+     */
+    static fromCanonical<T extends typeof StructValue>(this: T, value: CanonicalLike<InstanceType<T>>): InstanceType<T> {
+        return (this as unknown as IStructValueClass).DEF.from(toCanonical(value)) as InstanceType<T>;
     }
 
     /**
@@ -197,7 +251,8 @@ export class StructValue<T = unknown> implements IValueObject, ICanonicalSource<
      * values.
      * @param value
      */
-    constructor(value: ICanonical | NativeStruct, fromSlots = false) {
+    constructor(value: ICanonical | NativeStruct, canonical: ICanonical | undefined, fromSlots = false) {
+        super(canonical);
         const proto = this.constructor as unknown as IStructValueClass;
         if (proto.DEF.template !== this.constructor) {
             throw new Error(
@@ -208,18 +263,22 @@ export class StructValue<T = unknown> implements IValueObject, ICanonicalSource<
         this._slots = validateStruct(proto.DEF, value, fromSlots);
     }
 
-    public _peekCanonicalRepresentation(): ICanonical {
+    public _deriveCanonicalRepresentation(): ICanonical {
         const slots = this._checkSlots();
         return MapCanonical.from(
-            slots as unknown as Map<string, ICanonical | ICanonicalSource<T>>,
+            slots as unknown as Map<string, ICanonical | ICanonicalSource<unknown>>,
             (Object.getPrototypeOf(this).constructor as IStructValueClass).DEF.types
         );
+    }
+
+    public get(slot: string): IValueObject | CanonicalLike | undefined {
+        return this._checkSlots().get(slot);
     }
 
     /**
      * Extracts the current slots and their values. Slot names are returned as canonicalized names.
      */
-    public extractSlots(): Map<string, ICanonical | IValueObject> {
+    public _extractSlots(): Map<string, ICanonical | IValueObject> {
         const slots = this._checkSlots();
         this._slots = undefined;
         return slots;
@@ -292,6 +351,26 @@ function validateStruct(
         }
     }
 
+    for (const validator of def.validators) {
+        let result: string | boolean | undefined | void;
+        try {
+            result = validator.validator(slots);
+        } catch (e) {
+            result = (e as Error).message ?? false;
+        }
+
+        if (result === true || result === '' || result === undefined) {
+            continue;
+        }
+
+        if (typeof result === 'string') {
+            throw new Error(`Invalid contents for struct of type "${def.types.at(-1)}": ${result}`);
+        } else if (validator.description) {
+            throw new Error(`Invalid contents for struct of type "${def.types.at(-1)}": ${validator.description}`);
+        }
+        throw new Error(`Invalid contents for struct of type "${def.types.at(-1)}"`);
+    }
+
     return slots;
 }
 
@@ -315,7 +394,7 @@ export function validateStrictFieldName(name: CanonicalFieldName) {
 export const structv = struct;
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export function objectv(template: Function, type: CanonicalType): StructDef {
+export function objectv(template: Function, type?: CanonicalType): StructDef {
     const def = new StructDef(template, type, true).withExtensions('error');
     (template as unknown as IStructValueClass).DEF = def;
     return def;

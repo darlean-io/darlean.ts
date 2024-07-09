@@ -1,4 +1,4 @@
-import { ICanonical } from '@darlean/canonical';
+import { ICanonical, ICanonicalSource } from '@darlean/canonical';
 
 export type CanonicalFieldName = string;
 export type CanonicalType = string;
@@ -21,57 +21,90 @@ export type NativeValue = unknown;
 export type discriminative = undefined;
 
 export type NativePrimitive = undefined | boolean | number | string | Buffer | Date;
-export type NativeStruct = { [key: string]: ICanonical | IValueObject } | Map<string, ICanonical | IValueObject> | object;
-export type NativeArray = (ICanonical | IValueObject)[];
-export type NativeType = NativePrimitive | NativeStruct | NativeArray;
+export type NativeStruct = { [key: string]: NativeType } | Map<string, NativeType> | object;
+export type NativeArray = NativeType[];
+export type TypedNativeArray<T extends NativeType> = T[];
+export type NativeType = NativePrimitive | NativeStruct | NativeArray | ICanonical | IValueObject;
+
+/**
+ * Represents the type of contained values in compound structures (like arrays and structs) after creation.
+ */
+export type ValueType<T extends IValueObject = IValueObject> = ICanonical<T> | T;
 
 export function isValueObject(value: unknown): IValueObject | undefined {
     if (value === undefined) {
-        return false;
+        return undefined;
     }
-    const clazz = (value as object).constructor as unknown as IValueClass<NativeType>;
+    const clazz = (value as object).constructor as unknown as IValueClass<NativeType, IValueObject>;
     return clazz.DEF ? (value as IValueObject) : undefined;
 }
 
-export function getValueObjectDef<T extends NativeType>(value: IValueObject): IValueDef<T> {
-    const clazz = (value as object).constructor as unknown as IValueClass<T>;
+export function getValueObjectDef<N extends NativeType, T extends IValueObject>(value: IValueObject): IValueDef<N, T> {
+    const clazz = (value as object).constructor as unknown as IValueClass<N, T>;
     return clazz.DEF;
 }
 
 /**
  * Represents a class with a static DEF field which contains the value definition.
  */
-export interface IValueClass<TNative extends NativeType> {
-    DEF: IValueDef<TNative>;
+export interface IValueClass<TNative extends NativeType, T extends IValueObject> {
+    DEF: IValueDef<TNative, T>;
 }
 
 /**
  * Represents a supported native type, value object class, or function that returns one of the two.
  */
-export type ValueDefLike<TNative extends NativeType> =
-    | IValueDef<TNative>
-    | IValueClass<TNative>
-    | (() => IValueDef<TNative> | IValueClass<TNative>);
+export type ValueDefLike<N extends NativeType, T extends IValueObject = IValueObject> =
+    | IValueDef<N, T>
+    | IValueClass<N, T>
+    | (() => IValueDef<N, T> | IValueClass<N, T>);
 
-export function extractValueDef<TNative extends NativeType>(value: ValueDefLike<TNative>): IValueDef<TNative> {
-    let defLike = value;
-    if (typeof value === 'function' && !value.prototype) {
-        defLike = value();
-    }
-    return (defLike as IValueClass<NativeType>)?.DEF ?? defLike;
+export function extractValueDef<N extends NativeType, T extends IValueObject>(value: ValueDefLike<N, T>): IValueDef<N, T> {
+    const defLike = (typeof value === 'function' && !value.prototype) ? value() : value;
+    return (defLike as IValueClass<N, T>)?.DEF ?? defLike;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface IValueObject {}
+export interface IValueObject {
+    equals(other: IValueObject | undefined): boolean;
+}
 
-export interface IValueDef<TNative> {
+export abstract class ValueObject {
+    private ___value_object: undefined;
+    private ___canonical?: ICanonical<typeof this>;
+
+    constructor(canonical?: ICanonical) {
+        this.___canonical = canonical;
+    }
+
+    public get _definition(): IValueDef<NativeType, this> {
+        return (Object.getPrototypeOf(this).constructor as IValueClass<NativeType, this>).DEF;
+    }
+
+    public equals(other: this | undefined): boolean {
+        if (other === undefined) { return false; }
+        return this._peekCanonicalRepresentation().equals(other as ICanonicalSource<unknown>);
+    } 
+
+    public _peekCanonicalRepresentation(): ICanonical {
+        if (this.___canonical) {
+            return this.___canonical;
+        }
+        this.___canonical = this._deriveCanonicalRepresentation();
+        return this.___canonical;
+    }
+
+    protected abstract _deriveCanonicalRepresentation(): ICanonical;
+}
+
+export interface IValueDef<TNative, T extends IValueObject = IValueObject> {
     /**
      * Create a new value object from value. If value is a struct, the field
      * names must already be canonicalized. That also counts for field names
      * of nested values.
      * @param value A canonical value
      */
-    construct(value: ICanonical | TNative): IValueObject;
+    construct(value: ICanonical | TNative): T;
 
     /**
      * Returns a potentially new value object from value. When value is a value object
@@ -81,7 +114,7 @@ export interface IValueDef<TNative> {
      * When the field names are already canonicalized, consider using `construct`.
      * @param value A canonical value or value object
      */
-    from(value: ICanonical | TNative | IValueObject): IValueObject;
+    from(value: ICanonical | TNative | IValueObject): T;
 
     hasType(type: CanonicalType): boolean;
 

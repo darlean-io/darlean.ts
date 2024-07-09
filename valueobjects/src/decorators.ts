@@ -1,4 +1,4 @@
-import { arrayv } from './array-valueobject';
+import { ArrayValidator, IArrayValueClass, TypedArrayValidator, arrayv } from './array-valueobject';
 import {
     IPrimitiveValueClass,
     PrimitiveValidator,
@@ -9,8 +9,8 @@ import {
     momentv,
     stringv
 } from './primitive-valueobject';
-import { StructDef, StructValue, structv } from './struct-valueobject';
-import { IValueClass, NativeType, ValueDefLike, deriveTypeName } from './valueobject';
+import { IStructValueClass, StructDef, StructValidator, StructValue, objectv, structv } from './struct-valueobject';
+import { IValueClass, IValueObject, NativeType, ValueDefLike, deriveTypeName } from './valueobject';
 
 //////////// Generic decorators /////////////
 
@@ -42,6 +42,13 @@ export function momentvalue(constructor: Function) {
 // eslint-disable-next-line @typescript-eslint/ban-types
 export function binaryvalue(constructor: Function) {
     ensureBinaryDefForConstructor(constructor);
+}
+
+export function typedarrayvalue(elementTypeDef: ValueDefLike<NativeType>) {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    return (constructor: Function) => {
+        ensureTypedArrayDefForConstructor(constructor, elementTypeDef);
+    }
 }
 
 /////////// Validation decorators //////////////////
@@ -88,13 +95,34 @@ export function binaryvalidation(validator: PrimitiveValidator<Buffer>, descript
     };
 }
 
+export function objectvalidation(validator: StructValidator, description?: string) {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    return function (constructor: Function): void {
+        ensureObjectDefForConstructor(constructor).withValidator(validator, description);
+    };
+}
+
+export function arrayvalidation(validator: ArrayValidator, description?: string) {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    return function (constructor: Function): void {
+        ensureUntypedArrayDefForConstructor(constructor).withValidator(validator, description);
+    };
+}
+
+export function typedarrayvalidation<T extends IValueObject>(validator: TypedArrayValidator<T>, description?: string) {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    return function (constructor: Function): void {
+        ensureUntypedArrayDefForConstructor(constructor).withValidator(validator as ArrayValidator, description);
+    };
+}
+
 ////////////// Helpers ////////////////
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 function ensureStringDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<string>).DEF;
     if (def?.template !== constructor) {
-        def = (constructor as unknown as IValueClass<string>).DEF = stringv(constructor);
+        def = (constructor as unknown as IValueClass<string, IValueObject>).DEF = stringv(constructor);
     }
     return def;
 }
@@ -103,7 +131,7 @@ function ensureStringDefForConstructor(constructor: Function) {
 function ensureIntDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<number>).DEF;
     if (def?.template !== constructor) {
-        def = (constructor as unknown as IValueClass<number>).DEF = intv(constructor);
+        def = (constructor as unknown as IValueClass<number, IValueObject>).DEF = intv(constructor);
     }
     return def;
 }
@@ -112,7 +140,7 @@ function ensureIntDefForConstructor(constructor: Function) {
 function ensureFloatDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<number>).DEF;
     if (def?.template !== constructor) {
-        def = (constructor as unknown as IValueClass<number>).DEF = floatv(constructor);
+        def = (constructor as unknown as IValueClass<number, IValueObject>).DEF = floatv(constructor);
     }
     return def;
 }
@@ -121,7 +149,7 @@ function ensureFloatDefForConstructor(constructor: Function) {
 function ensureBoolDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<boolean>).DEF;
     if (def?.template !== constructor) {
-        def = (constructor as unknown as IValueClass<boolean>).DEF = boolv(constructor);
+        def = (constructor as unknown as IValueClass<boolean, IValueObject>).DEF = boolv(constructor);
     }
     return def;
 }
@@ -130,7 +158,7 @@ function ensureBoolDefForConstructor(constructor: Function) {
 function ensureMomentDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<Date>).DEF;
     if (def?.template !== constructor) {
-        def = (constructor as unknown as IValueClass<Date>).DEF = momentv(constructor);
+        def = (constructor as unknown as IValueClass<Date, IValueObject>).DEF = momentv(constructor);
     }
     return def;
 }
@@ -139,29 +167,48 @@ function ensureMomentDefForConstructor(constructor: Function) {
 function ensureBinaryDefForConstructor(constructor: Function) {
     let def = (constructor as unknown as IPrimitiveValueClass<Buffer>).DEF;
     if (def?.template !== constructor) {
-        def = (constructor as unknown as IValueClass<Buffer>).DEF = binaryv(constructor);
+        def = (constructor as unknown as IValueClass<Buffer, IValueObject>).DEF = binaryv(constructor);
+    }
+    return def;
+}
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+function ensureObjectDefForConstructor(constructor: Function) {
+    let def = (constructor as unknown as IStructValueClass).DEF;
+    if (def?.template !== constructor) {
+        def = (constructor as unknown as IStructValueClass).DEF = objectv(constructor);
+        objectvalue()(constructor);
+    }
+    return def;
+}
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+function ensureTypedArrayDefForConstructor(constructor: Function, elementTypeDef: ValueDefLike<NativeType>) {
+    let def = (constructor as unknown as IValueClass<NativeType, IValueObject>).DEF;
+    if (def?.template !== constructor) {
+        def = (constructor as unknown as IValueClass<NativeType, IValueObject>).DEF = arrayv(constructor, undefined, elementTypeDef);
+    }
+    return def;
+}
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+function ensureUntypedArrayDefForConstructor(constructor: Function) {
+    let def = (constructor as unknown as IArrayValueClass<NativeType>).DEF;
+    if (def?.template !== constructor) {
+        def = (constructor as unknown as IArrayValueClass<NativeType>).DEF = arrayv(constructor, undefined, undefined);
     }
     return def;
 }
 
 /////////////////// Arrays //////////////
 
-export function typedarrayvalue(elementTypeDef: ValueDefLike<NativeType>) {
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    return function (constr: Function): void {
-        let def = (constr as unknown as IValueClass<NativeType>).DEF;
-        if (def?.template !== constr) {
-            def = (constr as unknown as IValueClass<NativeType>).DEF = arrayv(constr, undefined, elementTypeDef);
-        }
-    };
-}
 
 export function untypedarrayvalue() {
     // eslint-disable-next-line @typescript-eslint/ban-types
     return function (constr: Function): void {
-        let def = (constr as unknown as IValueClass<NativeType>).DEF;
+        let def = (constr as unknown as IArrayValueClass<NativeType>).DEF;
         if (def?.template !== constr) {
-            def = (constr as unknown as IValueClass<NativeType>).DEF = arrayv(constr, undefined, undefined);
+            def = (constr as unknown as IArrayValueClass<NativeType>).DEF = arrayv(constr, undefined, undefined);
         }
     };
 }
@@ -174,8 +221,7 @@ export function untypedarrayvalue() {
  * @example
  * Defining a struct value with a required, optional and derived field:
  * ```
- *   @structvalue()
- *   class Person extends StructValue {
+ *   @objectvalue() class Person extends ObjectValue {
  *     get firstName() { return FirstName.required(); }                              // Required field
  *     get lastName() { return LastName.optional(); }                                // Optional field
  *     get fullName() { return this.firstName.value + ' ' + this.lastName?.value}    // Derived/calculated field
@@ -193,10 +239,10 @@ export function mapvalue() {
 function structvalue(options?: { extensions: 'keep' | 'error' | 'ignore' }) {
     // eslint-disable-next-line @typescript-eslint/ban-types
     return function (constr: Function): void {
-        let def = (constr as unknown as IValueClass<NativeType>).DEF as StructDef;
+        let def = (constr as unknown as IValueClass<NativeType, IValueObject>).DEF as StructDef;
         //console.log('OPT', typeof constructor, typeof Object.getPrototypeOf(constructor), constructor === Object.getPrototypeOf(constructor), constructor, def);
         if (def?.template !== constr) {
-            def = (constr as unknown as IValueClass<NativeType>).DEF = structv(constr);
+            def = (constr as unknown as IValueClass<NativeType, IValueObject>).DEF = structv(constr);
         }
 
         if (options?.extensions) {
@@ -229,13 +275,13 @@ function structvalue(options?: { extensions: 'keep' | 'error' | 'ignore' }) {
             }
             const canonicalName = deriveTypeName(name);
             if (info.required) {
-                def.withRequiredField(canonicalName, info.clazz as unknown as IValueClass<NativeType>);
+                def.withRequiredField(canonicalName, info.clazz as unknown as IValueClass<NativeType, IValueObject>);
             } else {
-                def.withOptionalField(canonicalName, info.clazz as unknown as IValueClass<NativeType>);
+                def.withOptionalField(canonicalName, info.clazz as unknown as IValueClass<NativeType, IValueObject>);
             }
             const required = info.required;
             descriptor.get = function () {
-                return required ? (this as StructValue)._req(canonicalName) : (this as StructValue)._opt(canonicalName);
+                return required ? (this as unknown as StructValue)._req(canonicalName) : (this as unknown as StructValue)._opt(canonicalName);
             };
             Object.defineProperty(prototype, name, descriptor);
         }

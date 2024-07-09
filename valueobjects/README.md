@@ -17,22 +17,22 @@ npm install @darlean/valueobjects
 ```ts
 // Type definitions with some interitance and validation:
 
-@stringvalue class Name extends StringValue { name: discriminative }
-@stringvalue class FirstName extends Name { first_name: discriminative }
-@stringvalue class LastName extends StringValue { last_name: discriminative }
+@stringvalue class Name extends StringValue { private name: discriminative }
+@stringvalue class FirstName extends Name { private first_name: discriminative }
+@stringvalue class LastName extends StringValue { private last_name: discriminative }
 
 @intvalidation((v) => v >= 0, 'Must not be negative')
-@intvalue class Age extends IntValue { age: discriminative }
+@intvalue class Age extends IntValue { private age: discriminative }
 
-@boolvalue class Fact extends BoolValue { fact: discriminative }
+@boolvalue class Fact extends BoolValue { private fact: discriminative }
 
-@floatvalue class Meters extends FloatValue { meters: discriminative }
+@floatvalue class Meters extends FloatValue { private meters: discriminative }
 
-@momentvalue class Birthday extends MomentValue { birthday: discriminative }
+@momentvalue class Birthday extends MomentValue { private birthday: discriminative }
 
-@binaryvalue class BinaryData extends BinaryValue { binary_data: discriminative }
+@binaryvalue class BinaryData extends BinaryValue { private binary_data: discriminative }
 
-@typedarrayvalue(Fact) class Facts extends ArrayValue<Fact> { facts: discrimninative }
+@typedarrayvalue(Fact) class Facts extends ArrayValue<Fact> { private facts: discrimninative }
 
 @objectvalue() class Person extends ObjectValue {
     get firstName() { return FirstName.required() }
@@ -103,23 +103,23 @@ validation decorators:
 
 ```ts
 @stringvalidation((v) => v.length > 5, 'Must have minimum length')
-class Name extends StringValue { name: discriminative }
+class Name extends StringValue { private name: discriminative }
 
 @intvalidation((v) => v >= 0, 'Must not be negative')
-class Age extends IntValue { age: discriminative }
+class Age extends IntValue { private age: discriminative }
 
 @boolvalidation((v) => v === true, 'Must always be true')
-class Fact extends BoolValue { fact: discriminative }
+class Fact extends BoolValue { private fact: discriminative }
 
 @floatvalidation((v) => v > 0.90, 'Must be long enough')
 @floatvalidation((v) => v < 2.50, 'Must not be too tall')
-@floatvalue class Meters extends FloatValue { meters: discriminative }
+@floatvalue class Meters extends FloatValue { private meters: discriminative }
 
 @momentvalidation((v) => v.getMonth === 11, 'Must be in december')
-@momentvalue class Birthday extends MomentValue { birthday: discriminative }
+@momentvalue class Birthday extends MomentValue { private birthday: discriminative }
 
 @binaryvalidation((v) => v.length < 100_000>, 'Must be less than 100.000 bytes')
-@binaryvalue class BinaryData extends BinaryValue { binary_data: discriminative }
+@binaryvalue class BinaryData extends BinaryValue { private binary_data: discriminative }
 ```
 
 Notes:
@@ -183,12 +183,14 @@ This can be prevented by adding a dummy field with a unique name (we suggest to 
 type of `discriminative` (which simply is undefined, but for understandability of the code, we have given it a more
 descriptive name):
 ```ts
-@stringvalue class FirstName extends StringValue { first_name: discriminative }
-@stringvalue class LastName extends StringValue { last_name: discriminative }
+@stringvalue class FirstName extends StringValue { private first_name: discriminative }
+@stringvalue class LastName extends StringValue { private last_name: discriminative }
 ```
 
 This is enough to trick TypeScript that the objects are really distinct. Note that the extra field does not incur any
 runtime performance overhead, as the undefined value is not really created during runtime.
+
+We make it private so that it is not visible from code completion.
 
 ## Single inheritance
 
