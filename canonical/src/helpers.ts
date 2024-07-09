@@ -7,7 +7,9 @@ export function toCanonical<T = unknown>(value: ICanonical<T> | ICanonicalSource
     return value as ICanonical;
 }
 
-export function toCanonicalOrUndefined<T = unknown>(value: ICanonical<T> | ICanonicalSource<T> | undefined): ICanonical<T> | undefined {
+export function toCanonicalOrUndefined<T = unknown>(
+    value: ICanonical<T> | ICanonicalSource<T> | undefined
+): ICanonical<T> | undefined {
     if ((value as ICanonicalSource<T>)?._peekCanonicalRepresentation) {
         return (value as ICanonicalSource<T>)._peekCanonicalRepresentation();
     }
