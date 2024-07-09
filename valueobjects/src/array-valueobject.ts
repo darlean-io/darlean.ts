@@ -105,13 +105,9 @@ export class ArrayDef<TNative extends NativeType, T extends IValueObject = IValu
 //type NativeTypeOf<T> = T extends typeof ArrayValue<infer N extends NativeType, any> ? N : never;
 //type ValueTypeOf<T extends ArrayValueClassType<N2, V2>, N2 extends NativeType, V2 extends ValueType> = T extends ArrayValueClassType<N2, infer V> ? V : never;
 
-type NativeValueOf<T> =
-  T extends PrimitiveValue<infer TNative> ? TNative :
-  T extends StructValue ? Partial<T> :
-  never;
+type NativeValueOf<T> = T extends PrimitiveValue<infer TNative> ? TNative : T extends StructValue ? Partial<T> : never;
 
-type ValueValueOf<T> =
-  T extends ValueObject ? T : never;
+type ValueValueOf<T> = T extends ValueObject ? T : never;
 
 // Arrayvalue does not have TNative extends NativeType as generic part, because most generic info on subclasses is not kept by TS.
 // It's no big deal anyway, just use the ObjectValue.from for every object in an array.
@@ -121,9 +117,12 @@ type ValueValueOf<T> =
  * Value object that represents a list of items. Items are either value objects of TElem (when the array value is typed, or when a user explicitly
  * includes value objects during creation) or ICanonical instances.
  */
-export class ArrayValue<TElem extends ValueType | never> extends ValueObject implements IValueObject, ICanonicalSource<typeof this> {
+export class ArrayValue<TElem extends ValueType | never>
+    extends ValueObject
+    implements IValueObject, ICanonicalSource<typeof this>
+{
     static DEF = array(ArrayValue, '');
-    
+
     private _items?: TElem[];
 
     static required<TElem extends ValueType, T extends typeof ArrayValue<TElem>>(this: T): InstanceType<T> {
@@ -136,17 +135,22 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
 
     /**
      * Returns a new array value from the contents of value.
-     * @param value The contents of the new array value. It can be an array canonical or a native array of canonical or value objects 
+     * @param value The contents of the new array value. It can be an array canonical or a native array of canonical or value objects
      * or native values of the proper type.
      * @returns The newly created array value.
      */
-    static from<TElem extends IValueObject, T extends typeof ArrayValue<TElem>, TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never>
-      (this: T, value: NativeValueOf<TElem2>[]): InstanceType<T>;
-    static from<TElem extends IValueObject, T extends typeof ArrayValue<TElem>, TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never>
-      (this: T, value: ValueValueOf<TElem2>[]): InstanceType<T>;
-    static from<TElem extends ValueType, T extends typeof ArrayValue<TElem>>
-      (this: T, value: InstanceType<T> ): InstanceType<T>;
-    
+    static from<
+        TElem extends IValueObject,
+        T extends typeof ArrayValue<TElem>,
+        TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never
+    >(this: T, value: NativeValueOf<TElem2>[]): InstanceType<T>;
+    static from<
+        TElem extends IValueObject,
+        T extends typeof ArrayValue<TElem>,
+        TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never
+    >(this: T, value: ValueValueOf<TElem2>[]): InstanceType<T>;
+    static from<TElem extends ValueType, T extends typeof ArrayValue<TElem>>(this: T, value: InstanceType<T>): InstanceType<T>;
+
     /**
      * Returns a new array value containing the contents of value repeated multiple times.
      * @param value The contents of the new array value. It can be an array canonical or a native array of canonical or value objects or native
@@ -154,25 +158,42 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
      * @param repeat Repeat count that indicates how often value is repeated.
      * @returns The newly created array value.
      */
-    static from<TElem extends IValueObject, T extends typeof ArrayValue<TElem>, TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never>
-      (this: T, value: (NativeValueOf<TElem2>)[], repeat: number ): InstanceType<T>;
-    static from<TElem extends IValueObject, T extends typeof ArrayValue<TElem>, TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never>
-      (this: T, value: (ValueValueOf<TElem2>)[], repeat: number ): InstanceType<T>;
-    static from<TElem extends ValueType, T extends typeof ArrayValue<TElem>>
-      (this: T, value: InstanceType<T>, repeat: number ): InstanceType<T>;
-    
+    static from<
+        TElem extends IValueObject,
+        T extends typeof ArrayValue<TElem>,
+        TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never
+    >(this: T, value: NativeValueOf<TElem2>[], repeat: number): InstanceType<T>;
+    static from<
+        TElem extends IValueObject,
+        T extends typeof ArrayValue<TElem>,
+        TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never
+    >(this: T, value: ValueValueOf<TElem2>[], repeat: number): InstanceType<T>;
+    static from<TElem extends ValueType, T extends typeof ArrayValue<TElem>>(
+        this: T,
+        value: InstanceType<T>,
+        repeat: number
+    ): InstanceType<T>;
+
     /**
      * Returns a new array value containing the concatenated contents of multiple arrays.
      * @param arrays The arrays that are to be concatenated. They can be an array canonical or a native array of canonical or value objects or native
      * values of the proper type.
      * @returns The newly created array value.
      */
-    static from<TElem extends IValueObject, T extends typeof ArrayValue<TElem>, TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never>
-      (this: T, ...values: NativeValueOf<TElem2>[][] ): InstanceType<T>;
-    static from<TElem extends IValueObject, T extends typeof ArrayValue<TElem>, TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never>
-        (this: T, ...values: ValueValueOf<TElem2>[][] ): InstanceType<T>;
-    static from<TElem extends ValueType, T extends typeof ArrayValue<TElem>>
-        (this: T, ...values: InstanceType<T>[] ): InstanceType<T>;
+    static from<
+        TElem extends IValueObject,
+        T extends typeof ArrayValue<TElem>,
+        TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never
+    >(this: T, ...values: NativeValueOf<TElem2>[][]): InstanceType<T>;
+    static from<
+        TElem extends IValueObject,
+        T extends typeof ArrayValue<TElem>,
+        TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never
+    >(this: T, ...values: ValueValueOf<TElem2>[][]): InstanceType<T>;
+    static from<TElem extends ValueType, T extends typeof ArrayValue<TElem>>(
+        this: T,
+        ...values: InstanceType<T>[]
+    ): InstanceType<T>;
 
     //static from<TElem extends ValueType, T extends typeof ArrayValue<TElem>, TElem2 = T extends typeof ArrayValue<infer Q extends IValueObject> ? Q : never>
     //  (this: T, ...values: NativeValueOf<TElem2>[][] ): InstanceType<T>;
@@ -180,25 +201,29 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
     //  (this: T, ...values: TElem[][] ): InstanceType<T>;
     //static from<TElem extends ValueType, T extends typeof ArrayValue<TElem>>
     //  (this: T, ...values: TElem[][] ): InstanceType<T>;
-    
-    static from<U extends ValueType, T extends typeof ArrayValue<U>>(this: T, value: (ArrayValue<ValueType> | U[]), ...rest: (number | ArrayValue<ValueType> | U[])[]): InstanceType<T> {
-        if ( (rest.length === 0) || (rest[0] === 1) ) {
+
+    static from<U extends ValueType, T extends typeof ArrayValue<U>>(
+        this: T,
+        value: ArrayValue<ValueType> | U[],
+        ...rest: (number | ArrayValue<ValueType> | U[])[]
+    ): InstanceType<T> {
+        if (rest.length === 0 || rest[0] === 1) {
             return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(value) as InstanceType<T>;
         }
 
         if (typeof rest[0] === 'number') {
-            const get = (Array.isArray(value)) ? (idx: number) => value[idx] : ((idx: number) => value.get(idx));
+            const get = Array.isArray(value) ? (idx: number) => value[idx] : (idx: number) => value.get(idx);
             const repeat = rest[0];
             const temp = new Array(value.length * repeat);
             const len = value.length;
-            for (let i=0; i<repeat; i++) {
-                for (let j=0; j<value.length; j++) {
-                    temp[i*len + j] = get(j);
+            for (let i = 0; i < repeat; i++) {
+                for (let j = 0; j < value.length; j++) {
+                    temp[i * len + j] = get(j);
                 }
             }
             return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(temp) as InstanceType<T>;
         }
-        
+
         const subarrays = [toNativeArray(value)];
         for (const restItem of rest as (ArrayValue<ValueType> | U[])[]) {
             subarrays.push(toNativeArray(restItem));
@@ -215,28 +240,35 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
      * @returns A new mapped array value.
      */
 
-    static mapFrom<U extends ValueType, T extends typeof ArrayValue<U>, TInput extends unknown[]>
-       (this: T, input: TInput, func: (x: TInput[number], idx: number, array: TInput) => U): InstanceType<T>;
-
-    static mapFrom<U extends ValueType, T extends typeof ArrayValue<U>, TInput extends ArrayValue<ValueType>, TElem = TInput extends ArrayValue<infer TElem> ? TElem : never>
-       (this: T, input: TInput, func: (x: TElem, idx: number, array: TInput) => U): InstanceType<T>;
+    static mapFrom<U extends ValueType, T extends typeof ArrayValue<U>, TInput extends unknown[]>(
+        this: T,
+        input: TInput,
+        func: (x: TInput[number], idx: number, array: TInput) => U
+    ): InstanceType<T>;
 
     static mapFrom<
-      U extends ValueType,
-      T extends typeof ArrayValue<U>,
-      ValueTypeInput extends ValueType,
-      NativeTypeInput extends NativeType,
-      TInput extends ArrayValue<ValueTypeInput> | NativeTypeInput[],
-      X = TInput extends ArrayValue<infer ValueTypeInput> ? ValueTypeInput : TInput extends Array<infer Z> ? Z : never> 
-      (this: T, input: TInput, func: (x: X, idx: number, array: TInput) => U): InstanceType<T> {
-        const get = (Array.isArray(input)) ? (idx: number) => input[idx] : ((idx: number) => input.get(idx));
-        const results: (IValueObject|U)[] = new Array(input.length);
+        U extends ValueType,
+        T extends typeof ArrayValue<U>,
+        TInput extends ArrayValue<ValueType>,
+        TElem = TInput extends ArrayValue<infer TElem> ? TElem : never
+    >(this: T, input: TInput, func: (x: TElem, idx: number, array: TInput) => U): InstanceType<T>;
+
+    static mapFrom<
+        U extends ValueType,
+        T extends typeof ArrayValue<U>,
+        ValueTypeInput extends ValueType,
+        NativeTypeInput extends NativeType,
+        TInput extends ArrayValue<ValueTypeInput> | NativeTypeInput[],
+        X = TInput extends ArrayValue<infer ValueTypeInput> ? ValueTypeInput : TInput extends Array<infer Z> ? Z : never
+    >(this: T, input: TInput, func: (x: X, idx: number, array: TInput) => U): InstanceType<T> {
+        const get = Array.isArray(input) ? (idx: number) => input[idx] : (idx: number) => input.get(idx);
+        const results: (IValueObject | U)[] = new Array(input.length);
         for (let idx = 0; idx < input.length; idx++) {
             const item = get(idx) as X;
             results[idx] = func(item, idx, input);
         }
 
-        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(results) as InstanceType<T>;    
+        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(results) as InstanceType<T>;
     }
 
     /**
@@ -245,8 +277,12 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
      * @param func The function that returns true for values that must be included in the resulting array value.
      * @returns A new mapped array value.
      */
-    static filterFrom<U extends ValueType, T extends typeof ArrayValue<U>>(this: T, input: ArrayValue<U> | U[], func: (x: U) => boolean): InstanceType<T> {
-        const get = (Array.isArray(input)) ? ((idx: number) => input[idx]) : ((idx: number) => input.get(idx));
+    static filterFrom<U extends ValueType, T extends typeof ArrayValue<U>>(
+        this: T,
+        input: ArrayValue<U> | U[],
+        func: (x: U) => boolean
+    ): InstanceType<T> {
+        const get = Array.isArray(input) ? (idx: number) => input[idx] : (idx: number) => input.get(idx);
         const results: U[] = [];
         for (let idx = 0; idx < input.length; idx++) {
             const item = get(idx);
@@ -255,7 +291,7 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
             }
         }
 
-        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(results) as InstanceType<T>;    
+        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(results) as InstanceType<T>;
     }
 
     /**
@@ -265,9 +301,14 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
      * @param end The end index (exclusive). Default is input.length. When negative, it indicates the offset from the end (-1 corresponds to the last element).
      * @returns A new mapped array value.
      */
-    static sliceFrom<U extends ValueType, T extends typeof ArrayValue<U>>(this: T, input: ArrayValue<U> | U[], start?: number, end?: number): InstanceType<T> {
-        const sliced = input.slice(start, end);    
-        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(sliced) as InstanceType<T>;    
+    static sliceFrom<U extends ValueType, T extends typeof ArrayValue<U>>(
+        this: T,
+        input: ArrayValue<U> | U[],
+        start?: number,
+        end?: number
+    ): InstanceType<T> {
+        const sliced = input.slice(start, end);
+        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(sliced) as InstanceType<T>;
     }
 
     /**
@@ -276,10 +317,14 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
      * @param func The function that returns a negative value when a should come before b, and vice versa.
      * @returns A new sorted array value.
      */
-    static sortFrom<U extends ValueType, T extends typeof ArrayValue<U>>(this: T, input: ArrayValue<U> | U[], func: ((a: U, b: U) => number) | undefined): InstanceType<T> {
+    static sortFrom<U extends ValueType, T extends typeof ArrayValue<U>>(
+        this: T,
+        input: ArrayValue<U> | U[],
+        func: ((a: U, b: U) => number) | undefined
+    ): InstanceType<T> {
         const results: U[] = toNativeArray(input);
         results.sort(func);
-        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(results) as InstanceType<T>;    
+        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(results) as InstanceType<T>;
     }
 
     /**
@@ -287,10 +332,13 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
      * @param input The input array, which can be a native array of an array value.
      * @returns A new reverted array value.
      */
-    static reverseFrom<U extends ValueType, T extends typeof ArrayValue<U>>(this: T, input: ArrayValue<U> | U[]): InstanceType<T> {
+    static reverseFrom<U extends ValueType, T extends typeof ArrayValue<U>>(
+        this: T,
+        input: ArrayValue<U> | U[]
+    ): InstanceType<T> {
         const results: U[] = toNativeArray(input);
         results.reverse();
-        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(results) as InstanceType<T>;    
+        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(results) as InstanceType<T>;
     }
 
     constructor(value: ICanonical | TypedNativeArray<TElem>, canonical: ICanonical | undefined) {
@@ -347,10 +395,10 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
             if (func(item)) {
                 results.push(item);
             }
-        }    
-        
+        }
+
         return results;
-    }    
+    }
 
     /**
      * Returns an item based on a match function.
@@ -363,9 +411,9 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
             if (func(item)) {
                 return item;
             }
-        }    
-    }    
-    
+        }
+    }
+
     /**
      * Returns the index of an item based on a match function.
      * @param func The function that returns true for the value that must be found.
@@ -379,8 +427,8 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
             }
         }
         return -1;
-    }    
-    
+    }
+
     /**
      * Returns a native array with reverted items from this array value.
      * @returns A new mapped array value.
@@ -391,9 +439,9 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
         for (let idx = 0; idx < len; idx++) {
             results[len - idx - 1] = this.get(idx);
         }
-        
+
         return results;
-    }    
+    }
 
     /**
      * Returns a native array with sliced items from this array value.
@@ -411,16 +459,25 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
      * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. The first call to the callbackfn function provides this value as an argument instead of an array value.
      */
     public reduce(callbackfn: (previousValue: TElem, currentValue: TElem, currentIndex: number, array: TElem[]) => TElem): TElem;
-    public reduce(callbackfn: (previousValue: TElem, currentValue: TElem, currentIndex: number, array: TElem[]) => TElem, initialValue: TElem): TElem;
-    
+    public reduce(
+        callbackfn: (previousValue: TElem, currentValue: TElem, currentIndex: number, array: TElem[]) => TElem,
+        initialValue: TElem
+    ): TElem;
+
     /**
      * Calls the specified callback function for all the elements in an array. The return value of the callback function is the accumulated result, and is provided as an argument in the next call to the callback function.
      * @param callbackfn A function that accepts up to four arguments. The reduce method calls the callbackfn function one time for each element in the array.
      * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. The first call to the callbackfn function provides this value as an argument instead of an array value.
      */
-    public reduce<U>(callbackfn: (previousValue: U, currentValue: TElem, currentIndex: number, array: TElem[]) => U, initialValue: U): U;
+    public reduce<U>(
+        callbackfn: (previousValue: U, currentValue: TElem, currentIndex: number, array: TElem[]) => U,
+        initialValue: U
+    ): U;
 
-    public reduce<U = TElem>(callbackfn: (previousValue: TElem, currentValue: TElem, currentIndex: number, array: TElem[]) => U, ...initialValue: U[]): U {
+    public reduce<U = TElem>(
+        callbackfn: (previousValue: TElem, currentValue: TElem, currentIndex: number, array: TElem[]) => U,
+        ...initialValue: U[]
+    ): U {
         if (initialValue.length === 0) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return this._checkItems().reduce(callbackfn as any) as unknown as U;
@@ -428,10 +485,10 @@ export class ArrayValue<TElem extends ValueType | never> extends ValueObject imp
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return this._checkItems().reduce<U>(callbackfn as any, initialValue[0] as any);
     }
-    
+
     *[Symbol.iterator]() {
         const len = this._checkItems().length;
-        for (let idx=0; idx<len; idx++) {
+        for (let idx = 0; idx < len; idx++) {
             yield this._checkItems()[idx];
         }
     }
@@ -448,21 +505,22 @@ export type TypedArrayValue<TElem extends ValueType> = ArrayValue<TElem>;
 // TODO: Is "never" ok?
 export type UntypedArrayValue = ArrayValue<never>;
 
-function validateArray<TElem extends ValueType> (
-    def: ArrayDef<TElem>,
-    input: ICanonical | TypedNativeArray<TElem>
-): TElem[] {
+function validateArray<TElem extends ValueType>(def: ArrayDef<TElem>, input: ICanonical | TypedNativeArray<TElem>): TElem[] {
     const items: TElem[] = [];
 
     function addValue(value: TElem) {
         if (def.elementTypeDef) {
             const extractedDef = extractValueDef(def.elementTypeDef);
             const instance = extractedDef.from(value);
-            items.push(instance as TElem);  // Assume that when user provides a TElem, it is also a typed array and
+            items.push(instance as TElem); // Assume that when user provides a TElem, it is also a typed array and
             // the user does not put anything else into the array.
         } else {
-            if (!((value as unknown as ICanonicalSource<unknown>)._peekCanonicalRepresentation)) {
-                throw new Error(`Invalid contents for untyped array of type "${def.types.at(-1)}": Value of type "${typeof value}" is not a canonical, canonical source or value object`);
+            if (!(value as unknown as ICanonicalSource<unknown>)._peekCanonicalRepresentation) {
+                throw new Error(
+                    `Invalid contents for untyped array of type "${def.types.at(
+                        -1
+                    )}": Value of type "${typeof value}" is not a canonical, canonical source or value object`
+                );
             }
             items.push(value);
         }
@@ -528,8 +586,8 @@ function toNativeArray<TElem extends ValueType>(input: ArrayValue<TElem> | TElem
         for (let idx = 0; idx < input.length; idx++) {
             const item = input.get(idx);
             results[idx] = item;
-        }    
+        }
     }
 
-    return results;    
+    return results;
 }

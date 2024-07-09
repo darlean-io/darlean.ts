@@ -27,7 +27,10 @@ export interface IPrimitiveValueClass<TNative extends NativePrimitive> {
     DEF: PrimitiveDef<TNative>;
 }
 
-export abstract class PrimitiveValue<TNative extends NativePrimitive> extends ValueObject implements IValueObject, ICanonicalSource<TNative> {
+export abstract class PrimitiveValue<TNative extends NativePrimitive>
+    extends ValueObject
+    implements IValueObject, ICanonicalSource<TNative>
+{
     protected _value: TNative;
 
     constructor(value: TNative, canonical: ICanonical | undefined) {
@@ -152,7 +155,7 @@ export function validatePrimitive<TNative extends NativePrimitive>(def: Primitiv
         if (result === true || result === '' || result === undefined) {
             continue;
         }
-        
+
         if (typeof result === 'string') {
             throw new Error(`Invalid value for primitive of type "${def.types.at(-1)}": ${result}`);
         } else if (validator.description) {
@@ -189,15 +192,12 @@ export function nonev(template: Function, type: CanonicalType): PrimitiveDef<und
 }*/
 
 export class NoneValue extends PrimitiveValue<undefined> {
-    static DEF = primitive<string>(NoneValue, '').withValidator(
-        (value) => typeof value === 'undefined',
-        'Must be a undefined'
-    );
+    static DEF = primitive<string>(NoneValue, '').withValidator((value) => typeof value === 'undefined', 'Must be a undefined');
 
     constructor(value: undefined | ICanonical) {
         if (typeof value === 'undefined') {
             super(value, undefined);
-        }  else {
+        } else {
             super(value.noneValue, value);
         }
     }
@@ -235,7 +235,7 @@ export class StringValue extends PrimitiveValue<string> {
 export class IntValue extends PrimitiveValue<number> {
     static DEF = primitive<number>(IntValue, '')
         .withValidator((value) => (typeof value === 'number' ? true : `Must be a number, not ${typeof value}`))
-        .withValidator((value) => (Number.isInteger(value) ? true :`Must be an integer number, not ${value}`));
+        .withValidator((value) => (Number.isInteger(value) ? true : `Must be an integer number, not ${value}`));
 
     constructor(value: number | ICanonical) {
         if (typeof value === 'number') {
@@ -266,9 +266,9 @@ export class FloatValue extends PrimitiveValue<number> {
     constructor(value: number | ICanonical) {
         if (typeof value === 'number') {
             super(value, undefined);
-         } else {
+        } else {
             super(value.floatValue, undefined);
-         }
+        }
     }
 
     protected _deriveCanonicalRepresentation(): ICanonical {
@@ -310,7 +310,6 @@ export class BoolValue extends PrimitiveValue<boolean> {
 
 export class DurationValue extends FloatValue {}
 
-
 export class MomentValue extends PrimitiveValue<Date> {
     static DEF = primitive<Date>(MomentValue, '').withValidator((value) =>
         value instanceof Date ? true : `Must be a Date, not ${typeof value}`
@@ -342,22 +341,20 @@ export class MomentValue extends PrimitiveValue<Date> {
     }
 
     public addDuration(duration: DurationValue): this {
-        return (this as unknown as IValueClass<NativeType, typeof this>).DEF.from(
-            this._value.valueOf() + duration.value
-        ) as this;
+        return (this as unknown as IValueClass<NativeType, typeof this>).DEF.from(this._value.valueOf() + duration.value) as this;
     }
 
     public subtractDuration(duration: DurationValue): this {
-        return (this as unknown as IValueClass<NativeType, typeof this>).DEF.from(
-            this._value.valueOf() - duration.value
-        ) as this;
+        return (this as unknown as IValueClass<NativeType, typeof this>).DEF.from(this._value.valueOf() - duration.value) as this;
     }
 
     public equals(other: this | undefined): boolean {
-        if (!super.equals(other)) { return false; }
-        
+        if (!super.equals(other)) {
+            return false;
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return (other!._value.valueOf() === this._value.valueOf());
+        return other!._value.valueOf() === this._value.valueOf();
     }
 }
 
@@ -382,10 +379,12 @@ export class BinaryValue extends PrimitiveValue<Buffer> {
     }
 
     public equals(other: this | undefined): boolean {
-        if (!super.equals(other)) { return false; }
+        if (!super.equals(other)) {
+            return false;
+        }
 
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return (other!._value.equals(this._value));
+        return other!._value.equals(this._value);
     }
 
     static from<T extends typeof BinaryValue>(this: T, value: Buffer): InstanceType<T> {

@@ -48,7 +48,7 @@ export function typedarrayvalue(elementTypeDef: ValueDefLike<NativeType>) {
     // eslint-disable-next-line @typescript-eslint/ban-types
     return (constructor: Function) => {
         ensureTypedArrayDefForConstructor(constructor, elementTypeDef);
-    }
+    };
 }
 
 /////////// Validation decorators //////////////////
@@ -186,7 +186,11 @@ function ensureObjectDefForConstructor(constructor: Function) {
 function ensureTypedArrayDefForConstructor(constructor: Function, elementTypeDef: ValueDefLike<NativeType>) {
     let def = (constructor as unknown as IValueClass<NativeType, IValueObject>).DEF;
     if (def?.template !== constructor) {
-        def = (constructor as unknown as IValueClass<NativeType, IValueObject>).DEF = arrayv(constructor, undefined, elementTypeDef);
+        def = (constructor as unknown as IValueClass<NativeType, IValueObject>).DEF = arrayv(
+            constructor,
+            undefined,
+            elementTypeDef
+        );
     }
     return def;
 }
@@ -201,7 +205,6 @@ function ensureUntypedArrayDefForConstructor(constructor: Function) {
 }
 
 /////////////////// Arrays //////////////
-
 
 export function untypedarrayvalue() {
     // eslint-disable-next-line @typescript-eslint/ban-types
@@ -281,7 +284,9 @@ function structvalue(options?: { extensions: 'keep' | 'error' | 'ignore' }) {
             }
             const required = info.required;
             descriptor.get = function () {
-                return required ? (this as unknown as StructValue)._req(canonicalName) : (this as unknown as StructValue)._opt(canonicalName);
+                return required
+                    ? (this as unknown as StructValue)._req(canonicalName)
+                    : (this as unknown as StructValue)._opt(canonicalName);
             };
             Object.defineProperty(prototype, name, descriptor);
         }

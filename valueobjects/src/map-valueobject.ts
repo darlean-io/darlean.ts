@@ -25,7 +25,7 @@ export class MapDef<TNative extends NativeType, TValue extends IValueObject = IV
     private _template: Function;
     private _validators: { validator: MapValidator; description?: string }[];
     private _valueDef?: ValueDefLike<TNative, TValue>;
-    
+
     // eslint-disable-next-line @typescript-eslint/ban-types
     constructor(template: Function, type?: CanonicalType) {
         this._template = template;
@@ -94,7 +94,10 @@ export class MapDef<TNative extends NativeType, TValue extends IValueObject = IV
     }
 }
 
-export class MapValue<TNative extends NativeType, TValue extends IValueObject = IValueObject> extends ValueObject implements IValueObject, ICanonicalSource<typeof this> {
+export class MapValue<TNative extends NativeType, TValue extends IValueObject = IValueObject>
+    extends ValueObject
+    implements IValueObject, ICanonicalSource<typeof this>
+{
     static DEF = map(MapValue, '');
 
     private _slots?: Map<string, IValueObject | ICanonical>;
@@ -113,7 +116,10 @@ export class MapValue<TNative extends NativeType, TValue extends IValueObject = 
      * canonical field names.
      * Their values must be value objects (like StringValue or derived classes); not native types (like string).
      */
-    static from<T extends typeof MapValue>(this: T, value: {[key: string]: ICanonical | IValueObject} | Map<string, ICanonical | IValueObject>): InstanceType<T> {
+    static from<T extends typeof MapValue>(
+        this: T,
+        value: { [key: string]: ICanonical | IValueObject } | Map<string, ICanonical | IValueObject>
+    ): InstanceType<T> {
         const v2: Map<string, ICanonical | IValueObject> = new Map();
         if (value instanceof Map) {
             for (const [k, v] of value.entries()) {
@@ -193,7 +199,7 @@ export class MapValue<TNative extends NativeType, TValue extends IValueObject = 
 
 function validateMap<TNative extends NativeType, T extends IValueObject = IValueObject>(
     def: MapDef<TNative, T>,
-    input: ICanonical | NativeStruct,
+    input: ICanonical | NativeStruct
 ): Map<string, IValueObject | ICanonical> {
     const slots = new Map<string, IValueObject | ICanonical>();
 
@@ -248,7 +254,10 @@ function validateMap<TNative extends NativeType, T extends IValueObject = IValue
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export function map<TNative extends NativeType, TValue extends IValueObject = IValueObject>(template: Function, type?: CanonicalType): MapDef<TNative, TValue> {
+export function map<TNative extends NativeType, TValue extends IValueObject = IValueObject>(
+    template: Function,
+    type?: CanonicalType
+): MapDef<TNative, TValue> {
     const def = new MapDef<TNative, TValue>(template, type);
     (template as unknown as IMapValueClass<TNative, TValue>).DEF = def;
     return def;

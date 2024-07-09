@@ -23,7 +23,7 @@ import {
     stringvalidation,
     stringvalue,
     typedarrayvalidation,
-    typedarrayvalue,
+    typedarrayvalue
 } from '../decorators';
 import { discriminative } from '../valueobject';
 import {
@@ -186,7 +186,7 @@ describe('Value objects', () => {
         expect(() => new MomentValue('2024-06-18T17:00Z' as unknown as Date)).toThrow();
         expect(() => new MomentValue(undefined as unknown as Date)).toThrow();
         expect(new MomentValue(DATE).ms).toBe(DATE.valueOf());
-        
+
         expect(new MomentValue(DATE)._peekCanonicalRepresentation().physicalType).toBe('moment');
         expect(new MomentValue(DATE)._peekCanonicalRepresentation().momentValue.toISOString()).toBe(DATE.toISOString());
         expect(new MomentValue(MomentCanonical.from(DATE)).value.toISOString()).toBe(DATE.toISOString());
@@ -223,7 +223,7 @@ describe('Value objects', () => {
 
     test('Untyped map', () => {
         const map = MapValue.from({
-            'Hello': FirstName.from('Hello')
+            Hello: FirstName.from('Hello')
         });
         expect((map.get('Hello') as FirstName)?.value).toBe('Hello');
 
@@ -231,15 +231,19 @@ describe('Value objects', () => {
     });
 
     test('Object validation', () => {
-        @objectvalidation(v => v.has('a') != v.has('b'), 'Must either have a or b' )
+        @objectvalidation((v) => v.has('a') != v.has('b'), 'Must either have a or b')
         class C extends ObjectValue {
-            get a() { return IntValue.optional() }
-            get b() { return IntValue.optional() }
+            get a() {
+                return IntValue.optional();
+            }
+            get b() {
+                return IntValue.optional();
+            }
         }
 
-        expect(C.from({a: IntValue.from(3)})).toBeDefined();
-        expect(C.from({b: IntValue.from(4)})).toBeDefined();
-        expect(() => C.from({a: IntValue.from(3), b: IntValue.from(4)})).toThrow();
+        expect(C.from({ a: IntValue.from(3) })).toBeDefined();
+        expect(C.from({ b: IntValue.from(4) })).toBeDefined();
+        expect(() => C.from({ a: IntValue.from(3), b: IntValue.from(4) })).toThrow();
         expect(() => C.from({})).toThrow();
     });
 
@@ -271,31 +275,89 @@ describe('Value objects', () => {
     });
 
     test('Array from repeated sequence', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
-        expect(Numbers.from([] as IntValue[], 3).extractItems().map(x => (x as IntValue).value)).toEqual([]);
-        expect(Numbers.from([4], 0).extractItems().map(x => (x as IntValue).value)).toEqual([]);
-        expect(Numbers.from([3, 4], 1).extractItems().map(x => (x as IntValue).value)).toEqual([3, 4]);
-        expect(Numbers.from([3, 4], 2).extractItems().map(x => (x as IntValue).value)).toEqual([3, 4, 3, 4]);
-        expect(Numbers.from([9], 3).extractItems().map(x => (x as IntValue).value)).toEqual([9, 9, 9]);
-        expect(Numbers.from([IntValue.from(3), IntValue.from(4)], 2).extractItems().map(x => (x as IntValue).value)).toEqual([3, 4, 3, 4]);
-        expect(Numbers.from(Numbers.from([3, 4]), 2).extractItems().map(x => (x as IntValue).value)).toEqual([3, 4, 3, 4]);
-        
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
+        expect(
+            Numbers.from([] as IntValue[], 3)
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([]);
+        expect(
+            Numbers.from([4], 0)
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([]);
+        expect(
+            Numbers.from([3, 4], 1)
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([3, 4]);
+        expect(
+            Numbers.from([3, 4], 2)
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([3, 4, 3, 4]);
+        expect(
+            Numbers.from([9], 3)
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([9, 9, 9]);
+        expect(
+            Numbers.from([IntValue.from(3), IntValue.from(4)], 2)
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([3, 4, 3, 4]);
+        expect(
+            Numbers.from(Numbers.from([3, 4]), 2)
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([3, 4, 3, 4]);
     });
 
     test('Array from concatenation', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
-        expect(Numbers.from([], []).extractItems().map(x => (x as IntValue).value)).toEqual([]);
-        expect(Numbers.mapFrom([1], (x) => IntValue.from(x)).extractItems().map(x => (x as IntValue).value)).toEqual([1]);
-        expect(Numbers.mapFrom([1], (x) => IntValue.from(x)).extractItems().map(x => (x as IntValue).value)).toEqual([1]);
-        expect(Numbers.from([], [2]).extractItems().map(x => (x as IntValue).value)).toEqual([2]);
-        expect(Numbers.from([1], [2]).extractItems().map(x => (x as IntValue).value)).toEqual([1, 2]);
-        expect(Numbers.from([1, 2], [3, 4], [5]).extractItems().map(x => (x as IntValue).value)).toEqual([1, 2, 3, 4, 5]);
-        expect(Numbers.from(Numbers.from([1, 2]), Numbers.from([3, 4]), Numbers.from([5])).extractItems().map(x => (x as IntValue).value)).toEqual([1, 2, 3, 4, 5]);
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
+        expect(
+            Numbers.from([], [])
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([]);
+        expect(
+            Numbers.mapFrom([1], (x) => IntValue.from(x))
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([1]);
+        expect(
+            Numbers.mapFrom([1], (x) => IntValue.from(x))
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([1]);
+        expect(
+            Numbers.from([], [2])
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([2]);
+        expect(
+            Numbers.from([1], [2])
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([1, 2]);
+        expect(
+            Numbers.from([1, 2], [3, 4], [5])
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([1, 2, 3, 4, 5]);
+        expect(
+            Numbers.from(Numbers.from([1, 2]), Numbers.from([3, 4]), Numbers.from([5]))
+                .extractItems()
+                .map((x) => (x as IntValue).value)
+        ).toEqual([1, 2, 3, 4, 5]);
     });
 
     test('Array validation (with explicit @typedarrayvalue)', () => {
-        @arrayvalidation(v => v.length === 2, 'Must have length 2')
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @arrayvalidation((v) => v.length === 2, 'Must have length 2')
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
 
         expect(() => Numbers.from([])).toThrow();
         expect(() => Numbers.from([1])).toThrow();
@@ -304,8 +366,9 @@ describe('Value objects', () => {
     });
 
     test('Array validation - typed (with explicit @typedarrayvalue)', () => {
-        @typedarrayvalidation<IntValue>(v => v[1]?.value === 9, 'Must have 9 for element 1')
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalidation<IntValue>((v) => v[1]?.value === 9, 'Must have 9 for element 1')
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
 
         expect(() => Numbers.from([])).toThrow();
         expect(() => Numbers.from([1])).toThrow();
@@ -314,8 +377,9 @@ describe('Value objects', () => {
     });
 
     test('Array validation (without explicit @typedarrayvalue)', () => {
-        @arrayvalidation(v => v.length === 2, 'Must have length 2')
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @arrayvalidation((v) => v.length === 2, 'Must have length 2')
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
 
         expect(() => Numbers.from([])).toThrow();
         expect(() => Numbers.from([1])).toThrow();
@@ -324,83 +388,96 @@ describe('Value objects', () => {
     });
 
     test('Array mapping', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
-        @typedarrayvalue(StringValue) class Strings extends ArrayValue<StringValue> {}
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalue(StringValue)
+        class Strings extends ArrayValue<StringValue> {}
 
-        expect(Numbers.mapFrom(Strings.from(['1', '2', '3']), (v) => { return IntValue.from(parseInt(v.value)) } ).map(x => x.value)).toEqual([1, 2, 3]);
+        expect(
+            Numbers.mapFrom(Strings.from(['1', '2', '3']), (v) => {
+                return IntValue.from(parseInt(v.value));
+            }).map((x) => x.value)
+        ).toEqual([1, 2, 3]);
     });
 
     test('Array sorting', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
         const input = Numbers.from([1, 5, 2, 4, 3]);
         const output = Numbers.sortFrom(input, (a, b) => a.value - b.value);
-        expect(output.map(x => x.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(output.map((x) => x.value)).toEqual([1, 2, 3, 4, 5]);
     });
 
     test('Array filtering', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
         const input = Numbers.from([1, 5, 2, 4, 3]);
-        const output = Numbers.filterFrom(input, v => v.value % 2 === 0);
-        expect(output.map(x => x.value)).toEqual([2, 4]);
+        const output = Numbers.filterFrom(input, (v) => v.value % 2 === 0);
+        expect(output.map((x) => x.value)).toEqual([2, 4]);
 
-        expect(input.filter(v => v.value % 2 === 0).map(x => x.value)).toEqual([2, 4]);
+        expect(input.filter((v) => v.value % 2 === 0).map((x) => x.value)).toEqual([2, 4]);
     });
 
     test('Array find', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
         const input = Numbers.from([1, 5, 2, 4, 3]);
-        expect(input.find(x => x.value === 4)?.value).toEqual(4);
-        expect(input.find(x => x.value === -99)?.value).toEqual(undefined);
+        expect(input.find((x) => x.value === 4)?.value).toEqual(4);
+        expect(input.find((x) => x.value === -99)?.value).toEqual(undefined);
     });
 
     test('Array findIndex', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
         const input = Numbers.from([1, 5, 2, 4, 3]);
-        expect(input.findIndex(x => x.value === 4)).toEqual(3);
-        expect(input.findIndex(x => x.value === -99)).toEqual(-1);
+        expect(input.findIndex((x) => x.value === 4)).toEqual(3);
+        expect(input.findIndex((x) => x.value === -99)).toEqual(-1);
     });
 
     test('Array reverse', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
         const input = Numbers.from([1, 2, 3, 4, 5]);
-        expect(input.reverse().map(x => x.value)).toEqual([5, 4, 3, 2, 1]);
-        expect(Numbers.reverseFrom(input).map(x => x.value)).toEqual([5, 4, 3, 2, 1]);
+        expect(input.reverse().map((x) => x.value)).toEqual([5, 4, 3, 2, 1]);
+        expect(Numbers.reverseFrom(input).map((x) => x.value)).toEqual([5, 4, 3, 2, 1]);
     });
 
     test('Array slice', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
         const input = Numbers.from([0, 1, 2, 3, 4, 5]);
-        expect(input.slice(0, 0).map(x => x.value)).toEqual([]);
-        expect(input.slice(1, 1).map(x => x.value)).toEqual([]);
-        expect(input.slice(10, 1).map(x => x.value)).toEqual([]);
-        expect(input.slice(-2, 1).map(x => x.value)).toEqual([]);
-        expect(input.slice(0, 1).map(x => x.value)).toEqual([0]);
-        expect(input.slice(1, 2).map(x => x.value)).toEqual([1]);
-        expect(input.slice(1, 3).map(x => x.value)).toEqual([1, 2]);
-        expect(input.slice(1).map(x => x.value)).toEqual([1, 2, 3, 4, 5]);
-        expect(input.slice(1, -1).map(x => x.value)).toEqual([1, 2, 3, 4]);
-        expect(input.slice(-2).map(x => x.value)).toEqual([4, 5]);
-        expect(input.slice(-2, -1).map(x => x.value)).toEqual([4]);
-        expect(input.slice().map(x => x.value)).toEqual([0, 1, 2, 3, 4, 5]);
-        expect(input.slice(-1, -1).map(x => x.value)).toEqual([]);
-        
-        expect(Numbers.sliceFrom(input, 0, 0).map(x => x.value)).toEqual([]);
-        expect(Numbers.sliceFrom(input, 1, 1).map(x => x.value)).toEqual([]);
-        expect(Numbers.sliceFrom(input, 10, 1).map(x => x.value)).toEqual([]);
-        expect(Numbers.sliceFrom(input, -2, 1).map(x => x.value)).toEqual([]);
-        expect(Numbers.sliceFrom(input, 0, 1).map(x => x.value)).toEqual([0]);
-        expect(Numbers.sliceFrom(input, 1, 2).map(x => x.value)).toEqual([1]);
-        expect(Numbers.sliceFrom(input, 1, 3).map(x => x.value)).toEqual([1, 2]);
-        expect(Numbers.sliceFrom(input, 1).map(x => x.value)).toEqual([1, 2, 3, 4, 5]);
-        expect(Numbers.sliceFrom(input, 1, -1).map(x => x.value)).toEqual([1, 2, 3, 4]);
-        expect(Numbers.sliceFrom(input, -2).map(x => x.value)).toEqual([4, 5]);
-        expect(Numbers.sliceFrom(input, -2, -1).map(x => x.value)).toEqual([4]);
-        expect(Numbers.sliceFrom(input).map(x => x.value)).toEqual([0, 1, 2, 3, 4, 5]);
-        expect(Numbers.sliceFrom(input, -1, -1).map(x => x.value)).toEqual([]);
+        expect(input.slice(0, 0).map((x) => x.value)).toEqual([]);
+        expect(input.slice(1, 1).map((x) => x.value)).toEqual([]);
+        expect(input.slice(10, 1).map((x) => x.value)).toEqual([]);
+        expect(input.slice(-2, 1).map((x) => x.value)).toEqual([]);
+        expect(input.slice(0, 1).map((x) => x.value)).toEqual([0]);
+        expect(input.slice(1, 2).map((x) => x.value)).toEqual([1]);
+        expect(input.slice(1, 3).map((x) => x.value)).toEqual([1, 2]);
+        expect(input.slice(1).map((x) => x.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(input.slice(1, -1).map((x) => x.value)).toEqual([1, 2, 3, 4]);
+        expect(input.slice(-2).map((x) => x.value)).toEqual([4, 5]);
+        expect(input.slice(-2, -1).map((x) => x.value)).toEqual([4]);
+        expect(input.slice().map((x) => x.value)).toEqual([0, 1, 2, 3, 4, 5]);
+        expect(input.slice(-1, -1).map((x) => x.value)).toEqual([]);
+
+        expect(Numbers.sliceFrom(input, 0, 0).map((x) => x.value)).toEqual([]);
+        expect(Numbers.sliceFrom(input, 1, 1).map((x) => x.value)).toEqual([]);
+        expect(Numbers.sliceFrom(input, 10, 1).map((x) => x.value)).toEqual([]);
+        expect(Numbers.sliceFrom(input, -2, 1).map((x) => x.value)).toEqual([]);
+        expect(Numbers.sliceFrom(input, 0, 1).map((x) => x.value)).toEqual([0]);
+        expect(Numbers.sliceFrom(input, 1, 2).map((x) => x.value)).toEqual([1]);
+        expect(Numbers.sliceFrom(input, 1, 3).map((x) => x.value)).toEqual([1, 2]);
+        expect(Numbers.sliceFrom(input, 1).map((x) => x.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(Numbers.sliceFrom(input, 1, -1).map((x) => x.value)).toEqual([1, 2, 3, 4]);
+        expect(Numbers.sliceFrom(input, -2).map((x) => x.value)).toEqual([4, 5]);
+        expect(Numbers.sliceFrom(input, -2, -1).map((x) => x.value)).toEqual([4]);
+        expect(Numbers.sliceFrom(input).map((x) => x.value)).toEqual([0, 1, 2, 3, 4, 5]);
+        expect(Numbers.sliceFrom(input, -1, -1).map((x) => x.value)).toEqual([]);
     });
 
     test('Array iteration', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
         const input = Numbers.from([1, 2, 3, 4, 5]);
         const values: number[] = [];
         for (const nr of input) {
@@ -410,7 +487,8 @@ describe('Value objects', () => {
     });
 
     test('Array reduce', () => {
-        @typedarrayvalue(IntValue) class Numbers extends ArrayValue<IntValue> {}
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
         const values = Numbers.from([1, 2, 3, 4, 5]);
         expect(values.reduce((prev, curr) => IntValue.from(prev.value + curr.value)).value).toBe(15);
         expect(values.reduce((prev, curr) => prev + curr.value, 10)).toBe(25);
@@ -732,7 +810,10 @@ describe('ObjectValue Decorator', () => {
                 new Person(
                     DictCanonical.from({
                         'first-name': StringCanonical.from('Jantje', ['not-a-first-name'])
-                    }), undefined, true)
+                    }),
+                    undefined,
+                    true
+                )
         ).toThrow();
 
         expect(
@@ -740,7 +821,10 @@ describe('ObjectValue Decorator', () => {
                 new Person(
                     DictCanonical.from({
                         'first-name': StringCanonical.from('Jantje', ['first-name'])
-                    }), undefined, true)
+                    }),
+                    undefined,
+                    true
+                )
         ).not.toThrow();
     });
 });

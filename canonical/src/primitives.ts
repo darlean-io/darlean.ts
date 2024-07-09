@@ -14,9 +14,11 @@ export class NoneCanonical extends BaseCanonical {
     }
     public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
         const other2 = toCanonicalOrUndefined(other);
-        if (!super.equals(other2)) { return false; }
+        if (!super.equals(other2)) {
+            return false;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return (other2!.noneValue === undefined);
+        return other2!.noneValue === undefined;
     }
 }
 
@@ -32,9 +34,11 @@ export class BoolCanonical extends BaseCanonical {
     }
     public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
         const other2 = toCanonicalOrUndefined(other);
-        if (!super.equals(other2)) { return false; }
+        if (!super.equals(other2)) {
+            return false;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return (other2!.boolValue === this.boolValue);
+        return other2!.boolValue === this.boolValue;
     }
 }
 
@@ -50,9 +54,11 @@ export class IntCanonical extends BaseCanonical {
     }
     public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
         const other2 = toCanonicalOrUndefined(other);
-        if (!super.equals(other2)) { return false; }
+        if (!super.equals(other2)) {
+            return false;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return (other2!.intValue === this.intValue);
+        return other2!.intValue === this.intValue;
     }
 }
 
@@ -68,9 +74,11 @@ export class FloatCanonical extends BaseCanonical {
     }
     public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
         const other2 = toCanonicalOrUndefined(other);
-        if (!super.equals(other2)) { return false; }
+        if (!super.equals(other2)) {
+            return false;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return (other2!.floatValue === this.floatValue);
+        return other2!.floatValue === this.floatValue;
     }
 }
 
@@ -86,11 +94,12 @@ export class StringCanonical extends BaseCanonical {
     }
     public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
         const other2 = toCanonicalOrUndefined(other);
-        if (!super.equals(other2)) { return false; }
+        if (!super.equals(other2)) {
+            return false;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return (other2!.stringValue === this.stringValue);
+        return other2!.stringValue === this.stringValue;
     }
-
 }
 
 export class MomentCanonical extends BaseCanonical {
@@ -105,9 +114,11 @@ export class MomentCanonical extends BaseCanonical {
     }
     public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
         const other2 = toCanonicalOrUndefined(other);
-        if (!super.equals(other2)) { return false; }
+        if (!super.equals(other2)) {
+            return false;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return (other2!.momentValue.valueOf() === this.momentValue.valueOf());
+        return other2!.momentValue.valueOf() === this.momentValue.valueOf();
     }
 }
 
@@ -123,8 +134,10 @@ export class BinaryCanonical extends BaseCanonical {
     }
     public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
         const other2 = toCanonicalOrUndefined(other);
-        if (!super.equals(other2)) { return false; }
+        if (!super.equals(other2)) {
+            return false;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return (other2!.binaryValue.equals(this.binaryValue));
+        return other2!.binaryValue.equals(this.binaryValue);
     }
 }

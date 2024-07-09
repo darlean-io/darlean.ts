@@ -15,11 +15,15 @@ export class ArrayCanonical extends BaseCanonical {
     }
 
     public equals(other?: ICanonical): boolean {
-        if (!super.equals(other)) { return false; }
+        if (!super.equals(other)) {
+            return false;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const otherArray = other!.asArray();
-        if (otherArray.length !== this.value.length) { return false; }
-        for (let idx=0; idx<this.value.length; idx++) {
+        if (otherArray.length !== this.value.length) {
+            return false;
+        }
+        for (let idx = 0; idx < this.value.length; idx++) {
             if (this.value[idx] === undefined) {
                 if (otherArray[idx] !== undefined) {
                     return false;

@@ -111,9 +111,15 @@ export abstract class BaseCanonical<T = unknown> implements ICanonical, ICanonic
 
     public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
         other = toCanonicalOrUndefined(other);
-        if (!other) { return false; }
-        if (other.physicalType !== this.physicalType) { return false; }
-        if (other.logicalTypes[-1] !== this.logicalTypes[-1]) { return false; }
+        if (!other) {
+            return false;
+        }
+        if (other.physicalType !== this.physicalType) {
+            return false;
+        }
+        if (other.logicalTypes[-1] !== this.logicalTypes[-1]) {
+            return false;
+        }
         return true;
     }
 }

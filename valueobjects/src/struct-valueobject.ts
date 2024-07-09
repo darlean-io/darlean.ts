@@ -39,7 +39,7 @@ export class StructDef implements IValueDef<NativeStruct> {
     private _template: Function;
     private _strictFieldNames: boolean;
     private _validators: { validator: StructValidator; description?: string }[];
-    
+
     // eslint-disable-next-line @typescript-eslint/ban-types
     constructor(template: Function, type?: CanonicalType, strictFieldNames = false) {
         this._template = template;
@@ -189,7 +189,10 @@ export class StructValue extends ValueObject implements IValueObject, ICanonical
      * should be in the exact casing as used in T. They are internally converted into the canonical field names.
      * Their values must be value objects (like StringValue or derived classes); not native types (like string).
      */
-    static from<T extends typeof StructValue>(this: T, value: Partial<Omit<InstanceType<T>, keyof StructValue>>): InstanceType<T> {
+    static from<T extends typeof StructValue>(
+        this: T,
+        value: Partial<Omit<InstanceType<T>, keyof StructValue>>
+    ): InstanceType<T> {
         const v2: { [key: string]: unknown } = {};
         if (value instanceof Map) {
             for (const [k, v] of value.entries()) {
@@ -211,7 +214,10 @@ export class StructValue extends ValueObject implements IValueObject, ICanonical
      * canonical field names.
      * Their values must be value objects (like StringValue or derived classes); not native types (like string).
      */
-    static fromMap<T extends typeof StructValue>(this: T, value: {[key: string]: ICanonical | IValueObject} | Map<string, ICanonical | IValueObject>): InstanceType<T> {
+    static fromMap<T extends typeof StructValue>(
+        this: T,
+        value: { [key: string]: ICanonical | IValueObject } | Map<string, ICanonical | IValueObject>
+    ): InstanceType<T> {
         const v2: Map<string, ICanonical | IValueObject> = new Map();
         if (value instanceof Map) {
             for (const [k, v] of value.entries()) {
@@ -303,7 +309,7 @@ export class StructValue extends ValueObject implements IValueObject, ICanonical
 function validateStruct(
     def: StructDef,
     input: ICanonical | NativeStruct,
-    canonicalizeSlotNames : boolean
+    canonicalizeSlotNames: boolean
 ): Map<string, IValueObject | ICanonical> {
     const slots = new Map<string, IValueObject | ICanonical>();
 

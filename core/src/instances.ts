@@ -81,7 +81,7 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
         capacity: number,
         actorLock: IActorLock | undefined,
         private time?: ITime | undefined,
-        private maxAgeSeconds?: number,
+        private maxAgeSeconds?: number
     ) {
         this.actorType = normalizeActorType(actorType);
         this.creator = creator;

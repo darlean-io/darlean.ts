@@ -4,7 +4,6 @@ import { RecycleActor, RECYCLE_ACTOR, RECYCLE_ACTOR_WITH_MAX_AGE } from './actor
 import { ITypedPortal } from '@darlean/base';
 
 async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: ITypedPortal<RecycleActor>) {
-    
     // Test that verifies whether actor instances are properly recycled and come to live on
     // another node.
     // The test works by sending N_CALLS batches of N_SUBSEQUENT_CALLS to an actor with id
@@ -35,7 +34,7 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
         }
 
         check(true, counts.size > 1, 'Must have received calls from multiple actor instances');
-        check(N_SUBSEQUENT_CALLS-1, maxCounter, 'Actors must be recycled after every single invocation');
+        check(N_SUBSEQUENT_CALLS - 1, maxCounter, 'Actors must be recycled after every single invocation');
     });
 
     await context('RecycleByTrigger', async () => {
@@ -45,7 +44,7 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
         const counts: Map<string, number> = new Map();
         let maxCounter = -1;
         const id = 0;
-            
+
         for (let i = 0; i < N_CALLS; i++) {
             const actor = actorPortal.retrieve([id.toString()]);
 
@@ -59,7 +58,7 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
         }
 
         check(true, counts.size > 1, 'Must have received calls from multiple actor instances');
-        check(N_SUBSEQUENT_CALLS-1, maxCounter, 'Actors must be recycled after every single invocation');
+        check(N_SUBSEQUENT_CALLS - 1, maxCounter, 'Actors must be recycled after every single invocation');
     });
 
     await context('RecycleByMaxAge', async () => {
@@ -69,7 +68,7 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
         const counts: Map<string, number> = new Map();
         let maxCounter = -1;
         const id = 0;
-            
+
         for (let i = 0; i < N_CALLS; i++) {
             const actor = portalWithMaxAge.retrieve([id.toString()]);
 
@@ -82,9 +81,8 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
         }
 
         check(true, counts.size > 1, 'Must have received calls from multiple actor instances');
-        check(N_SUBSEQUENT_CALLS-1, maxCounter, 'Actors must be recycled after every single invocation');
+        check(N_SUBSEQUENT_CALLS - 1, maxCounter, 'Actors must be recycled after every single invocation');
     });
-
 }
 
 async function main() {

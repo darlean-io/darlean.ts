@@ -24,7 +24,6 @@ export class RecycleActor {
         };
     }
 
-
     @action()
     public async triggerFinalization() {
         this.finalizer();

@@ -60,7 +60,7 @@ export type ValueDefLike<N extends NativeType, T extends IValueObject = IValueOb
     | (() => IValueDef<N, T> | IValueClass<N, T>);
 
 export function extractValueDef<N extends NativeType, T extends IValueObject>(value: ValueDefLike<N, T>): IValueDef<N, T> {
-    const defLike = (typeof value === 'function' && !value.prototype) ? value() : value;
+    const defLike = typeof value === 'function' && !value.prototype ? value() : value;
     return (defLike as IValueClass<N, T>)?.DEF ?? defLike;
 }
 
@@ -82,9 +82,11 @@ export abstract class ValueObject {
     }
 
     public equals(other: this | undefined): boolean {
-        if (other === undefined) { return false; }
+        if (other === undefined) {
+            return false;
+        }
         return this._peekCanonicalRepresentation().equals(other as ICanonicalSource<unknown>);
-    } 
+    }
 
     public _peekCanonicalRepresentation(): ICanonical {
         if (this.___canonical) {

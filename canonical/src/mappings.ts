@@ -33,10 +33,14 @@ export class MapCanonical<T = unknown> extends BaseCanonical {
 
     public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
         other = toCanonicalOrUndefined(other);
-        if (!super.equals(other)) { return false; }
+        if (!super.equals(other)) {
+            return false;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const otherMap = other!.asMap();
-        if (otherMap.size !== this.value.size) { return false; }
+        if (otherMap.size !== this.value.size) {
+            return false;
+        }
         for (const key of this.value.keys()) {
             const value = toCanonicalOrUndefined(this.value.get(key));
             const otherValue = toCanonicalOrUndefined(otherMap.get(key));
@@ -85,7 +89,10 @@ export class MapCanonical<T = unknown> extends BaseCanonical {
  */
 
 export class DictCanonical<T = unknown> extends BaseCanonical {
-    private constructor(private value: { [key: string]: ICanonical | ICanonicalSource<T> }, logicalTypes: CanonicalLogicalTypes = []) {
+    private constructor(
+        private value: { [key: string]: ICanonical | ICanonicalSource<T> },
+        logicalTypes: CanonicalLogicalTypes = []
+    ) {
         super('mapping', logicalTypes);
     }
 
@@ -110,7 +117,10 @@ export class DictCanonical<T = unknown> extends BaseCanonical {
         return result;
     }
 
-    public static from<T = unknown>(value: { [key: string]: ICanonical | ICanonicalSource<T> }, logicalTypes: CanonicalLogicalTypes = []) {
+    public static from<T = unknown>(
+        value: { [key: string]: ICanonical | ICanonicalSource<T> },
+        logicalTypes: CanonicalLogicalTypes = []
+    ) {
         return new DictCanonical(value, logicalTypes);
     }
 
@@ -133,12 +143,16 @@ export class DictCanonical<T = unknown> extends BaseCanonical {
 
     public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
         other = toCanonicalOrUndefined(other);
-        if (!super.equals(other)) { return false; }
+        if (!super.equals(other)) {
+            return false;
+        }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const otherDict = other!.asDict();
         const keys = Object.keys(this.value);
         const otherKeys = Object.keys(otherDict);
-        if (otherKeys.length !== keys.length) { return false; }
+        if (otherKeys.length !== keys.length) {
+            return false;
+        }
         for (const key of keys) {
             const value = toCanonicalOrUndefined(this.value[key]);
             const otherValue = toCanonicalOrUndefined(otherDict[key]);
