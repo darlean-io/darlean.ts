@@ -210,7 +210,7 @@ describe('Value objects', () => {
         expect(struct.firstName.value).toBe('Jantje');
         expect(struct.lastName?.value).toBe('DEBOER');
 
-        const struct2 = Person.fromSlots(struct._extractSlots());
+        const struct2 = Person.fromSlots(struct._.extractSlots());
         expect(struct2.firstName.value).toBe('Jantje');
         expect(struct2.lastName?.value).toBe('DEBOER');
         expect(() => struct.firstName).toThrow();

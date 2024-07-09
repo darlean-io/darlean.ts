@@ -171,6 +171,17 @@ export class StructDef implements IValueDef<NativeStruct> {
     }
 }
 
+// Helper that contains some useful framework functions that are made accessable by a StructValue
+// by means of its `_` property. By using this construct, we only need one `_` member, which
+// keeps the code completion options clean.
+export interface StructValueUnderscore {
+    extractSlots(): Map<string, ICanonical | IValueObject>;
+    req<T>(name: string): T;
+    opt<T>(name: string): T | undefined;
+    checkSlots(): Map<string, IValueObject | ICanonical>;
+    get(slot: string): IValueObject | CanonicalLike | undefined;
+}
+
 export class StructValue extends ValueObject implements IValueObject, ICanonicalSource<typeof this> {
     static DEF = struct(StructValue, '');
 
@@ -269,7 +280,17 @@ export class StructValue extends ValueObject implements IValueObject, ICanonical
         this._slots = validateStruct(proto.DEF, value, !canonicalizedSlotNames);
     }
 
-    public _deriveCanonicalRepresentation(): ICanonical {
+    public get _(): StructValueUnderscore {
+        return {
+            extractSlots: () => this._extractSlots(),
+            req: (name) => this._req(name),
+            opt: (name) => this._opt(name),
+            checkSlots: () => this._checkSlots(),
+            get: (slot) => this._get(slot)
+        };
+    }
+
+    protected _deriveCanonicalRepresentation(): ICanonical {
         const slots = this._checkSlots();
         return MapCanonical.from(
             slots as unknown as Map<string, ICanonical | ICanonicalSource<unknown>>,
@@ -277,24 +298,24 @@ export class StructValue extends ValueObject implements IValueObject, ICanonical
         );
     }
 
-    public get(slot: string): IValueObject | CanonicalLike | undefined {
+    protected _get(slot: string): IValueObject | CanonicalLike | undefined {
         return this._checkSlots().get(slot);
     }
 
     /**
      * Extracts the current slots and their values. Slot names are returned as canonicalized names.
      */
-    public _extractSlots(): Map<string, ICanonical | IValueObject> {
+    private _extractSlots(): Map<string, ICanonical | IValueObject> {
         const slots = this._checkSlots();
         this._slots = undefined;
         return slots;
     }
 
-    public _req<T>(name: string): T {
+    private _req<T>(name: string): T {
         return this._checkSlots()?.get(name) as T;
     }
 
-    public _opt<T>(name: string): T | undefined {
+    private _opt<T>(name: string): T | undefined {
         return this._checkSlots().get(name) as T | undefined;
     }
 

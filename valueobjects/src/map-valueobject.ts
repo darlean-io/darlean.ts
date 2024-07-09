@@ -255,6 +255,7 @@ function validateMap<TNative extends NativeType, T extends IValueObject = IValue
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export function map<TNative extends NativeType, TValue extends IValueObject = IValueObject>(
+    // eslint-disable-next-line @typescript-eslint/ban-types
     template: Function,
     type?: CanonicalType
 ): MapDef<TNative, TValue> {

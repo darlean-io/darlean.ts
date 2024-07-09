@@ -285,8 +285,8 @@ function structvalue(options?: { extensions: 'keep' | 'error' | 'ignore' }) {
             const required = info.required;
             descriptor.get = function () {
                 return required
-                    ? (this as unknown as StructValue)._req(canonicalName)
-                    : (this as unknown as StructValue)._opt(canonicalName);
+                    ? (this as unknown as StructValue)._.req(canonicalName)
+                    : (this as unknown as StructValue)._.opt(canonicalName);
             };
             Object.defineProperty(prototype, name, descriptor);
         }
