@@ -11,6 +11,7 @@
     "run": "node lib/index.js",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "npx eslint ./src --ext .js,.jsx,.ts,.tsx",
+    "update-deps": "npm install @darlean/canonical@latest",
     "prepublish": "npm run build",
     "prepublishOnly": "npm run build && npm test && npm run lint",
     "preversion": "npm run format && npm install && npm run lint && npm run build && npm test",
