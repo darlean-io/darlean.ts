@@ -81,7 +81,7 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
         capacity: number,
         actorLock: IActorLock | undefined,
         private time?: ITime | undefined,
-        private maxAgeSeconds?: number
+        private maxAgeSeconds?: number,
     ) {
         this.actorType = normalizeActorType(actorType);
         this.creator = creator;
@@ -148,6 +148,9 @@ export class InstanceContainer<T extends object> implements IInstanceContainer<T
         wrapper?.on('deactivated', () => {
             this.instances.delete(idt);
             this.cleaning.delete(idt);
+            //if (instanceinfo.afterFinalize) {
+            //    instanceinfo.afterFinalize(wrapper);
+            //}
         });
 
         if (instanceinfo.afterCreate) {
@@ -367,7 +370,7 @@ export class InstanceWrapper<T extends object> extends EventEmitter implements I
                 },
                 'Actor auto finalize',
                 -1,
-                maxAgeSeconds,
+                maxAgeSeconds * 1000,
                 0
             );
         }
