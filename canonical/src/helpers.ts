@@ -1,17 +1,17 @@
 import { CanonicalLike, ICanonical, ICanonicalSource } from './canonical';
 
-export function toCanonical<T = unknown>(value: ICanonical<T> | ICanonicalSource<T>) {
+export function toCanonical<T = unknown>(value: ICanonical<T> | ICanonicalSource<T>): ICanonical<T> {
     if ((value as ICanonicalSource<T>)._peekCanonicalRepresentation) {
         return (value as ICanonicalSource<T>)._peekCanonicalRepresentation();
     }
     return value as ICanonical;
 }
 
-export function toCanonicalOrUndefined<T = unknown>(value: ICanonical<T> | ICanonicalSource<T> | undefined) {
-    if ((value as ICanonicalSource<T>)._peekCanonicalRepresentation) {
+export function toCanonicalOrUndefined<T = unknown>(value: ICanonical<T> | ICanonicalSource<T> | undefined): ICanonical<T> | undefined {
+    if ((value as ICanonicalSource<T>)?._peekCanonicalRepresentation) {
         return (value as ICanonicalSource<T>)._peekCanonicalRepresentation();
     }
-    return value as ICanonical | undefined;
+    return value as ICanonical<T> | undefined;
 }
 
 export function equals<A, B>(
