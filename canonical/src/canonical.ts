@@ -47,4 +47,8 @@ export interface ICanonical<T = unknown> {
     asArray(): ICanonical[];
     asMap(): Map<string, ICanonical>;
     asDict(): { [key: string]: ICanonical };
+
+    equals(other?: CanonicalLike<T>): boolean;
 }
+
+export type CanonicalLike<T = unknown> = ICanonical<T> | ICanonicalSource<T>;

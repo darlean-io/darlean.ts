@@ -8,6 +8,11 @@ describe('Canonicals', () => {
         const str = StringCanonical.from('Hello');
         expect(() => str.binaryValue).toThrow();
         expect(str.stringValue).toBe('Hello');
+
+        expect(StringCanonical.from('A').equals(StringCanonical.from('A'))).toBe(true);
+        expect(StringCanonical.from('A').equals(undefined)).toBe(false);
+        expect(StringCanonical.from('').equals(undefined)).toBe(false);
+        expect(StringCanonical.from('A').equals(StringCanonical.from('B'))).toBe(false);
     });
 
     test('Sequence from array', () => {

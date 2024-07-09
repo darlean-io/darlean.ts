@@ -6,6 +6,7 @@ import {
     IMappingEntry,
     ISequenceItem
 } from './canonical';
+import { toCanonicalOrUndefined } from './helpers';
 
 /**
  * BaseCanonical is a base class for specific subtypes of ICanonical implementations. It should not be
@@ -106,5 +107,13 @@ export abstract class BaseCanonical<T = unknown> implements ICanonical, ICanonic
 
     public toString(): string {
         return `Canonical<${this._physicalType},${this._logicalTypes}>`;
+    }
+
+    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+        other = toCanonicalOrUndefined(other);
+        if (!other) { return false; }
+        if (other.physicalType !== this.physicalType) { return false; }
+        if (other.logicalTypes[-1] !== this.logicalTypes[-1]) { return false; }
+        return true;
     }
 }
