@@ -185,7 +185,8 @@ describe('Value objects', () => {
         expect(() => new MomentValue(12345 as unknown as Date)).toThrow();
         expect(() => new MomentValue('2024-06-18T17:00Z' as unknown as Date)).toThrow();
         expect(() => new MomentValue(undefined as unknown as Date)).toThrow();
-
+        expect(new MomentValue(DATE).ms).toBe(DATE.valueOf());
+        
         expect(new MomentValue(DATE)._peekCanonicalRepresentation().physicalType).toBe('moment');
         expect(new MomentValue(DATE)._peekCanonicalRepresentation().momentValue.toISOString()).toBe(DATE.toISOString());
         expect(new MomentValue(MomentCanonical.from(DATE)).value.toISOString()).toBe(DATE.toISOString());
@@ -195,7 +196,8 @@ describe('Value objects', () => {
         expect(MomentValue.from(DATE).equals(MomentValue.from(DATE))).toBe(true);
         expect(MomentValue.from(DATE).equals(MomentValue.from(DATE2))).toBe(false);
         expect(MomentValue.from(DATE).equals(undefined)).toBe(false);
-
+        expect(MomentValue.from(DATE).ms).toBe(DATE.valueOf());
+        expect(MomentValue.from(DATE.valueOf()).ms).toBe(DATE.valueOf());
     });
 
     // TODO: Test string, binary, more structs and maps
@@ -216,14 +218,13 @@ describe('Value objects', () => {
         const struct3 = new Person(struct2._peekCanonicalRepresentation(), undefined);
         expect(struct3.firstName.value).toBe('Jantje');
         expect(struct3.lastName?.value).toBe('DEBOER');
-        expect(struct3._peekCanonicalRepresentation().logicalTypes).toEqual(['struct-value', 'person']);
+        expect(struct3._peekCanonicalRepresentation().logicalTypes).toEqual(['person']);
     });
 
     test('Untyped map', () => {
         const map = MapValue.from({
             'Hello': FirstName.from('Hello')
         });
-        console.log('STRUCT',  map);
         expect((map.get('Hello') as FirstName)?.value).toBe('Hello');
 
         // TODO more map tests: typed, untyped, subclasses, add decorators
@@ -728,11 +729,18 @@ describe('ObjectValue Decorator', () => {
 
         expect(
             () =>
-                Person.from(
+                new Person(
                     DictCanonical.from({
                         'first-name': StringCanonical.from('Jantje', ['not-a-first-name'])
-                    })
-                )
+                    }), undefined, true)
         ).toThrow();
+
+        expect(
+            () =>
+                new Person(
+                    DictCanonical.from({
+                        'first-name': StringCanonical.from('Jantje', ['first-name'])
+                    }), undefined, true)
+        ).not.toThrow();
     });
 });

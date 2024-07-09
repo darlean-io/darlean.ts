@@ -122,7 +122,7 @@ type ValueValueOf<T> =
  * includes value objects during creation) or ICanonical instances.
  */
 export class ArrayValue<TElem extends ValueType | never> extends ValueObject implements IValueObject, ICanonicalSource<typeof this> {
-    static DEF = array(ArrayValue, undefined);
+    static DEF = array(ArrayValue, '');
     
     private _items?: TElem[];
 

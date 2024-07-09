@@ -189,7 +189,7 @@ export function nonev(template: Function, type: CanonicalType): PrimitiveDef<und
 }*/
 
 export class NoneValue extends PrimitiveValue<undefined> {
-    static DEF = primitive<string>(NoneValue, 'none').withValidator(
+    static DEF = primitive<string>(NoneValue, '').withValidator(
         (value) => typeof value === 'undefined',
         'Must be a undefined'
     );
@@ -208,7 +208,7 @@ export class NoneValue extends PrimitiveValue<undefined> {
 }
 
 export class StringValue extends PrimitiveValue<string> {
-    static DEF = primitive<string>(StringValue, 'string').withValidator((value) =>
+    static DEF = primitive<string>(StringValue, '').withValidator((value) =>
         typeof value === 'string' ? true : `Must be a string, not ${typeof value}`
     );
 
@@ -233,7 +233,7 @@ export class StringValue extends PrimitiveValue<string> {
 }
 
 export class IntValue extends PrimitiveValue<number> {
-    static DEF = primitive<number>(IntValue, 'int')
+    static DEF = primitive<number>(IntValue, '')
         .withValidator((value) => (typeof value === 'number' ? true : `Must be a number, not ${typeof value}`))
         .withValidator((value) => (Number.isInteger(value) ? true :`Must be an integer number, not ${value}`));
 
@@ -258,7 +258,7 @@ export class IntValue extends PrimitiveValue<number> {
 }
 
 export class FloatValue extends PrimitiveValue<number> {
-    static DEF = primitive<number>(FloatValue, 'float')
+    static DEF = primitive<number>(FloatValue, '')
         .withValidator((value) => (typeof value === 'number' ? true : `Must be a number, not ${typeof value}`))
         .withValidator((value) => Number.isFinite(value), 'Must be finite')
         .withValidator((value) => !Number.isNaN(value), 'Must not be NaN');
@@ -284,7 +284,7 @@ export class FloatValue extends PrimitiveValue<number> {
 }
 
 export class BoolValue extends PrimitiveValue<boolean> {
-    static DEF = primitive<boolean>(BoolValue, 'bool').withValidator((value) =>
+    static DEF = primitive<boolean>(BoolValue, '').withValidator((value) =>
         typeof value === 'boolean' ? true : `Must be a boolean, not ${typeof value}`
     );
 
@@ -312,7 +312,7 @@ export class DurationValue extends FloatValue {}
 
 
 export class MomentValue extends PrimitiveValue<Date> {
-    static DEF = primitive<Date>(MomentValue, 'moment').withValidator((value) =>
+    static DEF = primitive<Date>(MomentValue, '').withValidator((value) =>
         value instanceof Date ? true : `Must be a Date, not ${typeof value}`
     );
 
@@ -331,8 +331,14 @@ export class MomentValue extends PrimitiveValue<Date> {
         );
     }
 
-    static from<T extends typeof MomentValue>(this: T, value: Date): InstanceType<T> {
-        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(value) as InstanceType<T>;
+    static from<T extends typeof MomentValue>(this: T, value: Date | number): InstanceType<T> {
+        return (this as unknown as IValueClass<NativeType, InstanceType<T>>).DEF.from(
+            typeof value === 'number' ? new Date(value) : value
+        ) as InstanceType<T>;
+    }
+
+    public get ms() {
+        return this.value.valueOf();
     }
 
     public addDuration(duration: DurationValue): this {
@@ -356,7 +362,7 @@ export class MomentValue extends PrimitiveValue<Date> {
 }
 
 export class BinaryValue extends PrimitiveValue<Buffer> {
-    static DEF = primitive<Buffer>(BinaryValue, 'binary').withValidator((value) =>
+    static DEF = primitive<Buffer>(BinaryValue, '').withValidator((value) =>
         value instanceof Buffer ? true : `Must be a Buffer, not ${typeof value}`
     );
 

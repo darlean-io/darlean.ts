@@ -43,7 +43,7 @@ export class StructDef implements IValueDef<NativeStruct> {
     // eslint-disable-next-line @typescript-eslint/ban-types
     constructor(template: Function, type?: CanonicalType, strictFieldNames = false) {
         this._template = template;
-        this._types = [type ?? deriveTypeName(template.name)];
+        this._types = type === '' ? [] : [type ?? deriveTypeName(template.name)];
         this._slots = new Map();
         this._requiredSlots = [];
         this._strictFieldNames = strictFieldNames;
@@ -172,7 +172,7 @@ export class StructDef implements IValueDef<NativeStruct> {
 }
 
 export class StructValue extends ValueObject implements IValueObject, ICanonicalSource<typeof this> {
-    static DEF = struct(StructValue, undefined);
+    static DEF = struct(StructValue, '');
 
     private _slots?: Map<string, IValueObject | ICanonical>;
 
@@ -251,7 +251,7 @@ export class StructValue extends ValueObject implements IValueObject, ICanonical
      * values.
      * @param value
      */
-    constructor(value: ICanonical | NativeStruct, canonical: ICanonical | undefined, fromSlots = false) {
+    constructor(value: ICanonical | NativeStruct, canonical: ICanonical | undefined, canonicalizedSlotNames = false) {
         super(canonical);
         const proto = this.constructor as unknown as IStructValueClass;
         if (proto.DEF.template !== this.constructor) {
@@ -260,7 +260,7 @@ export class StructValue extends ValueObject implements IValueObject, ICanonical
             );
         }
 
-        this._slots = validateStruct(proto.DEF, value, fromSlots);
+        this._slots = validateStruct(proto.DEF, value, !canonicalizedSlotNames);
     }
 
     public _deriveCanonicalRepresentation(): ICanonical {
@@ -303,7 +303,7 @@ export class StructValue extends ValueObject implements IValueObject, ICanonical
 function validateStruct(
     def: StructDef,
     input: ICanonical | NativeStruct,
-    fromSlots: boolean
+    canonicalizeSlotNames : boolean
 ): Map<string, IValueObject | ICanonical> {
     const slots = new Map<string, IValueObject | ICanonical>();
 
@@ -340,7 +340,7 @@ function validateStruct(
         // Native struct. Native struct field names must be in native format.
         const slotIterator = input instanceof Map ? input.entries() : Object.entries(input);
         for (const [key, value] of slotIterator) {
-            const canonicalizedKey = fromSlots ? key : deriveTypeName(key);
+            const canonicalizedKey = canonicalizeSlotNames ? deriveTypeName(key) : key;
             addValue(canonicalizedKey, value);
         }
     }

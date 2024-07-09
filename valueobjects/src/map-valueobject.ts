@@ -95,7 +95,7 @@ export class MapDef<TNative extends NativeType, TValue extends IValueObject = IV
 }
 
 export class MapValue<TNative extends NativeType, TValue extends IValueObject = IValueObject> extends ValueObject implements IValueObject, ICanonicalSource<typeof this> {
-    static DEF = map(MapValue, undefined);
+    static DEF = map(MapValue, '');
 
     private _slots?: Map<string, IValueObject | ICanonical>;
 

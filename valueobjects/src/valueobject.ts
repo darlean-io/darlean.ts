@@ -118,7 +118,7 @@ export interface IValueDef<TNative, T extends IValueObject = IValueObject> {
 
     hasType(type: CanonicalType): boolean;
 
-    get types(): string[];
+    get types(): CanonicalType[];
     // eslint-disable-next-line @typescript-eslint/ban-types
     get template(): Function;
 }
