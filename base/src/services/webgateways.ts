@@ -7,6 +7,7 @@ export interface IWebGatewayRequest {
     protocol?: string;
     // Percent-decoded search params. When there is no value, it is [].
     searchParams?: { [key: string]: string[] };
+    // Http method in all uppercase characters (like GET, POST)
     method?: string;
     // Percent-encoded path.
     path?: string;

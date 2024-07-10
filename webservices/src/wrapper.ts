@@ -1,4 +1,15 @@
 import { IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
+import querystring from 'querystring';
+
+export type SearchParamSource = 
+    // Always use url as source, even for non GET requests
+    'url' |
+    // Only use the url as source when the request is a GET
+    'url-when-get' | 
+    // Always use the cody as source, even when the content-type is not `application/x-www-form-urlencoded`
+    'body' |
+    // Only use the body as source when the content-type is `application/x-www-form-urlencoded`
+    'body-when-urlencoded';
 
 export class WebRequest {
     protected request: IWebGatewayRequest;
@@ -48,13 +59,85 @@ export class WebRequest {
         return results;
     }
 
+    /**
+     * @returns Whether the request has the provided content type. Matching is performed case-insensitive.
+     */
+    public hasContentType(contentType: string) {
+        return (this.getContentType() === contentType.toLowerCase());
+    }
+
+    /**
+     * @returns The first part of the content type (before the optional semicolon) converted to lowercase.
+     */
+    public getContentType() {
+        const fullValue = this.getHeader('Content-Type');
+        if (!fullValue) { return undefined; }
+        return fullValue.split(';', 2)[0].trim().toLowerCase();
+    }
+
+    /**
+     * @returns The rawe request body as a buffer, or undefined when there is no body.
+     */
     public getRawBody(): Buffer | undefined {
         return this.request.body;
     }
 
+    /**
+     * @returns The request body converted to text assuming utf8 encoding, or undefined when there is no body.
+     */
     public getTextBody(): string | undefined {
         return this.request.body?.toString('utf-8');
     }
+
+    /**
+     * Get the search parameters from the content body and/or the url as specified by the
+     * ordered list of sources. The parameter values are decoded before they are returned.
+     * Provide either `url` or `url-when-get` (but not both) as source to prevent duplicate results.
+     * Provide either 'body` or `cody-when-urlencoded` (but not both) as source to prevent duplicate results.
+     */
+    public getSearchParams(sources: SearchParamSource[] = ['url', 'body']): { [key: string]: string[] } {
+        const result: { [key: string]: string[] } = {};
+
+        function merge(input: { [key: string]: string[] }) {
+            for (const [key, values] of Object.entries(input)) {
+                let current = result[key];
+                if (!current) {
+                    result[key] = current = [];
+                }
+                current.push(...values);
+            }
+        }
+
+        for (const source of sources) {
+            switch (source) {
+                case 'url-when-get':
+                case 'url': {
+                    if ((source === 'url-when-get') && (this.request.method !== 'GET')) { break; }
+                    const params = this.request.searchParams;
+                    if (params) {
+                        merge(params);
+                    }
+                    break;
+                }
+
+                case 'body-when-urlencoded':
+                case 'body': {
+                    if ( source === 'body-when-urlencoded' && (!this.hasContentType('application/x-www-form-urlencoded'))) { break; }
+                    const body = this.getTextBody();
+                    if (!body) { break; }
+                    const qs = querystring.parse(body);
+                    const queryString: { [key: string]: string[] } = {};
+                    for (const [key, value] of Object.entries(qs)) {
+                        const v: string[] = typeof value === 'string' ? [value] : value ? value : [];
+                        queryString[decodeURIComponent(key)] = v.map((x) => decodeURIComponent(x));
+                    }
+                    merge(queryString);
+                }
+            }
+        }
+        return result;
+    }
+    
 
     public getUnderlyingRequest(): IWebGatewayRequest {
         return this.request;
