@@ -1,15 +1,15 @@
 import { IWebGatewayRequest, IWebGatewayResponse } from '@darlean/base';
 import querystring from 'querystring';
 
-export type SearchParamSource = 
+export type SearchParamSource =
     // Always use url as source, even for non GET requests
-    'url' |
+    | 'url'
     // Only use the url as source when the request is a GET
-    'url-when-get' | 
+    | 'url-when-get'
     // Always use the cody as source, even when the content-type is not `application/x-www-form-urlencoded`
-    'body' |
+    | 'body'
     // Only use the body as source when the content-type is `application/x-www-form-urlencoded`
-    'body-when-urlencoded';
+    | 'body-when-urlencoded';
 
 export class WebRequest {
     protected request: IWebGatewayRequest;
@@ -63,7 +63,7 @@ export class WebRequest {
      * @returns Whether the request has the provided content type. Matching is performed case-insensitive.
      */
     public hasContentType(contentType: string) {
-        return (this.getContentType() === contentType.toLowerCase());
+        return this.getContentType() === contentType.toLowerCase();
     }
 
     /**
@@ -71,7 +71,9 @@ export class WebRequest {
      */
     public getContentType() {
         const fullValue = this.getHeader('Content-Type');
-        if (!fullValue) { return undefined; }
+        if (!fullValue) {
+            return undefined;
+        }
         return fullValue.split(';', 2)[0].trim().toLowerCase();
     }
 
@@ -112,7 +114,9 @@ export class WebRequest {
             switch (source) {
                 case 'url-when-get':
                 case 'url': {
-                    if ((source === 'url-when-get') && (this.request.method !== 'GET')) { break; }
+                    if (source === 'url-when-get' && this.request.method !== 'GET') {
+                        break;
+                    }
                     const params = this.request.searchParams;
                     if (params) {
                         merge(params);
@@ -122,9 +126,13 @@ export class WebRequest {
 
                 case 'body-when-urlencoded':
                 case 'body': {
-                    if ( source === 'body-when-urlencoded' && (!this.hasContentType('application/x-www-form-urlencoded'))) { break; }
+                    if (source === 'body-when-urlencoded' && !this.hasContentType('application/x-www-form-urlencoded')) {
+                        break;
+                    }
                     const body = this.getTextBody();
-                    if (!body) { break; }
+                    if (!body) {
+                        break;
+                    }
                     const qs = querystring.parse(body);
                     const queryString: { [key: string]: string[] } = {};
                     for (const [key, value] of Object.entries(qs)) {
@@ -137,7 +145,6 @@ export class WebRequest {
         }
         return result;
     }
-    
 
     public getUnderlyingRequest(): IWebGatewayRequest {
         return this.request;
