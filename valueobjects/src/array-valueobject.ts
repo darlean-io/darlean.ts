@@ -1,4 +1,4 @@
-import { ArrayCanonical, ICanonical, ICanonicalSource, isCanonical } from '@darlean/canonical';
+import { ArrayCanonical, CanonicalLike, equals, ICanonical, ICanonicalSource, isCanonical } from '@darlean/canonical';
 import {
     IValueDef,
     IValueObject,
@@ -427,6 +427,32 @@ export class ArrayValue<TElem extends ValueType | never>
             }
         }
         return -1;
+    }
+
+    /**
+     * Returns the index of value, or -1 when not present. Values are compared using `canonical.equals`.
+     */
+    public indexOf(value: CanonicalLike): number {
+        for (let idx = 0; idx < this.length; idx++) {
+            const item = this.get(idx) as CanonicalLike;
+            if ( equals(value, item)) {
+                return idx;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Returns whether value is present. Values are compared using `canonical.equals`.
+     */
+    public includes(value: CanonicalLike): boolean {
+        for (let idx = 0; idx < this.length; idx++) {
+            const item = this.get(idx) as CanonicalLike;
+            if ( equals(value, item)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

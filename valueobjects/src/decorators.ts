@@ -1,4 +1,5 @@
 import { ArrayValidator, IArrayValueClass, TypedArrayValidator, arrayv } from './array-valueobject';
+import { IMapValueClass, mapv } from './map-valueobject';
 import {
     IPrimitiveValueClass,
     PrimitiveValidator,
@@ -48,6 +49,20 @@ export function typedarrayvalue(elementTypeDef: ValueDefLike<NativeType>) {
     // eslint-disable-next-line @typescript-eslint/ban-types
     return (constructor: Function) => {
         ensureTypedArrayDefForConstructor(constructor, elementTypeDef);
+    };
+}
+
+/*export function typedmapvalue(elementTypeDef: ValueDefLike<NativeType>) {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    return (constructor: Function) => {
+        ensureTypedMapDefForConstructor(constructor, elementTypeDef);
+    };
+}*/
+
+export function untypedmapvalue() {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    return (constructor: Function) => {
+        ensureUntypedMapDefForConstructor(constructor);
     };
 }
 
@@ -204,6 +219,29 @@ function ensureUntypedArrayDefForConstructor(constructor: Function) {
     return def;
 }
 
+/*
+// eslint-disable-next-line @typescript-eslint/ban-types
+function ensureTypedMapDefForConstructor(constructor: Function, elementTypeDef: ValueDefLike<NativeType>) {
+    let def = (constructor as unknown as IValueClass<NativeType, IValueObject>).DEF;
+    if (def?.template !== constructor) {
+        def = (constructor as unknown as IValueClass<NativeType, IValueObject>).DEF = mapv(
+            constructor,
+            undefined,
+            elementTypeDef
+        );
+    }
+    return def;
+}*/
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+function ensureUntypedMapDefForConstructor(constructor: Function) {
+    let def = (constructor as unknown as IMapValueClass).DEF;
+    if (def?.template !== constructor) {
+        def = (constructor as unknown as IMapValueClass).DEF = mapv(constructor, undefined, undefined);
+    }
+    return def;
+}
+
 /////////////////// Arrays //////////////
 
 export function untypedarrayvalue() {
@@ -233,10 +271,6 @@ export function untypedarrayvalue() {
  */
 export function objectvalue(options?: { extensions: 'keep' | 'error' | 'ignore' }) {
     return structvalue({ extensions: options?.extensions ?? 'error' });
-}
-
-export function mapvalue() {
-    return structvalue({ extensions: 'keep' });
 }
 
 function structvalue(options?: { extensions: 'keep' | 'error' | 'ignore' }) {

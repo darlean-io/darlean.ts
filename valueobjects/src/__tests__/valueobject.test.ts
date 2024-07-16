@@ -23,7 +23,7 @@ import {
     stringvalidation,
     stringvalue,
     typedarrayvalidation,
-    typedarrayvalue
+    typedarrayvalue,
 } from '../decorators';
 import { discriminative } from '../valueobject';
 import {
@@ -226,6 +226,12 @@ describe('Value objects', () => {
             Hello: FirstName.from('Hello')
         });
         expect((map.get('Hello') as FirstName)?.value).toBe('Hello');
+        expect(map.get('Nono')).toBe(undefined);
+
+        expect(map.has('Hello')).toBe(true);
+        expect(map.has('Nono')).toBe(false);
+        expect(Array.from(map.keys())).toEqual(['Hello']);
+        expect(Array.from(map.values()).map(x => (x as FirstName).value)).toEqual(['Hello'])
 
         // TODO more map tests: typed, untyped, subclasses, add decorators
     });
@@ -432,6 +438,24 @@ describe('Value objects', () => {
         const input = Numbers.from([1, 5, 2, 4, 3]);
         expect(input.findIndex((x) => x.value === 4)).toEqual(3);
         expect(input.findIndex((x) => x.value === -99)).toEqual(-1);
+    });
+
+    test('Array includes', () => {
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
+        const input = Numbers.from([1, 5, 2, 4, 3]);
+        expect(input.includes(IntValue.from(2))).toBe(true);
+        expect(input.includes(FloatValue.from(2))).toBe(false);
+        expect(input.includes(IntValue.from(9))).toBe(false);
+    });
+
+    test('Array indexOf', () => {
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
+        const input = Numbers.from([1, 5, 2, 4, 3]);
+        expect(input.indexOf(IntValue.from(2))).toBe(2);
+        expect(input.indexOf(FloatValue.from(2))).toBe(-1);
+        expect(input.indexOf(IntValue.from(9))).toBe(-1);
     });
 
     test('Array reverse', () => {

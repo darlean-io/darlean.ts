@@ -358,8 +358,12 @@ function validateStruct(
     if ((input as ICanonical).firstMappingEntry) {
         let entry = (input as ICanonical).firstMappingEntry;
         while (entry) {
-            const key = entry.key;
             const value = entry.value;
+            if (value === undefined) {
+                continue;
+            }
+
+            const key = entry.key;
             addValue(key, value);
             entry = entry.next();
         }
@@ -367,6 +371,10 @@ function validateStruct(
         // Native struct. Native struct field names must be in native format.
         const slotIterator = input instanceof Map ? input.entries() : Object.entries(input);
         for (const [key, value] of slotIterator) {
+            if (value === undefined) {
+                continue;
+            }
+
             const canonicalizedKey = canonicalizeSlotNames ? deriveTypeName(key) : key;
             addValue(canonicalizedKey, value);
         }

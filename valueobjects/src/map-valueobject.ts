@@ -10,27 +10,28 @@ import {
     ValueDefLike,
     extractValueDef,
     ValueObject,
-    NativeType
 } from './valueobject';
 
-export interface IMapValueClass<TNative extends NativeType, TValue extends IValueObject = IValueObject> {
-    DEF: MapDef<TNative, TValue>;
+export interface IMapValueClass<TValue extends IValueObject = IValueObject> {
+    DEF: MapDef<TValue>;
 }
 
 export type MapValidator = (value: Map<string, IValueObject | ICanonical>) => string | boolean | void | undefined;
 
-export class MapDef<TNative extends NativeType, TValue extends IValueObject = IValueObject> implements IValueDef<NativeStruct> {
+export class MapDef<TValue extends IValueObject = IValueObject> implements IValueDef<NativeStruct> {
     private _types: CanonicalType[];
     // eslint-disable-next-line @typescript-eslint/ban-types
     private _template: Function;
     private _validators: { validator: MapValidator; description?: string }[];
-    private _valueDef?: ValueDefLike<TNative, TValue>;
+    private _valueDef?: ValueDefLike<never, TValue>;
+    private _elementTypeDef?: ValueDefLike<never, TValue>;
 
     // eslint-disable-next-line @typescript-eslint/ban-types
-    constructor(template: Function, type?: CanonicalType) {
+    constructor(template: Function, type?: CanonicalType, elementTypeDef?: ValueDefLike<never, TValue>) {
         this._template = template;
         this._types = [type ?? deriveTypeName(template.name)];
         this._validators = [];
+        this._elementTypeDef = elementTypeDef;
 
         const proto = Object.getPrototypeOf(template);
         if (proto) {
@@ -50,7 +51,7 @@ export class MapDef<TNative extends NativeType, TValue extends IValueObject = IV
         return this._valueDef;
     }
 
-    public withBase(base: IMapValueClass<TNative, TValue> | MapDef<TNative, TValue>): MapDef<TNative, TValue> {
+    public withBase(base: IMapValueClass<TValue> | MapDef<TValue>): MapDef<TValue> {
         const base2 = base instanceof MapDef ? base : base.DEF;
         if (!base2) {
             return this;
@@ -62,7 +63,7 @@ export class MapDef<TNative extends NativeType, TValue extends IValueObject = IV
         return this;
     }
 
-    public withValidator(validator: MapValidator, description?: string): MapDef<TNative, TValue> {
+    public withValidator(validator: MapValidator, description?: string): MapDef<TValue> {
         this._validators.push({ validator, description });
         return this;
     }
@@ -94,13 +95,13 @@ export class MapDef<TNative extends NativeType, TValue extends IValueObject = IV
     }
 }
 
-export class MapValue<TNative extends NativeType, TValue extends IValueObject = IValueObject>
+export class MapValue<TValue extends IValueObject = IValueObject>
     extends ValueObject
     implements IValueObject, ICanonicalSource<typeof this>
 {
     static DEF = map(MapValue, '');
 
-    private _slots?: Map<string, IValueObject | ICanonical>;
+    private _slots?: Map<string, TValue | ICanonical<TValue>>;
 
     static required<T extends typeof MapValue>(this: T): InstanceType<T> {
         return { required: true, clazz: this } as unknown as InstanceType<T>;
@@ -116,9 +117,9 @@ export class MapValue<TNative extends NativeType, TValue extends IValueObject = 
      * canonical field names.
      * Their values must be value objects (like StringValue or derived classes); not native types (like string).
      */
-    static from<T extends typeof MapValue>(
+    static from<T extends typeof MapValue<TValue>, TValue extends IValueObject>(
         this: T,
-        value: { [key: string]: ICanonical | IValueObject } | Map<string, ICanonical | IValueObject>
+        value: { [key: string]: ICanonical<TValue> | TValue } | Map<string, ICanonical<TValue> | TValue>
     ): InstanceType<T> {
         const v2: Map<string, ICanonical | IValueObject> = new Map();
         if (value instanceof Map) {
@@ -131,7 +132,7 @@ export class MapValue<TNative extends NativeType, TValue extends IValueObject = 
             }
         }
 
-        const def = (this as unknown as IMapValueClass<NativeType>).DEF;
+        const def = (this as unknown as IMapValueClass).DEF;
         return def.from(v2) as InstanceType<T>;
     }
 
@@ -140,7 +141,7 @@ export class MapValue<TNative extends NativeType, TValue extends IValueObject = 
      * The values must be value objects (like StringValue or derived classes); not native types (like string).
      */
     static fromCanonical<T extends typeof MapValue>(this: T, value: CanonicalLike<InstanceType<T>>): InstanceType<T> {
-        return (this as unknown as IMapValueClass<NativeType>).DEF.from(toCanonical(value)) as InstanceType<T>;
+        return (this as unknown as IMapValueClass).DEF.from(toCanonical(value)) as InstanceType<T>;
     }
 
     /**
@@ -150,21 +151,21 @@ export class MapValue<TNative extends NativeType, TValue extends IValueObject = 
      */
     constructor(value: ICanonical | NativeStruct, canonical: ICanonical | undefined) {
         super(canonical);
-        const proto = this.constructor as unknown as IMapValueClass<TNative, TValue>;
+        const proto = this.constructor as unknown as IMapValueClass<TValue>;
         if (proto.DEF.template !== this.constructor) {
             throw new Error(
                 `No definition for struct of type "${this.constructor.name}". Did you decorate the class with "@structvalue()"?`
             );
         }
 
-        this._slots = validateMap<TNative, TValue>(proto.DEF, value);
+        this._slots = validateMap<TValue>(proto.DEF, value);
     }
 
     public _deriveCanonicalRepresentation(): ICanonical {
         const slots = this._checkSlots();
         return MapCanonical.from(
             slots as unknown as Map<string, ICanonical | ICanonicalSource<unknown>>,
-            (Object.getPrototypeOf(this).constructor as IMapValueClass<TNative, TValue>).DEF.types
+            (Object.getPrototypeOf(this).constructor as IMapValueClass<TValue>).DEF.types
         );
     }
 
@@ -172,10 +173,22 @@ export class MapValue<TNative extends NativeType, TValue extends IValueObject = 
         return this._checkSlots().get(slot);
     }
 
+    public has(slot: string): boolean {
+        return this._checkSlots().has(slot);
+    }
+
+    public keys(): IterableIterator<string> {
+        return this._checkSlots().keys();
+    }
+
+    public values(): IterableIterator<TValue | ICanonical<TValue>>  {
+        return this._checkSlots().values();
+    }
+
     /**
      * Extracts the current slots and their values.
      */
-    public _extractSlots(): Map<string, ICanonical | IValueObject> {
+    public _extractSlots(): Map<string, TValue | ICanonical<TValue>> {
         const slots = this._checkSlots();
         this._slots = undefined;
         return slots;
@@ -189,7 +202,7 @@ export class MapValue<TNative extends NativeType, TValue extends IValueObject = 
         return this._checkSlots().get(name) as T | undefined;
     }
 
-    private _checkSlots(): Map<string, IValueObject | ICanonical> {
+    private _checkSlots(): Map<string, TValue | ICanonical<TValue>> {
         if (this._slots === undefined) {
             throw new Error(`Not allowed to access unfrozen map`);
         }
@@ -197,13 +210,13 @@ export class MapValue<TNative extends NativeType, TValue extends IValueObject = 
     }
 }
 
-function validateMap<TNative extends NativeType, T extends IValueObject = IValueObject>(
-    def: MapDef<TNative, T>,
+function validateMap<TValue extends IValueObject = IValueObject>(
+    def: MapDef<TValue>,
     input: ICanonical | NativeStruct
-): Map<string, IValueObject | ICanonical> {
-    const slots = new Map<string, IValueObject | ICanonical>();
+): Map<string, TValue | ICanonical<TValue>> {
+    const slots = new Map<string, TValue | ICanonical<TValue>>();
 
-    function addValue(key: string, value: ICanonical | IValueObject) {
+    function addValue(key: string, value: ICanonical | TValue) {
         const valueDef = def.valueDef;
         if (valueDef) {
             const valueDefDef = extractValueDef(valueDef);
@@ -254,13 +267,14 @@ function validateMap<TNative extends NativeType, T extends IValueObject = IValue
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export function map<TNative extends NativeType, TValue extends IValueObject = IValueObject>(
+export function map<TValue extends IValueObject = IValueObject>(
     // eslint-disable-next-line @typescript-eslint/ban-types
     template: Function,
-    type?: CanonicalType
-): MapDef<TNative, TValue> {
-    const def = new MapDef<TNative, TValue>(template, type);
-    (template as unknown as IMapValueClass<TNative, TValue>).DEF = def;
+    type?: CanonicalType,
+    elementTypeDef?: ValueDefLike<never, TValue>
+): MapDef<TValue> {
+    const def = new MapDef<TValue>(template, type, elementTypeDef);
+    (template as unknown as IMapValueClass<TValue>).DEF = def;
     return def;
 }
 
