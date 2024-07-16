@@ -552,7 +552,7 @@ function validateArray<TElem extends ValueType>(def: ArrayDef<TElem>, input: ICa
         }
     }
 
-    if ((input as ICanonical).firstSequenceItem) {
+    if ('firstSequenceItem' in input) {
         let item = (input as ICanonical).firstSequenceItem;
         while (item) {
             const value = item.value;

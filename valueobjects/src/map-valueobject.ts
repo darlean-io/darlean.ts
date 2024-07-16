@@ -227,7 +227,7 @@ function validateMap<TValue extends IValueObject = IValueObject>(
         }
     }
 
-    if ((input as ICanonical).firstMappingEntry) {
+    if ('firstMappingEntry' in input) {
         let entry = (input as ICanonical).firstMappingEntry;
         while (entry) {
             const key = entry.key;

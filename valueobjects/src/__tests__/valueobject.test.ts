@@ -518,6 +518,14 @@ describe('Value objects', () => {
         expect(values.reduce((prev, curr) => prev + curr.value, 10)).toBe(25);
     });
 
+    test('Array from empty canonical', () => {
+        @typedarrayvalue(IntValue)
+        class Numbers extends ArrayValue<IntValue> {}
+        
+        const can = ArrayCanonical.from([]);
+        expect(new Numbers(can, can).length).toBe(0);
+    });
+
     it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
         'Struct should validate all members for %s using object',
         (value) => {

@@ -355,7 +355,7 @@ function validateStruct(
         }
     }
 
-    if ((input as ICanonical).firstMappingEntry) {
+    if ('firstMappingEntry' in input) {
         let entry = (input as ICanonical).firstMappingEntry;
         while (entry) {
             const value = entry.value;
