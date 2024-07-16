@@ -435,7 +435,7 @@ export class ArrayValue<TElem extends ValueType | never>
     public indexOf(value: CanonicalLike): number {
         for (let idx = 0; idx < this.length; idx++) {
             const item = this.get(idx) as CanonicalLike;
-            if ( equals(value, item)) {
+            if (equals(value, item)) {
                 return idx;
             }
         }
@@ -448,7 +448,7 @@ export class ArrayValue<TElem extends ValueType | never>
     public includes(value: CanonicalLike): boolean {
         for (let idx = 0; idx < this.length; idx++) {
             const item = this.get(idx) as CanonicalLike;
-            if ( equals(value, item)) {
+            if (equals(value, item)) {
                 return true;
             }
         }

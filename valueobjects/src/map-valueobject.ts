@@ -9,7 +9,7 @@ import {
     NativeStruct,
     ValueDefLike,
     extractValueDef,
-    ValueObject,
+    ValueObject
 } from './valueobject';
 
 export interface IMapValueClass<TValue extends IValueObject = IValueObject> {
@@ -181,7 +181,7 @@ export class MapValue<TValue extends IValueObject = IValueObject>
         return this._checkSlots().keys();
     }
 
-    public values(): IterableIterator<TValue | ICanonical<TValue>>  {
+    public values(): IterableIterator<TValue | ICanonical<TValue>> {
         return this._checkSlots().values();
     }
 

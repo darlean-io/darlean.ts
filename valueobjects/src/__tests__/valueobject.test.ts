@@ -23,7 +23,7 @@ import {
     stringvalidation,
     stringvalue,
     typedarrayvalidation,
-    typedarrayvalue,
+    typedarrayvalue
 } from '../decorators';
 import { discriminative } from '../valueobject';
 import {
@@ -231,7 +231,7 @@ describe('Value objects', () => {
         expect(map.has('Hello')).toBe(true);
         expect(map.has('Nono')).toBe(false);
         expect(Array.from(map.keys())).toEqual(['Hello']);
-        expect(Array.from(map.values()).map(x => (x as FirstName).value)).toEqual(['Hello'])
+        expect(Array.from(map.values()).map((x) => (x as FirstName).value)).toEqual(['Hello']);
 
         // TODO more map tests: typed, untyped, subclasses, add decorators
     });
