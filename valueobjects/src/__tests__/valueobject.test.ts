@@ -521,7 +521,7 @@ describe('Value objects', () => {
     test('Array from empty canonical', () => {
         @typedarrayvalue(IntValue)
         class Numbers extends ArrayValue<IntValue> {}
-        
+
         const can = ArrayCanonical.from([]);
         expect(new Numbers(can, can).length).toBe(0);
     });
