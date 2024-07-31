@@ -54,7 +54,7 @@ export interface ICanonical<TSource extends ICanonicalSource = ICanonicalSource>
      * error when invoked on other physical types.
      */
     get size(): number | undefined;
-    
+
     /**
      * Must return true when the object is a canonical. The presence of this method in combination
      * with a return value of true can be used as a proof that an object is a canonical.
@@ -67,6 +67,5 @@ export interface ICanonical<TSource extends ICanonicalSource = ICanonicalSource>
 
     is(base: CanonicalLike<TSource>): boolean;
 }
-
 
 export type CanonicalLike<TSource extends ICanonicalSource = ICanonicalSource> = ICanonical<TSource> | ICanonicalSource;

@@ -114,7 +114,7 @@ export abstract class BaseCanonical<T extends ICanonicalSource = ICanonicalSourc
             return false;
         }
 
-        for (let idx=0; idx < baseTypes.length; idx++) {
+        for (let idx = 0; idx < baseTypes.length; idx++) {
             if (baseTypes[idx] !== subTypes[idx]) {
                 return false;
             }
@@ -122,7 +122,6 @@ export abstract class BaseCanonical<T extends ICanonicalSource = ICanonicalSourc
 
         return true;
     }
-
 
     public get size(): number {
         throw new Error(
@@ -135,7 +134,7 @@ export abstract class BaseCanonical<T extends ICanonicalSource = ICanonicalSourc
             `The canonical value with physical type "${this._physicalType}" and logical type(s) "${this._logicalTypes}" is not a sequence`
         );
     }
-    
+
     public getMappingValue(_key: string): CanonicalLike<T> | undefined {
         throw new Error(
             `The canonical value with physical type "${this._physicalType}" and logical type(s) "${this._logicalTypes}" is not a mapping`
@@ -145,5 +144,4 @@ export abstract class BaseCanonical<T extends ICanonicalSource = ICanonicalSourc
     public isCanonical(): this is ICanonical<T> {
         return true;
     }
-
 }

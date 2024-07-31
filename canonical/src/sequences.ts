@@ -23,7 +23,7 @@ export class ArrayCanonical<T extends ICanonicalSource = ICanonicalSource> exten
         if (!super.equals(other)) {
             return false;
         }
-        
+
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const otherSize = other!.size;
         if (otherSize !== undefined && otherSize !== this.value.length) {
@@ -49,14 +49,17 @@ export class ArrayCanonical<T extends ICanonicalSource = ICanonicalSource> exten
         return true;
     }
 
-    public static from<T extends ICanonicalSource = ICanonicalSource>(value: ICanonical<T>[], logcalTypes: CanonicalLogicalTypes = []) {
+    public static from<T extends ICanonicalSource = ICanonicalSource>(
+        value: ICanonical<T>[],
+        logcalTypes: CanonicalLogicalTypes = []
+    ) {
         return new ArrayCanonical<T>(value, logcalTypes);
     }
 
     public getSequenceItem(index: number): CanonicalLike<T> | undefined {
         return this.value[index];
     }
-    
+
     private getSequenceItemByIdx(idx: number): ISequenceItem<T> | undefined {
         if (this.value.length <= idx) {
             return undefined;

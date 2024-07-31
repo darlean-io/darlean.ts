@@ -12,8 +12,10 @@ export function toCanonical<T extends ICanonicalSource = ICanonicalSource>(value
     throw new Error('Value is not a canonical and not a canonical source');
 }
 
-export function toCanonicalOrUndefined<T extends ICanonicalSource = ICanonicalSource>(value: CanonicalLike<T> | undefined): ICanonical<T> | undefined {
-    return (value === undefined) ? undefined : toCanonical(value);
+export function toCanonicalOrUndefined<T extends ICanonicalSource = ICanonicalSource>(
+    value: CanonicalLike<T> | undefined
+): ICanonical<T> | undefined {
+    return value === undefined ? undefined : toCanonical(value);
 }
 
 export function equals<A extends ICanonicalSource = ICanonicalSource, B extends ICanonicalSource = ICanonicalSource>(

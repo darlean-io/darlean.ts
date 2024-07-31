@@ -36,7 +36,7 @@ describe('Canonicals', () => {
         expect(_.is(a)).toBe(false);
         expect(_.is(ab)).toBe(false);
         expect(_.is(_)).toBe(true);
-    })
+    });
 
     test('Sequence from array', () => {
         const value = [StringCanonical.from('A'), StringCanonical.from('B')];

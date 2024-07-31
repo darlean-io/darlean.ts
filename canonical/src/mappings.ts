@@ -88,10 +88,7 @@ export class MapCanonical<T extends ICanonicalSource = ICanonicalSource> extends
  */
 
 export class DictCanonical<T extends ICanonicalSource = ICanonicalSource> extends BaseCanonical<T> {
-    private constructor(
-        private value: { [key: string]: CanonicalLike<T> },
-        logicalTypes: CanonicalLogicalTypes = []
-    ) {
+    private constructor(private value: { [key: string]: CanonicalLike<T> }, logicalTypes: CanonicalLogicalTypes = []) {
         super('mapping', logicalTypes);
     }
 
@@ -103,7 +100,6 @@ export class DictCanonical<T extends ICanonicalSource = ICanonicalSource> extend
     public get size(): number {
         return Object.keys(this.value).length;
     }
-
 
     public static from<T extends ICanonicalSource = ICanonicalSource>(
         value: { [key: string]: CanonicalLike<T> },
@@ -155,7 +151,7 @@ export class DictCanonical<T extends ICanonicalSource = ICanonicalSource> extend
         }
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        
+
         if (n !== Object.keys(this.value).length) {
             return false;
         }
