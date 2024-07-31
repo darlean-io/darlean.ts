@@ -2,32 +2,35 @@ import {
     ArrayCanonical,
     BinaryCanonical,
     BoolCanonical,
+    CanonicalLike,
     DictCanonical,
     FloatCanonical,
     ICanonical,
+    ICanonicalSource,
     IntCanonical,
     MomentCanonical,
     NoneCanonical,
-    StringCanonical
+    StringCanonical,
+    toCanonical
 } from '@darlean/canonical';
 
 export class CanonicalJsonSerializer {
-    public serializeToString(canonical: ICanonical, indent?: string | number): string {
+    public serializeToString<T extends ICanonicalSource = ICanonicalSource>(canonical: CanonicalLike<T>, indent?: string | number): string {
         // Naive implementation that first constructs an in-memory tree,
         // and then dumps that tree into json.
-        const root = this.treeifyNode(canonical);
+        const root = this.treeifyNode(toCanonical(canonical));
         return JSON.stringify(root, undefined, indent);
     }
 
-    public serialize(canonical: ICanonical): Buffer {
+    public serialize<T extends ICanonicalSource = ICanonicalSource>(canonical: CanonicalLike<T>): Buffer {
         // Naive implementation that first constructs an in-memory tree,
         // and then dumps that tree into json.
-        const root = this.treeifyNode(canonical);
+        const root = this.treeifyNode(toCanonical(canonical));
         return Buffer.from(JSON.stringify(root), 'utf-8');
     }
 
-    public toNative(canonical: ICanonical): unknown {
-        return this.treeifyNode(canonical);
+    public toNative<T extends ICanonicalSource = ICanonicalSource>(canonical: CanonicalLike<T>): unknown {
+        return this.treeifyNode(toCanonical(canonical));
     }
 
     private treeifyNode(canonical: ICanonical): unknown {
@@ -52,7 +55,7 @@ export class CanonicalJsonSerializer {
                 obj['type'] = logicals;
                 let entry = canonical.firstMappingEntry;
                 while (entry) {
-                    obj[':' + entry.key] = this.treeifyNode(entry.value);
+                    obj[':' + entry.key] = this.treeifyNode(toCanonical(entry.value));
                     entry = entry.next();
                 }
                 return obj;
@@ -62,7 +65,7 @@ export class CanonicalJsonSerializer {
                 arr.push(logicals);
                 let item = canonical.firstSequenceItem;
                 while (item) {
-                    arr.push(this.treeifyNode(item.value));
+                    arr.push(this.treeifyNode(toCanonical(item.value)));
                     item = item.next();
                 }
                 return arr;
@@ -73,17 +76,17 @@ export class CanonicalJsonSerializer {
 }
 
 export class CanonicalJsonDeserializer {
-    public deserialize(json: Buffer): ICanonical {
+    public deserialize<T extends ICanonicalSource = ICanonicalSource>(json: Buffer): ICanonical<T> {
         const parsed = JSON.parse(json.toString('utf-8'));
         return this.processNode(parsed);
     }
 
-    public deserializeFromString(json: string): ICanonical {
+    public deserializeFromString<T extends ICanonicalSource = ICanonicalSource>(json: string): ICanonical<T> {
         const parsed = JSON.parse(json);
         return this.processNode(parsed);
     }
 
-    public fromNative(value: unknown): ICanonical {
+    public fromNative<T extends ICanonicalSource = ICanonicalSource>(value: unknown): ICanonical<T> {
         return this.processNode(value);
     }
 

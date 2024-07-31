@@ -2,11 +2,14 @@ import {
     ArrayCanonical,
     BinaryCanonical,
     BoolCanonical,
+    CanonicalLike,
     DictCanonical,
     FloatCanonical,
+    ICanonical,
     IntCanonical,
     MomentCanonical,
-    StringCanonical
+    StringCanonical,
+    toCanonical
 } from '@darlean/canonical';
 import { CanonicalJsonDeserializer, CanonicalJsonSerializer } from '../canonical-json';
 
@@ -33,7 +36,13 @@ describe('JSON', () => {
         const json = ser.serialize(struct);
 
         const p2 = deser.deserialize(json);
-        const struct2 = p2.asDict();
+        const struct2: {[key: string]: ICanonical} = {};
+        let entry = p2.firstMappingEntry;
+        while (entry) {
+            struct2[entry.key] = toCanonical(entry.value);
+            entry = entry.next();
+        }
+        //const struct2 = p2.asDict();
         expect(struct2['first-name'].stringValue).toBe('Jantje');
         expect(struct2['first-name'].logicalTypes).toEqual(['name', 'first-name']);
 
@@ -43,7 +52,12 @@ describe('JSON', () => {
         expect(struct2['age'].intValue).toBe(21);
         expect(struct2['age'].logicalTypes).toEqual(['age-in-years']);
 
-        const whisdom = struct2['whisdom'].asArray();
+        const whisdom: ICanonical[] = [];
+        let elem = struct2['whisdom'].firstSequenceItem;
+        while (elem) {
+            whisdom.push(toCanonical(elem.value));
+            elem = elem.next();
+        }
         expect(struct2['whisdom'].logicalTypes).toEqual(['facts']);
         expect(whisdom[0].boolValue).toBe(true);
         expect(whisdom[0].logicalTypes).toEqual(['fact']);
