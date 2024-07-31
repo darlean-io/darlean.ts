@@ -17,24 +17,24 @@ npm install @darlean/valueobjects
 ```ts
 // Type definitions with some interitance and validation:
 
-@stringvalue class Name extends StringValue { private name: discriminative }
-@stringvalue class FirstName extends Name { private first_name: discriminative }
-@stringvalue class LastName extends StringValue { private last_name: discriminative }
+@stringvalue() class Name extends StringValue { private name: discriminative }
+@stringvalue() class FirstName extends Name { private first_name: discriminative }
+@stringvalue() class LastName extends StringValue { private last_name: discriminative }
 
 @intvalidation((v) => v >= 0, 'Must not be negative')
-@intvalue class Age extends IntValue { private age: discriminative }
+@intvalue() class Age extends IntValue { private age: discriminative }
 
-@boolvalue class Fact extends BoolValue { private fact: discriminative }
+@boolvalue() class Fact extends BoolValue { private fact: discriminative }
 
-@floatvalue class Meters extends FloatValue { private meters: discriminative }
+@floatvalue() class Meters extends FloatValue { private meters: discriminative }
 
-@momentvalue class Birthday extends MomentValue { private birthday: discriminative }
+@momentvalue() class Birthday extends MomentValue { private birthday: discriminative }
 
-@binaryvalue class BinaryData extends BinaryValue { private binary_data: discriminative }
+@binaryvalue() class BinaryData extends BinaryValue { private binary_data: discriminative }
 
-@typedarrayvalue(Fact) class Facts extends ArrayValue<Fact> { private facts: discrimninative }
+@sequencevalue(Fact) class Facts extends SequenceValue<Fact> { private facts: discrimninative }
 
-@objectvalue() class Person extends ObjectValue {
+@structvalue() class Person extends StructValue {
     get firstName() { return FirstName.required() }
     get lastName() { return LastName.required() }
     get age() { return Age.optional() }
@@ -50,7 +50,7 @@ const p = Person.from({
     lastName: LastName.from('DeBoer'),
     age: Age.from(21),
     length: Meters.from(180.5),
-    facts: Facts.from([true, Fact.from(false)]),
+    facts: Facts.from([Fact.from(true), Fact.from(false)]),
     born: Birthday.from(new Date('2000-12-31T18:30:00.000Z')),
     data: BinaryData.from(Buffer.from('BINARY'))
 });
@@ -81,7 +81,8 @@ The following physical types are supported. Within brackets are the correspondin
 * Moments - Represent one specific moment in time (`Date`)
 * Binary - Represent binary data (`Buffer`)
 * Sequences - Represent an array (`[]`)
-* Objects - Represent objects with fields of data (`{}`)
+* Structs - Represent objects with fields of data, where each field can have a different type. (`{}`)
+* Mappings - Represents maps with arbitrary keys and one value type (`Map<string, Value>`)
 
 ## Logical types
 
@@ -113,17 +114,23 @@ class Fact extends BoolValue { private fact: discriminative }
 
 @floatvalidation((v) => v > 0.90, 'Must be long enough')
 @floatvalidation((v) => v < 2.50, 'Must not be too tall')
-@floatvalue class Meters extends FloatValue { private meters: discriminative }
+@floatvalue() class Meters extends FloatValue { private meters: discriminative }
 
 @momentvalidation((v) => v.getMonth === 11, 'Must be in december')
-@momentvalue class Birthday extends MomentValue { private birthday: discriminative }
+@momentvalue() class Birthday extends MomentValue { private birthday: discriminative }
 
 @binaryvalidation((v) => v.length < 100_000>, 'Must be less than 100.000 bytes')
-@binaryvalue class BinaryData extends BinaryValue { private binary_data: discriminative }
+@binaryvalue() class BinaryData extends BinaryValue { private binary_data: discriminative }
+
+@structvalidation((v) => v.get('first-name') || v.get('last-name'), 'Must have a first name or a last name field or both')
+class Person extends StructValue {
+    get firstName() { return FirstName.optional() }
+    get lastName() { return LastName.optional() }  
+}
 ```
 
 Notes:
-* When you apply a validation decorator, the default decorator (`@stringvalue`, `@intvalue`, etc) can be omitted.
+* When you apply a validation decorator, the default decorator (`@stringvalue()`, `@intvalue()`, etc) can be omitted.
 * Multiple validations can be applied by adding multiple decorators
 * Validations of a parent value object are always run before the validations of a child object. The standard types
   already check that the value is not undefined, and that the value is of the correct physical type. So, validation
@@ -131,18 +138,45 @@ Notes:
 * It's up to you whether to spell the checks out explitly (`v >= 0`) or to use a fancy validation library for that.
   We prefer simplicity, readability and explicitability, but it's entirely up to you!
 
-## Valilla JS without decorators
+## Vanilla JS without decorators
 
-For use without typescript, it is possible to work without decorators. Please see the tests for examples.
+For use without typescript, it is possible to work without decorators with manually invoking the decorator functions
+after the class definition:
+```ts
+class Meters extends FloatValue { private meters: discriminative }
+floatvalue()(Meters)
+floatvalidation((v) => v > 0.90, 'Must be long enough')(Meters)
+floatvalidation((v) => v < 2.50, 'Must not be too tall')(Meters)
 
-## Object values
+class Person extends StructValue {
+    get firstName() { return FirstName.required() }
+}
+structvalue()(Person)
+```
 
-To make defining objects and their fields as simple as possible, we use a clever (but dirty) trick.
+## Using different canonical names
+
+Internally, all logical type names are automatically converted into a canonical
+format that is the same across programming languages. The canonical format only contains lowercase letters a-z,
+digits 0=9 and the dash -.
+
+To use a different conversion than the automatic conversion for logical types, provide the desired type in the canonical format
+to the decorator:
+```ts
+@floatvalue('my-meters') class Meters extends FloatValue { private meters: discriminative }
+@structvalue('my-person') class Person extends StructValue {}
+```
+
+To use custom canonical names for struct fields is not yet supported.
+
+## Struct field definitions - How it works internally
+
+To make defining structs and their fields as simple as possible, we use a clever (but dirty) trick.
 
 Let's take the following value object as an example:
 
 ```ts
-@objectvalue() class Person extends ObjectValue {
+@structvalue() class Person extends StructValue {
     get firstName() { return FirstName.required() }
     get age() { return Age.optional() }
 }
@@ -196,15 +230,16 @@ We make it private so that it is not visible from code completion.
 
 Struct values purposely have single inheritance. A person-with-age can descend from a plain person, but not from both
 a person and an employee. Our rationale for this is:
-* Not all languages support this construct. We want to be a cross-language toolkit.
+* Not all languages support multiple inheritance. We want to be a cross-language toolkit.
 * It is complex to implement and to understand.
 * It is not necessary. When you need the concept that someone is a person and an employee, we believe it is much simpler
   and cleaner to just define a struct that combines the two.
 
-Instead of using multiple interitance, create a new struct that combines the two concepts:
+Instead of using multiple interitance, create a new struct that combines the two concepts. It is a bit more work, but a lot
+clearer and cross-language compatible.
 
 ```ts
-@objectvalue() class EmployeePerson extends ObjectValue {
+@structvalue() class EmployeePerson extends StructValue {
     get person() { return Person.required() }
     get employee() { return Employee.required() }
 }

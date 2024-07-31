@@ -55,6 +55,7 @@
     "tsconfig": "./tsconfig.json"
   },
   "dependencies": {
-    "@darlean/canonical": "^2.0.0-alpha.5"
+    "@darlean/canonical": "^2.0.0-alpha.5",
+    "reflect-metadata": "^0.2.2"
   }
 }
