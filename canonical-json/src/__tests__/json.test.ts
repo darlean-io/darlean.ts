@@ -2,7 +2,6 @@ import {
     ArrayCanonical,
     BinaryCanonical,
     BoolCanonical,
-    CanonicalLike,
     DictCanonical,
     FloatCanonical,
     ICanonical,
