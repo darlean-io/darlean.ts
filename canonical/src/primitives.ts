@@ -2,7 +2,7 @@ import { BaseCanonical } from './base-canonical';
 import { CanonicalLogicalTypes, ICanonical, ICanonicalSource } from './canonical';
 import { toCanonicalOrUndefined } from './helpers';
 
-export class NoneCanonical extends BaseCanonical {
+export class NoneCanonical<T extends ICanonicalSource = ICanonicalSource> extends BaseCanonical<T> {
     private constructor(logicalTypes: CanonicalLogicalTypes = []) {
         super('none', logicalTypes);
     }
@@ -12,7 +12,7 @@ export class NoneCanonical extends BaseCanonical {
     public get noneValue(): undefined {
         return undefined;
     }
-    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+    public equals(other?: ICanonical<T> | ICanonicalSource): boolean {
         const other2 = toCanonicalOrUndefined(other);
         if (!super.equals(other2)) {
             return false;
@@ -22,7 +22,7 @@ export class NoneCanonical extends BaseCanonical {
     }
 }
 
-export class BoolCanonical extends BaseCanonical {
+export class BoolCanonical<T extends ICanonicalSource = ICanonicalSource> extends BaseCanonical<T> {
     private constructor(private value: boolean, logicalTypes: CanonicalLogicalTypes = []) {
         super('bool', logicalTypes);
     }
@@ -32,7 +32,7 @@ export class BoolCanonical extends BaseCanonical {
     public get boolValue(): boolean {
         return this.value;
     }
-    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+    public equals(other?: ICanonical<T> | ICanonicalSource): boolean {
         const other2 = toCanonicalOrUndefined(other);
         if (!super.equals(other2)) {
             return false;
@@ -42,7 +42,7 @@ export class BoolCanonical extends BaseCanonical {
     }
 }
 
-export class IntCanonical extends BaseCanonical {
+export class IntCanonical<T extends ICanonicalSource = ICanonicalSource> extends BaseCanonical<T> {
     private constructor(private value: number, logicalTypes: CanonicalLogicalTypes = []) {
         super('int', logicalTypes);
     }
@@ -52,7 +52,7 @@ export class IntCanonical extends BaseCanonical {
     public get intValue(): number {
         return this.value;
     }
-    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+    public equals(other?: ICanonical<T> | ICanonicalSource): boolean {
         const other2 = toCanonicalOrUndefined(other);
         if (!super.equals(other2)) {
             return false;
@@ -62,7 +62,7 @@ export class IntCanonical extends BaseCanonical {
     }
 }
 
-export class FloatCanonical extends BaseCanonical {
+export class FloatCanonical<T extends ICanonicalSource = ICanonicalSource> extends BaseCanonical<T> {
     private constructor(private value: number, logicalTypes: CanonicalLogicalTypes = []) {
         super('float', logicalTypes);
     }
@@ -72,7 +72,7 @@ export class FloatCanonical extends BaseCanonical {
     public get floatValue(): number {
         return this.value;
     }
-    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+    public equals(other?: ICanonical<T> | ICanonicalSource): boolean {
         const other2 = toCanonicalOrUndefined(other);
         if (!super.equals(other2)) {
             return false;
@@ -82,7 +82,7 @@ export class FloatCanonical extends BaseCanonical {
     }
 }
 
-export class StringCanonical extends BaseCanonical {
+export class StringCanonical<T extends ICanonicalSource = ICanonicalSource> extends BaseCanonical<T> {
     private constructor(private value: string, logicalTypes: CanonicalLogicalTypes = []) {
         super('string', logicalTypes);
     }
@@ -92,7 +92,7 @@ export class StringCanonical extends BaseCanonical {
     public get stringValue(): string {
         return this.value;
     }
-    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+    public equals(other?: ICanonical<T> | ICanonicalSource): boolean {
         const other2 = toCanonicalOrUndefined(other);
         if (!super.equals(other2)) {
             return false;
@@ -102,7 +102,7 @@ export class StringCanonical extends BaseCanonical {
     }
 }
 
-export class MomentCanonical extends BaseCanonical {
+export class MomentCanonical<T extends ICanonicalSource = ICanonicalSource> extends BaseCanonical<T> {
     private constructor(private value: Date, logicalTypes: CanonicalLogicalTypes = []) {
         super('moment', logicalTypes);
     }
@@ -112,7 +112,7 @@ export class MomentCanonical extends BaseCanonical {
     public get momentValue(): Date {
         return this.value;
     }
-    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+    public equals(other?: ICanonical<T> | ICanonicalSource): boolean {
         const other2 = toCanonicalOrUndefined(other);
         if (!super.equals(other2)) {
             return false;
@@ -122,17 +122,20 @@ export class MomentCanonical extends BaseCanonical {
     }
 }
 
-export class BinaryCanonical extends BaseCanonical {
-    private constructor(private value: Buffer, logicalTypes: CanonicalLogicalTypes = []) {
+export class BinaryCanonical<T extends ICanonicalSource = ICanonicalSource> extends BaseCanonical<T> {
+    private constructor(private value: Buffer | ArrayBuffer, logicalTypes: CanonicalLogicalTypes = []) {
         super('binary', logicalTypes);
     }
     public static from(value: Buffer, logicalTypes: CanonicalLogicalTypes = []) {
         return new BinaryCanonical(value, logicalTypes);
     }
     public get binaryValue(): Buffer {
+        return Buffer.isBuffer(this.value) ? this.value : Buffer.from(this.value);
+    }
+    public get binaryValueAsArrayBuffer(): ArrayBuffer {
         return this.value;
     }
-    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+    public equals(other?: ICanonical<T> | ICanonicalSource): boolean {
         const other2 = toCanonicalOrUndefined(other);
         if (!super.equals(other2)) {
             return false;

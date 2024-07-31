@@ -1,49 +1,41 @@
 import { BaseCanonical } from './base-canonical';
-import { CanonicalLogicalTypes, ICanonical, ICanonicalSource, IMappingEntry } from './canonical';
-import { toCanonical, toCanonicalOrUndefined } from './helpers';
+import { CanonicalLike, CanonicalLogicalTypes, ICanonicalSource, IMappingEntry } from './canonical';
+import { toCanonicalOrUndefined } from './helpers';
 
 /**
  * MapCanonical represents a canonical value backed by a map. The map must not be modified anymore.
  */
-export class MapCanonical<T = unknown> extends BaseCanonical {
-    private constructor(private value: Map<string, ICanonical | ICanonicalSource<T>>, logicalTypes: CanonicalLogicalTypes = []) {
+export class MapCanonical<T extends ICanonicalSource = ICanonicalSource> extends BaseCanonical {
+    private constructor(private value: Map<string, CanonicalLike<T>>, logicalTypes: CanonicalLogicalTypes = []) {
         super('mapping', logicalTypes);
     }
 
-    public get firstMappingEntry(): IMappingEntry | undefined {
+    public get firstMappingEntry(): IMappingEntry<T> | undefined {
         const entries = this.value.entries();
         return this.getMapItem(entries);
     }
 
-    public asMap(): Map<string, ICanonical> {
-        const result = new Map<string, ICanonical>();
-        for (const entry of this.value.entries()) {
-            result.set(entry[0], toCanonical(entry[1]));
-        }
-        return result;
+    public get size(): number {
+        return this.value.size;
     }
 
-    public asDict(): { [key: string]: ICanonical } {
-        const result: { [key: string]: ICanonical } = {};
-        for (const entry of this.value.entries()) {
-            result[entry[0]] = toCanonical(entry[1]);
-        }
-        return result;
-    }
-
-    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+    public equals(other?: CanonicalLike<T>): boolean {
         other = toCanonicalOrUndefined(other);
         if (!super.equals(other)) {
             return false;
         }
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const otherMap = other!.asMap();
-        if (otherMap.size !== this.value.size) {
+        const otherSize = other!.size;
+        if (otherSize !== undefined && otherSize !== this.value.size) {
             return false;
         }
-        for (const key of this.value.keys()) {
-            const value = toCanonicalOrUndefined(this.value.get(key));
-            const otherValue = toCanonicalOrUndefined(otherMap.get(key));
+        let entry = other?.firstMappingEntry;
+        let n = 0;
+        while (entry) {
+            const value = toCanonicalOrUndefined(this.value.get(entry.key));
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const otherValue = toCanonicalOrUndefined(entry.value);
+
             if (value === undefined) {
                 if (otherValue !== undefined) {
                     return false;
@@ -53,27 +45,34 @@ export class MapCanonical<T = unknown> extends BaseCanonical {
                     return false;
                 }
             }
+            n++;
+            entry = entry.next();
         }
+
+        if (n !== this.value.size) {
+            return false;
+        }
+
         return true;
     }
 
-    public static from<T = unknown>(
-        value: Map<string, ICanonical | ICanonicalSource<T>>,
+    public static from<T extends ICanonicalSource = ICanonicalSource>(
+        value: Map<string, CanonicalLike<T>>,
         logicalTypes: CanonicalLogicalTypes = []
     ) {
         return new MapCanonical(value, logicalTypes);
     }
 
-    private getMapItem<T = unknown>(
-        iterator: IterableIterator<[string, ICanonical | ICanonicalSource<T>]>
-    ): IMappingEntry | undefined {
+    private getMapItem<T extends ICanonicalSource = ICanonicalSource>(
+        iterator: IterableIterator<[string, CanonicalLike<T>]>
+    ): IMappingEntry<T> | undefined {
         const result = iterator.next();
         if (result.done) {
             return undefined;
         }
         return {
             key: result.value[0],
-            value: toCanonical(result.value[1]),
+            value: result.value[1],
             next: () => {
                 if (result.done) {
                     return undefined;
@@ -85,77 +84,63 @@ export class MapCanonical<T = unknown> extends BaseCanonical {
 }
 
 /**
- * MapCanonical represents a canonical value backed by a dictionary. The dictionary must not be modified anymore.
+ * DictCanonical represents a canonical value backed by a dictionary. The dictionary must not be modified anymore.
  */
 
-export class DictCanonical<T = unknown> extends BaseCanonical {
+export class DictCanonical<T extends ICanonicalSource = ICanonicalSource> extends BaseCanonical<T> {
     private constructor(
-        private value: { [key: string]: ICanonical | ICanonicalSource<T> },
+        private value: { [key: string]: CanonicalLike<T> },
         logicalTypes: CanonicalLogicalTypes = []
     ) {
         super('mapping', logicalTypes);
     }
 
-    public get firstMappingEntry(): IMappingEntry | undefined {
+    public get firstMappingEntry(): IMappingEntry<T> | undefined {
         const entries = Object.entries(this.value).values();
-        return this.getMapItem(entries);
+        return this.getNextMapItemFromIterator(entries);
     }
 
-    public asMap(): Map<string, ICanonical> {
-        const result = new Map<string, ICanonical>();
-        for (const entry of Object.entries(this.value)) {
-            result.set(entry[0], toCanonical(entry[1]));
-        }
-        return result;
+    public get size(): number {
+        return Object.keys(this.value).length;
     }
 
-    public asDict(): { [key: string]: ICanonical } {
-        const result: { [key: string]: ICanonical } = {};
-        for (const entry of Object.entries(this.value)) {
-            result[entry[0]] = toCanonical(entry[1]);
-        }
-        return result;
-    }
 
-    public static from<T = unknown>(
-        value: { [key: string]: ICanonical | ICanonicalSource<T> },
+    public static from<T extends ICanonicalSource = ICanonicalSource>(
+        value: { [key: string]: CanonicalLike<T> },
         logicalTypes: CanonicalLogicalTypes = []
     ) {
         return new DictCanonical(value, logicalTypes);
     }
 
-    private getMapItem(iterator: IterableIterator<[string, ICanonical | ICanonicalSource<T>]>): IMappingEntry | undefined {
+    private getNextMapItemFromIterator(iterator: IterableIterator<[string, CanonicalLike<T>]>): IMappingEntry<T> | undefined {
         const result = iterator.next();
         if (result.done) {
             return undefined;
         }
         return {
             key: result.value[0],
-            value: toCanonical(result.value[1]),
+            value: result.value[1],
             next: () => {
                 if (result.done) {
                     return undefined;
                 }
-                return this.getMapItem(iterator);
+                return this.getNextMapItemFromIterator(iterator);
             }
         };
     }
 
-    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+    public equals(other?: CanonicalLike<T>): boolean {
         other = toCanonicalOrUndefined(other);
         if (!super.equals(other)) {
             return false;
         }
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const otherDict = other!.asDict();
-        const keys = Object.keys(this.value);
-        const otherKeys = Object.keys(otherDict);
-        if (otherKeys.length !== keys.length) {
-            return false;
-        }
-        for (const key of keys) {
-            const value = toCanonicalOrUndefined(this.value[key]);
-            const otherValue = toCanonicalOrUndefined(otherDict[key]);
+        let entry = other?.firstMappingEntry;
+        let n = 0;
+        while (entry) {
+            const value = toCanonicalOrUndefined(this.value[entry.key]);
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const otherValue = toCanonicalOrUndefined(entry.value);
+
             if (value === undefined) {
                 if (otherValue !== undefined) {
                     return false;
@@ -165,7 +150,16 @@ export class DictCanonical<T = unknown> extends BaseCanonical {
                     return false;
                 }
             }
+            n++;
+            entry = entry.next();
         }
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        
+        if (n !== Object.keys(this.value).length) {
+            return false;
+        }
+
         return true;
     }
 }

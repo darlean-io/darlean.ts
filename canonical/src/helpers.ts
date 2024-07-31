@@ -1,44 +1,44 @@
 import { CanonicalLike, ICanonical, ICanonicalSource } from './canonical';
 
-export function toCanonical<T = unknown>(value: ICanonical<T> | ICanonicalSource<T>): ICanonical<T> {
-    if ((value as ICanonicalSource<T>)._peekCanonicalRepresentation) {
-        return (value as ICanonicalSource<T>)._peekCanonicalRepresentation();
+export function toCanonical<T extends ICanonicalSource = ICanonicalSource>(value: CanonicalLike<T>): ICanonical<T> {
+    if (isCanonical(value)) {
+        return value;
     }
-    return value as ICanonical;
+
+    if ((value as T)._peekCanonicalRepresentation) {
+        return (value as T)._peekCanonicalRepresentation();
+    }
+
+    throw new Error('Value is not a canonical and not a canonical source');
 }
 
-export function toCanonicalOrUndefined<T = unknown>(
-    value: ICanonical<T> | ICanonicalSource<T> | undefined
-): ICanonical<T> | undefined {
-    if ((value as ICanonicalSource<T>)?._peekCanonicalRepresentation) {
-        return (value as ICanonicalSource<T>)._peekCanonicalRepresentation();
-    }
-    return value as ICanonical<T> | undefined;
+export function toCanonicalOrUndefined<T extends ICanonicalSource = ICanonicalSource>(value: CanonicalLike<T> | undefined): ICanonical<T> | undefined {
+    return (value === undefined) ? undefined : toCanonical(value);
 }
 
-export function equals<A, B>(
-    a: ICanonical<A> | ICanonicalSource<A> | undefined,
-    b: ICanonical<B> | ICanonicalSource<B> | undefined
+export function equals<A extends ICanonicalSource = ICanonicalSource, B extends ICanonicalSource = ICanonicalSource>(
+    a: CanonicalLike<A> | undefined,
+    b: CanonicalLike<B> | undefined
 ): boolean {
     if (a === undefined && b === undefined) {
         return true;
     }
     if (a === undefined) {
-        return toCanonical(b as ICanonical<B> | ICanonicalSource<B>).equals(a);
+        return toCanonical(b as CanonicalLike<B>).equals(a);
     }
-    return toCanonical(a as ICanonical<A> | ICanonicalSource<A>).equals(b);
+    return toCanonical(a as CanonicalLike<A>).equals(b);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isCanonical<T>(v: any): v is ICanonical<T> {
+export function isCanonical<T extends ICanonicalSource = ICanonicalSource>(v: any): v is ICanonical<T> {
     if (typeof v !== 'object') {
         return false;
     }
-    return 'firstMappingEntry' in v && 'logicalTypes' in v;
+    return (v as ICanonical)?.isCanonical?.();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isCanonicalSource<T>(v: any): v is ICanonicalSource<T> {
+export function isCanonicalSource(v: any): v is ICanonicalSource {
     if (typeof v !== 'object') {
         return false;
     }
@@ -46,6 +46,6 @@ export function isCanonicalSource<T>(v: any): v is ICanonicalSource<T> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isCanonicalLike<T>(v: any): v is CanonicalLike<T> {
+export function isCanonicalLike<T extends ICanonicalSource = ICanonicalSource>(v: any): v is CanonicalLike<T> {
     return isCanonical(v) || isCanonicalSource(v);
 }

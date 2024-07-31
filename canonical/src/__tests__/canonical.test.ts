@@ -1,4 +1,4 @@
-import { ICanonical } from '../canonical';
+import { toCanonical } from '../helpers';
 import { DictCanonical, MapCanonical } from '../mappings';
 import { StringCanonical } from '../primitives';
 import { ArrayCanonical } from '../sequences';
@@ -15,21 +15,41 @@ describe('Canonicals', () => {
         expect(StringCanonical.from('A').equals(StringCanonical.from('B'))).toBe(false);
     });
 
+    test('Is', () => {
+        const a = StringCanonical.from('A', ['A']);
+        const a2 = StringCanonical.from('A', ['A']);
+        const ab = StringCanonical.from('AB', ['A', 'B']);
+        const b = StringCanonical.from('B', ['B']);
+        const _ = StringCanonical.from('', []);
+
+        expect(a.is(a)).toBe(true);
+        expect(a.is(a2)).toBe(true);
+        expect(a.is(ab)).toBe(false);
+        expect(a.is(b)).toBe(false);
+        expect(a.is(_)).toBe(true);
+
+        expect(ab.is(a)).toBe(true);
+        expect(ab.is(ab)).toBe(true);
+        expect(ab.is(b)).toBe(false);
+        expect(ab.is(_)).toBe(true);
+
+        expect(_.is(a)).toBe(false);
+        expect(_.is(ab)).toBe(false);
+        expect(_.is(_)).toBe(true);
+    })
+
     test('Sequence from array', () => {
         const value = [StringCanonical.from('A'), StringCanonical.from('B')];
         const seq = ArrayCanonical.from(value);
         const items: string[] = [];
         let item = seq.firstSequenceItem;
         while (item) {
-            items.push(item.value.stringValue);
+            items.push(toCanonical(item.value).stringValue);
             item = item.next();
         }
         expect(items).toStrictEqual(['A', 'B']);
 
-        const arr = seq.asArray();
-        expect(arr.length).toBe(2);
-        expect(arr[0].stringValue).toBe('A');
-        expect(arr[1].stringValue).toBe('B');
+        expect(seq.size).toBe(2);
     });
 
     test('Mapping from map', () => {
@@ -42,19 +62,12 @@ describe('Canonicals', () => {
         let entry = mapping.firstMappingEntry;
         while (entry) {
             entries.push(entry.key);
-            entries.push(entry.value.stringValue);
+            entries.push(toCanonical(entry.value).stringValue);
             entry = entry.next();
         }
         expect(entries).toStrictEqual(['a', 'A', 'b', 'B']);
 
-        const map = mapping.asMap();
-        expect(map.size).toBe(2);
-        expect((map.get('a') as ICanonical)?.stringValue).toBe('A');
-        expect((map.get('b') as ICanonical)?.stringValue).toBe('B');
-
-        const dict = mapping.asDict();
-        expect(dict['a'].stringValue).toBe('A');
-        expect(dict['b'].stringValue).toBe('B');
+        expect(mapping.size).toBe(2);
     });
 
     test('Mapping from dict', () => {
@@ -67,18 +80,11 @@ describe('Canonicals', () => {
         let entry = mapping.firstMappingEntry;
         while (entry) {
             entries.push(entry.key);
-            entries.push(entry.value.stringValue);
+            entries.push(toCanonical(entry.value).stringValue);
             entry = entry.next();
         }
         expect(entries).toStrictEqual(['a', 'A', 'b', 'B']);
 
-        const map = mapping.asMap();
-        expect(map.size).toBe(2);
-        expect(map.get('a')?.stringValue).toBe('A');
-        expect(map.get('b')?.stringValue).toBe('B');
-
-        const dict = mapping.asDict();
-        expect(dict['a'].stringValue).toBe('A');
-        expect(dict['b'].stringValue).toBe('B');
+        expect(mapping.size).toBe(2);
     });
 });

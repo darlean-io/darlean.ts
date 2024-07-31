@@ -1,4 +1,5 @@
 import {
+    CanonicalLike,
     CanonicalLogicalTypes,
     CanonicalPhysicalType,
     ICanonical,
@@ -6,13 +7,13 @@ import {
     IMappingEntry,
     ISequenceItem
 } from './canonical';
-import { toCanonicalOrUndefined } from './helpers';
+import { toCanonical, toCanonicalOrUndefined } from './helpers';
 
 /**
  * BaseCanonical is a base class for specific subtypes of ICanonical implementations. It should not be
  * instantiated directly.
  */
-export abstract class BaseCanonical<T = unknown> implements ICanonical, ICanonicalSource<T> {
+export abstract class BaseCanonical<T extends ICanonicalSource = ICanonicalSource> implements ICanonical<T>, ICanonicalSource {
     protected _physicalType: CanonicalPhysicalType = 'none';
     protected _logicalTypes: CanonicalLogicalTypes;
 
@@ -21,7 +22,7 @@ export abstract class BaseCanonical<T = unknown> implements ICanonical, ICanonic
         this._logicalTypes = logicalTypes;
     }
 
-    public _peekCanonicalRepresentation(): ICanonical {
+    public _peekCanonicalRepresentation(): ICanonical<T> {
         return this;
     }
 
@@ -87,29 +88,11 @@ export abstract class BaseCanonical<T = unknown> implements ICanonical, ICanonic
         );
     }
 
-    public asArray(): ICanonical[] {
-        throw new Error(
-            `The canonical value with physical type "${this._physicalType}" and logical type(s) "${this._logicalTypes}" is not a sequence`
-        );
-    }
-
-    public asMap(): Map<string, ICanonical> {
-        throw new Error(
-            `The canonical value with physical type "${this._physicalType}" and logical type(s) "${this._logicalTypes}" is not a mapping`
-        );
-    }
-
-    public asDict(): { [key: string]: ICanonical } {
-        throw new Error(
-            `The canonical value with physical type "${this._physicalType}" and logical type(s) "${this._logicalTypes}" is not a mapping`
-        );
-    }
-
     public toString(): string {
         return `Canonical<${this._physicalType},${this._logicalTypes}>`;
     }
 
-    public equals(other?: ICanonical | ICanonicalSource<unknown>): boolean {
+    public equals(other?: ICanonical<T> | ICanonicalSource): boolean {
         other = toCanonicalOrUndefined(other);
         if (!other) {
             return false;
@@ -122,4 +105,45 @@ export abstract class BaseCanonical<T = unknown> implements ICanonical, ICanonic
         }
         return true;
     }
+
+    public is(base: CanonicalLike<T>) {
+        const subTypes = this._logicalTypes;
+        const baseTypes = toCanonical(base).logicalTypes;
+
+        if (baseTypes.length > subTypes.length) {
+            return false;
+        }
+
+        for (let idx=0; idx < baseTypes.length; idx++) {
+            if (baseTypes[idx] !== subTypes[idx]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    public get size(): number {
+        throw new Error(
+            `The canonical value with physical type "${this._physicalType}" and logical type(s) "${this._logicalTypes}" is not a sequence or mapping`
+        );
+    }
+
+    public getSequenceItem(_index: number): CanonicalLike<T> | undefined {
+        throw new Error(
+            `The canonical value with physical type "${this._physicalType}" and logical type(s) "${this._logicalTypes}" is not a sequence`
+        );
+    }
+    
+    public getMappingValue(_key: string): CanonicalLike<T> | undefined {
+        throw new Error(
+            `The canonical value with physical type "${this._physicalType}" and logical type(s) "${this._logicalTypes}" is not a mapping`
+        );
+    }
+
+    public isCanonical(): this is ICanonical<T> {
+        return true;
+    }
+
 }
