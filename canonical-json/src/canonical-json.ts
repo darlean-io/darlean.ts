@@ -15,7 +15,10 @@ import {
 } from '@darlean/canonical';
 
 export class CanonicalJsonSerializer {
-    public serializeToString<T extends ICanonicalSource = ICanonicalSource>(canonical: CanonicalLike<T>, indent?: string | number): string {
+    public serializeToString<T extends ICanonicalSource = ICanonicalSource>(
+        canonical: CanonicalLike<T>,
+        indent?: string | number
+    ): string {
         // Naive implementation that first constructs an in-memory tree,
         // and then dumps that tree into json.
         const root = this.treeifyNode(toCanonical(canonical));

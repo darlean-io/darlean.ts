@@ -36,7 +36,7 @@ describe('JSON', () => {
         const json = ser.serialize(struct);
 
         const p2 = deser.deserialize(json);
-        const struct2: {[key: string]: ICanonical} = {};
+        const struct2: { [key: string]: ICanonical } = {};
         let entry = p2.firstMappingEntry;
         while (entry) {
             struct2[entry.key] = toCanonical(entry.value);
