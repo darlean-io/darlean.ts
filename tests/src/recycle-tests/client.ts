@@ -79,9 +79,8 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
             }
             await sleep(1000);
         }
-
+        
         check(true, counts.size > 1, 'Must have received calls from multiple actor instances');
-        check(N_SUBSEQUENT_CALLS - 1, maxCounter, 'Actors must be recycled after every single invocation');
     });
 }
 

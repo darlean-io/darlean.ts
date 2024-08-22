@@ -15,6 +15,7 @@ import { FsPersistenceService } from './service.impl';
 export const FS_PERSISTENCE_SERVICE = baseService;
 const FS_PERSISTENCE_ACTOR = 'io.darlean.FsPersistenceActor';
 const DEFAULT_SHARD_COUNT = 8;
+const DEFAULT_MAX_READERS = 1;
 
 export interface IFsPersistenceOptions {
     compartments: IFsPersistenceCompartment[];
@@ -26,6 +27,7 @@ export interface IFsPersistenceCompartment {
     nodes?: string[];
     basePath?: string;
     subPath?: string;
+    maxReaders?: number;
 }
 
 /**
@@ -75,7 +77,7 @@ export function createFsPersistenceSuite(options: IFsPersistenceOptions) {
                 const shard = context.id[context.id.length - 2];
                 const shardCount = opts.shardCount ?? DEFAULT_SHARD_COUNT;
                 const path = [opts.basePath, opts.subPath, compartment, shardCount, shard, boundNode].join('/');
-                return new FsPersistenceActor(path, context.deser);
+                return new FsPersistenceActor(path, opts.maxReaders ?? DEFAULT_MAX_READERS, context.deser);
             }
         },
         {
@@ -104,6 +106,7 @@ export interface IFileSystemCompartmentCfg {
     nodes?: string[];
     basePath?: string;
     subPath?: string;
+    maxReaders?: number;
 }
 
 export interface IFileSystemPersistenceCfg {
@@ -112,6 +115,7 @@ export interface IFileSystemPersistenceCfg {
     compartments: IFileSystemCompartmentCfg[];
     basePath?: string;
     shardCount?: number;
+    maxReaders?: number;
 }
 
 export function createFsPersistenceSuiteFromConfig(env: IConfigEnv<IFileSystemPersistenceCfg>, runtimeEnabled: boolean) {
@@ -133,7 +137,8 @@ export function createFsPersistenceSuiteFromConfig(env: IConfigEnv<IFileSystemPe
                 basePath: comp.basePath,
                 subPath: comp.subPath,
                 nodes: comp.nodes,
-                shardCount: limit(comp.shardCount ?? DEFAULT_SHARD_COUNT, maxShardCount)
+                shardCount: limit(comp.shardCount ?? DEFAULT_SHARD_COUNT, maxShardCount),
+                maxReaders: comp.maxReaders ?? env.fetchNumber('maxReaders')
             });
         }
 

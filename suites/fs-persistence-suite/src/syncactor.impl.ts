@@ -19,15 +19,12 @@ interface IConnection {
     busy: boolean;
 }
 
-// For now, a fixed value. We can make this configurable/dynamic later on.
-const NR_READERS = 10;
-
 export class FsPersistenceActor implements IActivatable, IDeactivatable {
     private connections: IConnection[];
     private basePath: string;
     private lastConnIdx = 0;
 
-    constructor(basePath: string, private deser: IDeSer) {
+    constructor(basePath: string, private nrReaders: number, private deser: IDeSer) {
         this.basePath = basePath;
         this.connections = [];
     }
@@ -36,7 +33,7 @@ export class FsPersistenceActor implements IActivatable, IDeactivatable {
         const promises: Promise<IConnection>[] = [];
         // Ensure writer creates the folder and database before the readers try to read it.
         const writableConn = await this.openDatabase('writable');
-        for (let idx = 1; idx < NR_READERS + 1; idx++) {
+        for (let idx = 1; idx < this.nrReaders + 1; idx++) {
             promises.push(this.openDatabase('readonly'));
         }
         this.connections = [writableConn, ...(await Promise.all(promises))];

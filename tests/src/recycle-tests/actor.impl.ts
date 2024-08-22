@@ -48,7 +48,7 @@ export function recycleActorSuiteWithMaxAge(node: string): IActorSuite {
         {
             type: RECYCLE_ACTOR_WITH_MAX_AGE,
             kind: 'singular',
-            capacity: 10,
+            capacity: 1000,
             maxAgeSeconds: 5,
             creator: (context) => {
                 return new RecycleActor(node, context.id[0], () => context.performFinalization());
