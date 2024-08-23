@@ -106,10 +106,14 @@ export class FsPersistenceWorker {
 
         const requiresContent = options.filterExpression || isContentFilter(options.projectionFilter);
 
-        const pool = 
-          direction === 'descending'
-          ? (requiresContent ? this.connection?.poolQueryDesc : this.connection?.poolQueryDescNoContents)
-          : (requiresContent ? this.connection?.poolQueryAsc : this.connection?.poolQueryAscNoContents);
+        const pool =
+            direction === 'descending'
+                ? requiresContent
+                    ? this.connection?.poolQueryDesc
+                    : this.connection?.poolQueryDescNoContents
+                : requiresContent
+                ? this.connection?.poolQueryAsc
+                : this.connection?.poolQueryAscNoContents;
         if (!pool) {
             throw new Error('No statement pool');
         }
@@ -156,8 +160,8 @@ export class FsPersistenceWorker {
                 nrows++;
                 const data = row as { [FIELD_PK]?: string; [FIELD_SK]?: string; [FIELD_VALUE]?: Buffer };
                 if (
-                    (!requiresContent) ||
-                    (!options.filterExpression) ||
+                    !requiresContent ||
+                    !options.filterExpression ||
                     this.filter(
                         data,
                         options.filterExpression,
@@ -167,10 +171,11 @@ export class FsPersistenceWorker {
                     )
                 ) {
                     const deserFields = options.filterFieldBase ? [options.filterFieldBase] : [];
-                    const value = 
-                      requiresContent
-                      ? (projection ? this.project(projection, data[FIELD_VALUE], deserFields) : data[FIELD_VALUE])
-                      : undefined;
+                    const value = requiresContent
+                        ? projection
+                            ? this.project(projection, data[FIELD_VALUE], deserFields)
+                            : data[FIELD_VALUE]
+                        : undefined;
                     length += value?.length ?? 0;
                     if (length > MAX_RESPONSE_LENGTH) {
                         if (result.items.length === 0) {
@@ -477,7 +482,7 @@ function isContentFilter(filter: string[] | undefined) {
         return true;
     }
 
-    return (filter[0] !== '-*');
+    return filter[0] !== '-*';
 }
 
 const worker = new FsPersistenceWorker(new Time(), new Filterer(), new MultiDeSer());
