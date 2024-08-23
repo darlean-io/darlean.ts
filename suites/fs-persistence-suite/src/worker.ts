@@ -47,6 +47,8 @@ interface IConnection {
     poolDelete?: StatementPool;
     poolQueryAsc?: StatementPool;
     poolQueryDesc?: StatementPool;
+    poolQueryAscNoContents?: StatementPool;
+    poolQueryDescNoContents?: StatementPool;
 }
 
 // IMPORTANT: When you change the encoding, also ensure that the maxOutReadableEncodedString function
@@ -102,7 +104,12 @@ export class FsPersistenceWorker {
     public query(options: IPersistenceQueryOptions): IPersistenceQueryResult<Blob> {
         const direction = options.sortKeyOrder ?? 'ascending';
 
-        const pool = direction === 'descending' ? this.connection?.poolQueryDesc : this.connection?.poolQueryAsc;
+        const requiresContent = options.filterExpression || isContentFilter(options.projectionFilter);
+
+        const pool = 
+          direction === 'descending'
+          ? (requiresContent ? this.connection?.poolQueryDesc : this.connection?.poolQueryDescNoContents)
+          : (requiresContent ? this.connection?.poolQueryAsc : this.connection?.poolQueryAscNoContents);
         if (!pool) {
             throw new Error('No statement pool');
         }
@@ -149,7 +156,8 @@ export class FsPersistenceWorker {
                 nrows++;
                 const data = row as { [FIELD_PK]?: string; [FIELD_SK]?: string; [FIELD_VALUE]?: Buffer };
                 if (
-                    !options.filterExpression ||
+                    (!requiresContent) ||
+                    (!options.filterExpression) ||
                     this.filter(
                         data,
                         options.filterExpression,
@@ -159,7 +167,10 @@ export class FsPersistenceWorker {
                     )
                 ) {
                     const deserFields = options.filterFieldBase ? [options.filterFieldBase] : [];
-                    const value = projection ? this.project(projection, data[FIELD_VALUE], deserFields) : data[FIELD_VALUE];
+                    const value = 
+                      requiresContent
+                      ? (projection ? this.project(projection, data[FIELD_VALUE], deserFields) : data[FIELD_VALUE])
+                      : undefined;
                     length += value?.length ?? 0;
                     if (length > MAX_RESPONSE_LENGTH) {
                         if (result.items.length === 0) {
@@ -387,6 +398,8 @@ export class FsPersistenceWorker {
         connection.poolLoad = this.makeLoadPool(db);
         connection.poolQueryAsc = this.makeQueryPoolAsc(db);
         connection.poolQueryDesc = this.makeQueryPoolDesc(db);
+        connection.poolQueryAscNoContents = this.makeQueryPoolAsc(db, [FIELD_PK, FIELD_SK]);
+        connection.poolQueryDescNoContents = this.makeQueryPoolDesc(db, [FIELD_PK, FIELD_SK]);
     }
 
     protected makeLoadPool(db: SqliteDatabase): StatementPool {
@@ -396,7 +409,7 @@ export class FsPersistenceWorker {
         return db.prepare(`SELECT * FROM ${TABLE} WHERE (${this.keyWhere})`);
     }
 
-    protected makeQueryPoolAsc(db: SqliteDatabase): StatementPool {
+    protected makeQueryPoolAsc(db: SqliteDatabase, fields?: string[]): StatementPool {
         // The question marks stand for
         // - Partition key exact value
         // - Lower value of sort key
@@ -405,14 +418,17 @@ export class FsPersistenceWorker {
         // - Same as previous field (must be provided twice because better-sqlite does not support using numeric placeholders to reuse the same value)
         // - Paging value that is used to continue a previous query
         // - Limit (or negative number to do not use a limit)
+
+        const fieldNames = fields ? fields.join(',') : '*';
         return db.prepare(
-            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) AND (${FIELD_SK} > ?) ORDER BY ${FIELD_SK} ASC LIMIT ?`
+            `SELECT ${fieldNames} FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) AND (${FIELD_SK} > ?) ORDER BY ${FIELD_SK} ASC LIMIT ?`
         );
     }
 
-    protected makeQueryPoolDesc(db: SqliteDatabase): StatementPool {
+    protected makeQueryPoolDesc(db: SqliteDatabase, fields?: string[]): StatementPool {
+        const fieldNames = fields ? fields.join(',') : '*';
         return db.prepare(
-            `SELECT * FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) AND (${FIELD_SK} < ?) ORDER BY ${FIELD_SK} DESC LIMIT ?`
+            `SELECT ${fieldNames} FROM ${TABLE} WHERE (${FIELD_PK}=?) AND (? IS NULL OR (${FIELD_SK} >=?)) AND (? IS NULL OR (${FIELD_SK} <=?)) AND (${FIELD_SK} < ?) ORDER BY ${FIELD_SK} DESC LIMIT ?`
         );
     }
 
@@ -445,9 +461,23 @@ export class FsPersistenceWorker {
         this.connection?.poolLoad?.finalize();
         this.connection?.poolQueryAsc?.finalize();
         this.connection?.poolQueryDesc?.finalize();
+        this.connection?.poolQueryAscNoContents?.finalize();
+        this.connection?.poolQueryDescNoContents?.finalize();
         this.connection?.poolStore?.finalize();
         this.connection?.db.close();
     }
+}
+
+function isContentFilter(filter: string[] | undefined) {
+    if (filter === undefined) {
+        return true;
+    }
+
+    if (filter.length !== 1) {
+        return true;
+    }
+
+    return (filter[0] !== '-*');
 }
 
 const worker = new FsPersistenceWorker(new Time(), new Filterer(), new MultiDeSer());

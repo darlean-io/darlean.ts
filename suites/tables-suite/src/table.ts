@@ -316,7 +316,10 @@ export class TableActor implements ITablesService {
             // Search on 'base' table data (not on an index)
 
             const filter = filterParts.length > 0 ? and(...filterParts) : undefined;
-            const projection = request.tableProjection ? this.enhanceProjection(request.tableProjection) : undefined;
+            const isEmptyProjection = this.isEmptyProjection(request.tableProjection);
+            const projection = 
+               isEmptyProjection ? request.tableProjection :
+               (request.tableProjection ? this.enhanceProjection(request.tableProjection) : undefined);
 
             const [sortKeyFrom, sortKeyTo, sortKeyToMatch] = this.deriveKeyInfo(operator, sortKey, sortKey2);
 
@@ -339,6 +342,12 @@ export class TableActor implements ITablesService {
                 continuationToken: result.continuationToken
             };
             for (const item of result.items) {
+                if (isEmptyProjection) {
+                    const resultItem: ITableSearchItem = {
+                        id: item.sortKey.slice(1),
+                    };
+                    response.items.push(resultItem);
+                } else
                 if (item.value) {
                     const value = this.deser.deserialize(item.value) as IBaseItem;
 
@@ -477,5 +486,9 @@ export class TableActor implements ITablesService {
         result.push('-data.*');
         result.push('+*');
         return result;
+    }
+
+    protected isEmptyProjection(filter?: string[]) {
+        return filter?.length === 1 && filter[0] === '-*';    
     }
 }
