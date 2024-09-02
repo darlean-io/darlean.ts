@@ -1,15 +1,13 @@
-import { IntValue, NoneValue, PrimitiveValidator, StringValue } from '../primitive-valueobject';
+import { BoolValue, IntValue, NoneValue, stringvalidation, stringvalue, StringValue } from '../primitive-valueobject';
 import { discriminative } from '../valueobject';
-import { BoolCanonical, FloatCanonical, IntCanonical, NoneCanonical, StringCanonical } from '@darlean/canonical';
-import { stringvalidation, stringvalue } from '../primitive-decorators';
-import { structvalidation, structvalue } from '../struct-decorators';
-import { StructValue } from '../struct-valueobject';
+import { BoolCanonical, FloatCanonical, IntCanonical, MapCanonical, NoneCanonical, StringCanonical } from '@darlean/canonical';
+import { structvalidation, structvalue, StructValue } from '../struct-valueobject';
 
 export class TextValue extends StringValue {}
 stringvalue('text')(TextValue);
 stringvalidation((value) => typeof value === 'string', 'Value must be a string')(TextValue);
 
-export class NamePart extends TextValue {
+@stringvalue() export class NamePart extends TextValue {
     NamePart: discriminative;
 }
 stringvalidation(validateLength(2))(NamePart);
@@ -21,8 +19,21 @@ export class FirstName extends NamePart {
 }
 
 @stringvalidation((value) => value === value.toUpperCase(), 'Must be all uppercase')
-export class LastName extends NamePart {
+@stringvalue() export class LastName extends NamePart {
     LastName: discriminative;
+}
+
+export function validateLength(minLength?: number, maxLength?: number): ((value: string) => string | void) {
+    return (value: string) => {
+        if (value.length < (minLength ?? 1)) {
+            return `Must have minimum length of ${minLength ?? 1}`;
+        }
+        if (maxLength !== undefined) {
+            if (value.length > maxLength) {
+                return `Must have maximum length of ${maxLength ?? 1}`;
+            }
+        }
+    };
 }
 
 @structvalue()
@@ -51,19 +62,6 @@ export class NestedPerson extends Person {
     }
 }
 
-export function validateLength(minLength?: number, maxLength?: number): PrimitiveValidator<string> {
-    return (value: string) => {
-        if (value.length < (minLength ?? 1)) {
-            return `Must have minimum length of ${minLength ?? 1}`;
-        }
-        if (maxLength !== undefined) {
-            if (value.length > maxLength) {
-                return `Must have maximum length of ${maxLength ?? 1}`;
-            }
-        }
-    };
-}
-
 describe('Struct value objects', () => {
     // TODO: Test string, binary, more structs and maps
     test('Struct', () => {
@@ -75,12 +73,12 @@ describe('Struct value objects', () => {
         expect(struct.firstName.value).toBe('Jantje');
         expect(struct.lastName?.value).toBe('DEBOER');
 
-        const struct2 = Person.from(struct._.extractSlots());
+        const struct2 = Person.fromSlots(struct._.extractSlots());
         expect(struct2.firstName.value).toBe('Jantje');
         expect(struct2.lastName?.value).toBe('DEBOER');
         expect(() => struct.firstName).toThrow();
 
-        const struct3 = Person.from(struct2._peekCanonicalRepresentation());
+        const struct3 = Person.fromCanonical(struct2._peekCanonicalRepresentation());
         expect(struct3.firstName.value).toBe('Jantje');
         expect(struct3.lastName?.value).toBe('DEBOER');
         expect(struct3._peekCanonicalRepresentation().logicalTypes).toEqual(['person']);
@@ -88,7 +86,7 @@ describe('Struct value objects', () => {
 
     test('Struct validation', () => {
         @structvalidation((v) => v.has('a') != v.has('b'), 'Must either have a or b')
-        class C extends StructValue {
+        @structvalue() class C extends StructValue {
             get a() {
                 return IntValue.optional();
             }
@@ -114,18 +112,18 @@ describe('Struct value objects', () => {
     });
 
     it.each([
-        StringCanonical.from('VALID', ['text', 'name-part', 'first-name']),
-        NoneCanonical.from(['text', 'name-part', 'first-name']),
-        BoolCanonical.from(true, ['text', 'name-part', 'first-name']),
-        BoolCanonical.from(false, ['text', 'name-part', 'first-name']),
-        IntCanonical.from(42, ['text', 'name-part', 'first-name']),
-        FloatCanonical.from(-12.3, ['text', 'name-part', 'first-name']),
-        StringCanonical.from('no-capitals', ['text', 'name-part', 'first-name'])
-    ])('Struct should validate all members for %s using embedded canonicals', (value) => {
+        FirstName.from('VALID'),
+        StringValue.from('Random string'),
+        NoneValue.from(undefined),
+        BoolValue.from(true),
+        // Canonicals are not allowed as input to "from"; only instances of Value. Even not when all the fields
+        // (like logical type) are set correctly.
+        StringCanonical.from('INVALID', ['text', 'name-part', 'first-name'])
+    ])('Struct should validate types of all members for %s', (value) => {
         const input = {
             firstName: value
         };
-        if (value.physicalType === 'string' && value.stringValue === 'VALID') {
+        if (value instanceof StringValue && value.value === 'VALID') {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             expect(Person.from(input as any)).toBeDefined();
         } else {
@@ -134,19 +132,41 @@ describe('Struct value objects', () => {
         }
     });
 
+    it.each([
+        StringCanonical.from('VALID', ['text', 'name-part', 'first-name']),
+        NoneCanonical.from(['text', 'name-part', 'first-name']),
+        BoolCanonical.from(true, ['text', 'name-part', 'first-name']),
+        BoolCanonical.from(false, ['text', 'name-part', 'first-name']),
+        IntCanonical.from(42, ['text', 'name-part', 'first-name']),
+        FloatCanonical.from(-12.3, ['text', 'name-part', 'first-name']),
+        StringCanonical.from('no-capitals', ['text', 'name-part', 'first-name'])
+    ])('Struct should validate types of all members for %s for canonical', (value) => {
+        const map = new Map();
+        map.set('first-name', value);
+        const input = MapCanonical.from(
+          map,
+          ['person']
+        );
+        if (value instanceof StringCanonical && value.stringValue === 'VALID') {
+            expect(Person.fromCanonical(input)).toBeDefined();
+        } else {
+            expect(() => Person.fromCanonical(input)).toThrow();
+        }
+    });
+
+
     it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
         'Struct should validate all members for %s using embedded canonical of correct type with incorrect inner value',
         (value) => {
-            const input = {
-                firstName: StringCanonical.from(value as unknown as string, ['text', 'name-part', 'first-name']),
-                lastName: StringCanonical.from(value as unknown as string, ['text', 'name-part', 'last-name'])
-            };
+            const map = new Map();
+            map.set('first-name', StringCanonical.from(value as unknown as string, ['text', 'name-part', 'first-name']));
+            map.set('last-name', StringCanonical.from(value as unknown as string, ['text', 'name-part', 'last-name']));
+            const input = MapCanonical.from(map, ['person']);
+
             if (value === 'VALID') {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(Person.from(input as any)).toBeDefined();
+                expect(Person.fromCanonical(input)).toBeDefined();
             } else {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(() => Person.from(input as any)).toThrow();
+                expect(() => Person.fromCanonical(input)).toThrow();
             }
         }
     );
@@ -154,17 +174,11 @@ describe('Struct value objects', () => {
     it.each([undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
         'Struct should validate all members for %s using embedded canonical of incorrect type with incorrect inner value',
         (value) => {
-            const input = {
-                firstName: IntCanonical.from(value as unknown as number),
-                lastName: IntCanonical.from(value as unknown as number)
-            };
-            if (value === 'VALID') {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(Person.from(input as any)).toBeDefined();
-            } else {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                expect(() => Person.from(input as any)).toThrow();
-            }
+            const map = new Map();
+            map.set('first-name', IntCanonical.from(value as unknown as number, ['text', 'name-part', 'first-name']));
+            map.set('last-name', IntCanonical.from(value as unknown as number, ['text', 'name-part', 'last-name']));
+            const input = MapCanonical.from(map, ['person']);
+            expect(() => Person.fromCanonical(input)).toThrow();
         }
     );
 
@@ -179,10 +193,22 @@ describe('Struct value objects', () => {
 
     it('Struct should accept optional fields that are not present', () => {
         const input = {
-            firstName: StringCanonical.from('Jantje', ['text', 'name-part', 'first-name'])
+            firstName: FirstName.from('Jantje')
         };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const p = Person.fromPartial(input as any);
+        expect(p.lastName).toBeUndefined;
+        expect(p.firstName).toBeInstanceOf(FirstName);
+        expect(p.firstName.value).toBe('Jantje');
+    });
+
+    it('Struct should accept (but ignore) optional fields that are present as undefined', () => {
+        const input = {
+            firstName: FirstName.from('Jantje'),
+            lastName: undefined
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const p = Person.from(input);
         expect(p.lastName).toBeUndefined;
         expect(p.firstName).toBeInstanceOf(FirstName);
         expect(p.firstName.value).toBe('Jantje');

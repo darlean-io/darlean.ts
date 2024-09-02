@@ -1,7 +1,5 @@
-import { StringValue } from '../primitive-valueobject';
-import { stringvalue } from '../primitive-decorators';
-import { MappingValue } from '../mapping-valueobject';
-import { mappingvalue } from '../mapping-decorators';
+import { stringvalue, StringValue } from '../primitive-valueobject';
+import { mappingvalue, MappingValue } from '../mapping-valueobject';
 import { ValidationError } from '../valueobject';
 
 describe('Mapping value objects', () => {
@@ -49,7 +47,7 @@ describe('Mapping value objects', () => {
             Pietje: LastName.from('DeGroot')
         });
 
-        const map2 = LastNameMap.from(map._peekCanonicalRepresentation());
+        const map2 = LastNameMap.fromCanonical(map._peekCanonicalRepresentation());
 
         expect(map2.get('jantje')?.value).toBe('Deboer');
         expect(map2.get('Pietje')?.value).toBe('DeGroot');

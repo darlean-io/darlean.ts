@@ -3,7 +3,3 @@ export * from './primitive-valueobject';
 export * from './struct-valueobject';
 export * from './mapping-valueobject';
 export * from './sequence-valueobject';
-export * from './primitive-decorators';
-export * from './struct-decorators';
-export * from './mapping-decorators';
-export * from './sequence-decorators';
