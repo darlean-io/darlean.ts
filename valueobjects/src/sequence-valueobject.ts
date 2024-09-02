@@ -8,7 +8,20 @@ import {
     toCanonical
 } from '@darlean/canonical';
 
-import { aExtendsB, Class, constructValue, IValueOptions, LOGICAL_TYPES, toValueClass, validation, ValidatorFunc, VALIDATORS, Value, ValueClassLike, valueobject } from './base';
+import {
+    aExtendsB,
+    Class,
+    constructValue,
+    IValueOptions,
+    LOGICAL_TYPES,
+    toValueClass,
+    validation,
+    ValidatorFunc,
+    VALIDATORS,
+    Value,
+    ValueClassLike,
+    valueobject
+} from './base';
 import { ValidationError } from './valueobject';
 import { NoInfer } from './utils';
 
@@ -16,22 +29,21 @@ const ELEM_CLASS = 'elem-class';
 
 type SequenceArray<TElem extends Value> = TElem[];
 
-export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value implements ICanonicalSource
-{
+export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value implements ICanonicalSource {
     private _items?: TElem[];
     private _canonical?: ICanonical;
 
     static required<
-        T extends SequenceValue<TElem2>, 
+        T extends SequenceValue<TElem2>,
         TElem2 extends Value & ICanonicalSource = T extends SequenceValue<infer X> ? X : never
-      >(this: Class<T>): NoInfer<T> {
+    >(this: Class<T>): NoInfer<T> {
         return { required: true, clazz: this } as unknown as NoInfer<T>;
     }
 
     static optional<
-        T extends SequenceValue<TElem2>, 
+        T extends SequenceValue<TElem2>,
         TElem2 extends Value & ICanonicalSource = T extends SequenceValue<infer X> ? X : never
-      >(this: Class<T>): NoInfer<T> {
+    >(this: Class<T>): NoInfer<T> {
         return { required: false, clazz: this } as unknown as NoInfer<T>;
     }
 
@@ -71,8 +83,8 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
      */
     public static concatenateFrom<
         T extends SequenceValue<TElem2>,
-        TElem2 extends Value & ICanonicalSource = T extends SequenceValue<infer X> ? X : never,
-    >(this: Class<T>, ...arrays: ((NoInfer<TElem2>[]) | SequenceValue<NoInfer<TElem2>>)[]): T {
+        TElem2 extends Value & ICanonicalSource = T extends SequenceValue<infer X> ? X : never
+    >(this: Class<T>, ...arrays: (NoInfer<TElem2>[] | SequenceValue<NoInfer<TElem2>>)[]): T {
         const items: NoInfer<TElem2>[] = [];
         for (const a of arrays) {
             if (Array.isArray(a)) {
@@ -95,13 +107,13 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
     public static mapFrom<
         T extends SequenceValue<TElem2>,
         TSource extends SequenceValue<TSourceElem> | TSourceElem[],
-        TSourceElem extends Value & ICanonicalSource = TSource extends SequenceValue<infer X> ? X : TSource extends (infer Y)[] ? Y : never,
+        TSourceElem extends Value & ICanonicalSource = TSource extends SequenceValue<infer X>
+            ? X
+            : TSource extends (infer Y)[]
+            ? Y
+            : never,
         TElem2 extends Value & ICanonicalSource = T extends SequenceValue<infer X> ? X : never
-    >(
-        this: Class<T>,
-        source: TSource,
-        mapFunc: (value: TSourceElem, idx: number, arr: TSource) => NoInfer<TElem2>
-    ): T {
+    >(this: Class<T>, source: TSource, mapFunc: (value: TSourceElem, idx: number, arr: TSource) => NoInfer<TElem2>): T {
         const results = [];
         let idx = 0;
         if (source instanceof SequenceValue) {
@@ -156,9 +168,9 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
         T extends SequenceValue<TElem2>,
         TElem2 extends Value & ICanonicalSource = T extends SequenceValue<infer X> ? X : never
     >(
-    this: Class<T>,
-    source: SequenceValue<NoInfer<TElem2>> | NoInfer<TElem2>[],
-    filterFunc: (value: NoInfer<TElem2>) => boolean
+        this: Class<T>,
+        source: SequenceValue<NoInfer<TElem2>> | NoInfer<TElem2>[],
+        filterFunc: (value: NoInfer<TElem2>) => boolean
     ): T {
         const temp: NoInfer<TElem2>[] = [];
         if (source instanceof SequenceValue) {
@@ -184,12 +196,7 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
     public static sliceFrom<
         T extends SequenceValue<TElem2>,
         TElem2 extends Value & ICanonicalSource = T extends SequenceValue<infer X> ? X : never
-    >(
-        this: Class<T>,
-        source: SequenceValue<NoInfer<TElem2>> | NoInfer<TElem2>[],
-        start?: number,
-        end?: number
-    ): T {
+    >(this: Class<T>, source: SequenceValue<NoInfer<TElem2>> | NoInfer<TElem2>[], start?: number, end?: number): T {
         const temp: NoInfer<TElem2>[] = [];
         if (source instanceof SequenceValue) {
             for (const value of source.values()) {
@@ -238,14 +245,18 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
             this._canonical = toCanonical(options.canonical);
             const logicalTypes = Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this));
             const canonicalLogicalNames = this._canonical.logicalTypes;
-            for (let idx=0; idx<logicalTypes.length; idx++) {
+            for (let idx = 0; idx < logicalTypes.length; idx++) {
                 if (logicalTypes[idx] !== canonicalLogicalNames[idx]) {
-                    throw new ValidationError(`Incoming value of logical types '${canonicalLogicalNames.join('.')} is not compatible with '${logicalTypes.join('.')}`);
+                    throw new ValidationError(
+                        `Incoming value of logical types '${canonicalLogicalNames.join(
+                            '.'
+                        )} is not compatible with '${logicalTypes.join('.')}`
+                    );
                 }
             }
             v = this._fromCanonical(this._canonical) as TElem[];
         } else {
-            for (const elem of options.value as (TElem)[]) {
+            for (const elem of options.value as TElem[]) {
                 v.push(elem);
             }
         }
@@ -273,8 +284,8 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
         return this._canonical;
     }
 
-    public get _logicalTypes() { 
-        return ((Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this)) ?? []) as string[]);
+    public get _logicalTypes() {
+        return (Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this)) ?? []) as string[];
     }
 
     public equals(other: unknown): boolean {
@@ -283,7 +294,6 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
         }
         return this._peekCanonicalRepresentation().equals(other);
     }
-
 
     public get length() {
         return this._checkItems().length;
@@ -457,7 +467,9 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
         let item = canonical.firstSequenceItem;
         while (item) {
             const itemCan = toCanonical(item.value);
-            const value = constructValue(toValueClass(itemClazz as ValueClassLike<Value & ICanonicalSource>), { canonical: itemCan }) as (Value & ICanonicalSource);
+            const value = constructValue(toValueClass(itemClazz as ValueClassLike<Value & ICanonicalSource>), {
+                canonical: itemCan
+            }) as Value & ICanonicalSource;
             result.push(value);
             item = item.next();
         }
@@ -465,14 +477,19 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
     }
 
     protected _toCanonical(value: (Value & ICanonicalSource)[], logicalTypes: string[]): ICanonical<this> {
-        return ArrayCanonical.from<TElem>(value.map((x) => x._peekCanonicalRepresentation()), logicalTypes);
+        return ArrayCanonical.from<TElem>(
+            value.map((x) => x._peekCanonicalRepresentation()),
+            logicalTypes
+        );
     }
 
     protected _validate(v: (Value & ICanonicalSource)[], fail: (msg: string) => void): (Value & ICanonicalSource)[] | void {
         // First, validate all slots for proper type and presence.
         const itemClazzLike = Reflect.getOwnMetadata(ELEM_CLASS, Object.getPrototypeOf(this)) as ValueClassLike;
         if (!itemClazzLike) {
-            throw new Error(`Instance of sequence class '${this.constructor.name}' does not have an item type defined, possibly because no '@arrayvalue()' class decorator is present.`);
+            throw new Error(
+                `Instance of sequence class '${this.constructor.name}' does not have an item type defined, possibly because no '@arrayvalue()' class decorator is present.`
+            );
         }
         const itemClazz = toValueClass(itemClazzLike);
         let ok = true;
@@ -481,7 +498,11 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
             // This checks not only checks the proper class types (which may be too strict?), it also catches the case in which
             // the input is not a Value at all (but, for example, a ICanonical).
             if (!(value instanceof itemClazz)) {
-                fail(`Item '${idx}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${itemClazz.name}'`);
+                fail(
+                    `Item '${idx}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${
+                        itemClazz.name
+                    }'`
+                );
                 ok = false;
                 continue;
             }
@@ -489,7 +510,11 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
             const valueLogicalTypes = value._logicalTypes;
 
             if (!aExtendsB(valueLogicalTypes, expectedLogicalTypes)) {
-                fail(`Value '${idx}' with logical types '${valueLogicalTypes.join('.')}' is not compatible with expected logical types '${expectedLogicalTypes.join('.')}'`);
+                fail(
+                    `Value '${idx}' with logical types '${valueLogicalTypes.join(
+                        '.'
+                    )}' is not compatible with expected logical types '${expectedLogicalTypes.join('.')}'`
+                );
                 ok = false;
                 continue;
             }
@@ -536,11 +561,11 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
 export function ensureSequenceDefForConstructor<TElem extends Value>(
     // eslint-disable-next-line @typescript-eslint/ban-types
     constructor: Function,
-    elemClass: Class<TElem> | (() => Class<TElem>) | undefined,
+    elemClass: Class<TElem> | (() => Class<TElem>) | undefined
 ) {
     const prototype = constructor.prototype;
     let itemClazz = Reflect.getOwnMetadata(ELEM_CLASS, prototype) as ValueClassLike;
-    
+
     if (!itemClazz) {
         const parentItemClazz = Reflect.getMetadata(ELEM_CLASS, prototype);
         itemClazz = elemClass ?? parentItemClazz;
@@ -558,7 +583,7 @@ export function sequencevalue(elemClass: ValueClassLike, logicalName?: string) {
     return function (constructor: Function): void {
         valueobject(logicalName)(constructor);
         ensureSequenceDefForConstructor(constructor, elemClass);
-    }
+    };
 }
 
 sequencevalue(Value, '')(SequenceValue);

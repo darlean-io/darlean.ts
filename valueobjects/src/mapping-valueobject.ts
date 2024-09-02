@@ -1,12 +1,20 @@
-import {
-    ICanonical,
-    ICanonicalSource,
-    isCanonicalLike,
-    MapCanonical,
-    toCanonical
-} from '@darlean/canonical';
+import { ICanonical, ICanonicalSource, isCanonicalLike, MapCanonical, toCanonical } from '@darlean/canonical';
 
-import { aExtendsB, Class, constructValue, IValueOptions, LOGICAL_TYPES, toValueClass, validation, ValidatorFunc, VALIDATORS, Value, ValueClass, ValueClassLike, valueobject } from './base';
+import {
+    aExtendsB,
+    Class,
+    constructValue,
+    IValueOptions,
+    LOGICAL_TYPES,
+    toValueClass,
+    validation,
+    ValidatorFunc,
+    VALIDATORS,
+    Value,
+    ValueClass,
+    ValueClassLike,
+    valueobject
+} from './base';
 import { ValidationError } from './valueobject';
 import { NoInfer } from './utils';
 
@@ -14,10 +22,9 @@ const ELEM_CLASS = 'elem-class';
 
 type AnyFieldName = string;
 type MappingMap<TElem extends Value & ICanonicalSource> = Map<AnyFieldName, TElem>;
-type MappingDict<TElem extends Value & ICanonicalSource> = {[key: AnyFieldName]: TElem};
+type MappingDict<TElem extends Value & ICanonicalSource> = { [key: AnyFieldName]: TElem };
 
-export class MappingValue<TElem extends Value & ICanonicalSource> extends Value implements ICanonicalSource
-{
+export class MappingValue<TElem extends Value & ICanonicalSource> extends Value implements ICanonicalSource {
     private _slots?: MappingMap<TElem>;
     private _canonical?: ICanonical;
 
@@ -56,14 +63,17 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
             this._canonical = toCanonical(options.canonical);
             const logicalTypes = Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this));
             const canonicalLogicalNames = this._canonical.logicalTypes;
-            for (let idx=0; idx<logicalTypes.length; idx++) {
+            for (let idx = 0; idx < logicalTypes.length; idx++) {
                 if (logicalTypes[idx] !== canonicalLogicalNames[idx]) {
-                    throw new ValidationError(`Incoming value of logical types '${canonicalLogicalNames.join('.')} is not compatible with '${logicalTypes.join('.')}`);
+                    throw new ValidationError(
+                        `Incoming value of logical types '${canonicalLogicalNames.join(
+                            '.'
+                        )} is not compatible with '${logicalTypes.join('.')}`
+                    );
                 }
             }
             v = this._fromCanonical(this._canonical) as MappingMap<TElem>;
-        } else
-        if (options.value instanceof Map) {
+        } else if (options.value instanceof Map) {
             for (const [name, value] of options.value.entries()) {
                 if (value === undefined) {
                     continue;
@@ -121,14 +131,13 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
         this._slots = undefined;
         return slots;
     }
-    
 
     public get size() {
         return this._checkSlots().size;
     }
 
-    public get _logicalTypes() { 
-        return ((Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this)) ?? []) as string[]);
+    public get _logicalTypes() {
+        return (Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this)) ?? []) as string[];
     }
 
     protected _deriveCanonicalRepresentation(): ICanonical {
@@ -139,7 +148,6 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
     public get(slot: string): TElem | undefined {
         return this._checkSlots().get(slot);
     }
-
 
     /**
      * Extracts the current elements. After that, the sequence value should not be
@@ -157,7 +165,9 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
         let entry = canonical.firstMappingEntry;
         while (entry) {
             const entryCan = toCanonical(entry.value);
-            const value = constructValue(toValueClass(itemClazz as ValueClassLike<Value & ICanonicalSource>), { canonical: entryCan }) as (Value & ICanonicalSource);
+            const value = constructValue(toValueClass(itemClazz as ValueClassLike<Value & ICanonicalSource>), {
+                canonical: entryCan
+            }) as Value & ICanonicalSource;
             result.set(entry.key, value as TElem);
             entry = entry.next();
         }
@@ -168,11 +178,16 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
         return MapCanonical.from<this>(value, logicalTypes);
     }
 
-    protected _validate(v: MappingMap<Value & ICanonicalSource>, fail: (msg: string) => void): (Value & ICanonicalSource)[] | void {
+    protected _validate(
+        v: MappingMap<Value & ICanonicalSource>,
+        fail: (msg: string) => void
+    ): (Value & ICanonicalSource)[] | void {
         // First, validate all slots for proper type and presence.
         const itemClazz = Reflect.getOwnMetadata(ELEM_CLASS, Object.getPrototypeOf(this)) as ValueClassLike;
         if (!itemClazz) {
-            throw new Error(`Instance of mapping class '${this.constructor.name}' does not have an item type defined, possibly because no '@mappingvalue()' class decorator is present.`);
+            throw new Error(
+                `Instance of mapping class '${this.constructor.name}' does not have an item type defined, possibly because no '@mappingvalue()' class decorator is present.`
+            );
         }
         let ok = true;
         const expectedLogicalTypes = toValueClass(itemClazz).logicalTypes;
@@ -180,7 +195,11 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
             // This checks not only checks the proper class types (which may be too strict?), it also catches the case in which
             // the input is not a Value at all (but, for example, a ICanonical).
             if (!(value instanceof itemClazz)) {
-                fail(`Value '${name}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${itemClazz.name}'`);
+                fail(
+                    `Value '${name}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${
+                        itemClazz.name
+                    }'`
+                );
                 ok = false;
                 continue;
             }
@@ -188,7 +207,11 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
             const valueLogicalTypes = value._logicalTypes;
 
             if (!aExtendsB(valueLogicalTypes, expectedLogicalTypes)) {
-                fail(`Value '${name}' with logical types '${valueLogicalTypes.join('.')}' is not compatible with expected logical types '${expectedLogicalTypes.join('.')}'`);
+                fail(
+                    `Value '${name}' with logical types '${valueLogicalTypes.join(
+                        '.'
+                    )}' is not compatible with expected logical types '${expectedLogicalTypes.join('.')}'`
+                );
                 ok = false;
                 continue;
             }
@@ -227,11 +250,11 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
 export function ensureMappingDefForConstructor<TElem extends Value>(
     // eslint-disable-next-line @typescript-eslint/ban-types
     constructor: Function,
-    elemClass: Class<TElem> | undefined,
+    elemClass: Class<TElem> | undefined
 ) {
     const prototype = constructor.prototype;
     let itemClazz = Reflect.getOwnMetadata(ELEM_CLASS, prototype) as ValueClassLike;
-    
+
     if (!itemClazz) {
         const parentItemClazz = Reflect.getMetadata(ELEM_CLASS, prototype);
         itemClazz = elemClass ?? parentItemClazz;
@@ -240,7 +263,10 @@ export function ensureMappingDefForConstructor<TElem extends Value>(
     }
 }
 
-export function mappingvalidation<T extends Value & ICanonicalSource>(validator: (value: MappingMap<T>) => string | boolean | void, description?: string) {
+export function mappingvalidation<T extends Value & ICanonicalSource>(
+    validator: (value: MappingMap<T>) => string | boolean | void,
+    description?: string
+) {
     return validation<MappingMap<T>>(validator, description);
 }
 
@@ -249,7 +275,7 @@ export function mappingvalue(elemClass: ValueClass, logicalName?: string) {
     return function (constructor: Function): void {
         valueobject(logicalName)(constructor);
         ensureMappingDefForConstructor(constructor, elemClass);
-    }
+    };
 }
 
 mappingvalue(Value, '')(MappingValue);

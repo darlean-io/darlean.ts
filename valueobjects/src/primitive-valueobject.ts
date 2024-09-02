@@ -1,27 +1,54 @@
-import { BinaryCanonical, BoolCanonical, CanonicalLike, FloatCanonical, ICanonical, ICanonicalSource, IntCanonical, isCanonical, isCanonicalLike, MomentCanonical, NoneCanonical, StringCanonical, toCanonical } from "@darlean/canonical";
-import { ValidationError } from "./valueobject";
+import {
+    BinaryCanonical,
+    BoolCanonical,
+    CanonicalLike,
+    FloatCanonical,
+    ICanonical,
+    ICanonicalSource,
+    IntCanonical,
+    isCanonical,
+    isCanonicalLike,
+    MomentCanonical,
+    NoneCanonical,
+    StringCanonical,
+    toCanonical
+} from '@darlean/canonical';
+import { ValidationError } from './valueobject';
 import 'reflect-metadata';
-import { aExtendsB, Class, constructValue, IValueOptions, LOGICAL_TYPES, optional, required, validation, ValidatorFunc, VALIDATORS, Value, valueobject } from "./base";
+import {
+    aExtendsB,
+    Class,
+    constructValue,
+    IValueOptions,
+    LOGICAL_TYPES,
+    optional,
+    required,
+    validation,
+    ValidatorFunc,
+    VALIDATORS,
+    Value,
+    valueobject
+} from './base';
 import { NoInfer } from './utils';
 
 export abstract class PrimitiveValue<TPrimitive> extends Value implements ICanonicalSource {
     protected _value: TPrimitive;
     private _canonical?: ICanonical;
 
-    public static from<
-      T extends PrimitiveValue<TPrimitive>,
-      TPrimitive = T extends PrimitiveValue<infer X> ? X : never
-    >(this: Class<T>, value: NoInfer<TPrimitive>) {
+    public static from<T extends PrimitiveValue<TPrimitive>, TPrimitive = T extends PrimitiveValue<infer X> ? X : never>(
+        this: Class<T>,
+        value: NoInfer<TPrimitive>
+    ) {
         const options: IValueOptions = {
             value
         };
         return Reflect.construct(this, [options]);
     }
 
-    public static fromCanonical<
-      T extends PrimitiveValue<TPrimitive>,
-      TPrimitive = T extends PrimitiveValue<infer X> ? X : never
-    >(this: Class<T>, value: CanonicalLike) {
+    public static fromCanonical<T extends PrimitiveValue<TPrimitive>, TPrimitive = T extends PrimitiveValue<infer X> ? X : never>(
+        this: Class<T>,
+        value: CanonicalLike
+    ) {
         const options: IValueOptions = {
             canonical: value
         };
@@ -45,12 +72,16 @@ export abstract class PrimitiveValue<TPrimitive> extends Value implements ICanon
             const logicalTypes = Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this));
             const canonicalLogicalNames = this._canonical.logicalTypes;
             if (!aExtendsB(canonicalLogicalNames, logicalTypes)) {
-                throw new ValidationError(`Incoming value of logical types '${canonicalLogicalNames.join('.')} is not compatible with '${logicalTypes.join('.')}`);
+                throw new ValidationError(
+                    `Incoming value of logical types '${canonicalLogicalNames.join(
+                        '.'
+                    )} is not compatible with '${logicalTypes.join('.')}`
+                );
             }
             try {
                 v = this._fromCanonical(this._canonical);
             } catch (e) {
-                throw new ValidationError(e instanceof Error ? e.message : e as string);
+                throw new ValidationError(e instanceof Error ? e.message : (e as string));
             }
         } else {
             v = options.value as TPrimitive;
@@ -72,10 +103,12 @@ export abstract class PrimitiveValue<TPrimitive> extends Value implements ICanon
         return canonical;
     }
 
-    public get value() { return this._value; }
-    
-    public get _logicalTypes() { 
-        return ((Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this)) ?? []) as string[]);
+    public get value() {
+        return this._value;
+    }
+
+    public get _logicalTypes() {
+        return (Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this)) ?? []) as string[];
     }
 
     public equals(other: unknown): boolean {
@@ -137,7 +170,7 @@ export class IntValue extends PrimitiveValue<number> {
         if (typeof v !== 'number') {
             return fail(`Must be a number; not ${typeof v}`);
         }
-        if (!(Number.isInteger(v))) {
+        if (!Number.isInteger(v)) {
             return fail(`Must be an integer number; not ${v}`);
         }
         super._validate(v, fail);
@@ -232,7 +265,9 @@ export class MomentValue extends PrimitiveValue<Date> {
         super._validate(v, fail);
     }
 
-    public get ms() { return this._value.valueOf(); }
+    public get ms() {
+        return this._value.valueOf();
+    }
 
     public static fromMilliseconds<T extends Class<MomentValue>>(this: T, ms: number) {
         return constructValue(this, { value: new Date(ms) });
@@ -260,7 +295,7 @@ export class BinaryValue extends PrimitiveValue<Buffer> {
     }
 
     protected _validate(v: unknown, fail: (msg: string) => void): Buffer | void {
-        if (!(Buffer.isBuffer(v))) {
+        if (!Buffer.isBuffer(v)) {
             return fail(`Must be a Buffer; not ${typeof v}`);
         }
         super._validate(v, fail);
@@ -280,7 +315,7 @@ export class CanonicalValue extends PrimitiveValue<ICanonical> {
     }
 
     protected _validate(v: unknown, fail: (msg: string) => void): ICanonical | void {
-        if (!(isCanonical(v))) {
+        if (!isCanonical(v)) {
             return fail(`Must be an ICanonical; not ${typeof v}`);
         }
         super._validate(v, fail);

@@ -1,11 +1,19 @@
 import { ICanonical, ICanonicalSource, isCanonicalLike, MapCanonical, toCanonical } from '@darlean/canonical';
-import {
-    CanonicalFieldName,
-    deriveTypeName,
-    Class,
-    ValidationError} from './valueobject';
+import { CanonicalFieldName, deriveTypeName, Class, ValidationError } from './valueobject';
 import { NoInfer } from './utils';
-import { aExtendsB, constructValue, IValueOptions, LOGICAL_TYPES, toValueClass, validation, ValidatorFunc, VALIDATORS, Value, ValueClass, ValueClassLike } from './base';
+import {
+    aExtendsB,
+    constructValue,
+    IValueOptions,
+    LOGICAL_TYPES,
+    toValueClass,
+    validation,
+    ValidatorFunc,
+    VALIDATORS,
+    Value,
+    ValueClass,
+    ValueClassLike
+} from './base';
 
 export type UnknownFieldAction = 'ignore' | 'error';
 
@@ -26,13 +34,13 @@ export interface IStructValueOptions {
 export function structvalue(logicalName?: string, options?: IStructValueOptions) {
     // eslint-disable-next-line @typescript-eslint/ban-types
     return function (constructor: Function): void {
-        const name = (logicalName === undefined) ? deriveTypeName(constructor.name) : logicalName;
+        const name = logicalName === undefined ? deriveTypeName(constructor.name) : logicalName;
         let names = Reflect.getOwnMetadata(LOGICAL_TYPES, constructor.prototype);
         if (!names) {
             if (name === '') {
-                names = [...Reflect.getMetadata(LOGICAL_TYPES, constructor.prototype) as string[] | undefined ?? []];
+                names = [...((Reflect.getMetadata(LOGICAL_TYPES, constructor.prototype) as string[] | undefined) ?? [])];
             } else {
-                names = [...Reflect.getMetadata(LOGICAL_TYPES, constructor.prototype) as string[] | undefined ?? [], name];
+                names = [...((Reflect.getMetadata(LOGICAL_TYPES, constructor.prototype) as string[] | undefined) ?? []), name];
             }
             Reflect.defineMetadata(LOGICAL_TYPES, names, constructor.prototype);
         } else {
@@ -41,10 +49,9 @@ export function structvalue(logicalName?: string, options?: IStructValueOptions)
             }
         }
 
-        ensureStructDefForConstructor(constructor, options?.unknownFieldAction)
-    }
+        ensureStructDefForConstructor(constructor, options?.unknownFieldAction);
+    };
 }
-
 
 export class StructDef {
     private _slots: Map<CanonicalFieldName, ISlotDef<Value>>;
@@ -52,10 +59,10 @@ export class StructDef {
     private _unknownFieldAction: UnknownFieldAction = 'error';
 
     // eslint-disable-next-line @typescript-eslint/ban-types
-    constructor(parentDef?: StructDef, ) {
+    constructor(parentDef?: StructDef) {
         this._slots = new Map();
         this._requiredSlots = [];
-        
+
         if (parentDef) {
             for (const slot of parentDef.getSlots()) {
                 if (slot.required) {
@@ -67,20 +74,14 @@ export class StructDef {
         }
     }
 
-    public withRequiredField(
-        name: CanonicalFieldName,
-        def: ValueClassLike<Value>
-    ): StructDef {
+    public withRequiredField(name: CanonicalFieldName, def: ValueClassLike<Value>): StructDef {
         validateStrictFieldName(name);
         this._slots.set(name, { name, required: true, clazz: def });
         this._requiredSlots.push(name);
         return this;
     }
 
-    public withOptionalField<TFieldValue extends Value>(
-        name: CanonicalFieldName,
-        def: ValueClassLike<TFieldValue>
-    ): StructDef {
+    public withOptionalField<TFieldValue extends Value>(name: CanonicalFieldName, def: ValueClassLike<TFieldValue>): StructDef {
         validateStrictFieldName(name);
         this._slots.set(name, { name, required: false, clazz: def });
         return this;
@@ -148,10 +149,7 @@ export class StructValue extends Value implements ICanonicalSource {
      * should be in the exact (native) casing as used in T. They are internally converted into the canonical field names.
      * Their values must be value objects (like StringValue or derived classes); not native types (like string).
      */
-    public static from<T extends StructValue, T2 = NoInfer<T>>(
-        this: Class<T>,
-        value: Omit<T2, keyof StructValue>
-    ): T {
+    public static from<T extends StructValue, T2 = NoInfer<T>>(this: Class<T>, value: Omit<T2, keyof StructValue>): T {
         const options: IValueOptions = { value };
         return constructValue(this, options);
     }
@@ -187,20 +185,23 @@ export class StructValue extends Value implements ICanonicalSource {
      */
     constructor(options: IValueOptions) {
         super(options);
-        
+
         let v: StructMap = new Map();
         if (options.canonical) {
             this._canonical = toCanonical(options.canonical);
             const logicalTypes = Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this));
             const canonicalLogicalNames = this._canonical.logicalTypes;
-            for (let idx=0; idx<logicalTypes.length; idx++) {
+            for (let idx = 0; idx < logicalTypes.length; idx++) {
                 if (logicalTypes[idx] !== canonicalLogicalNames[idx]) {
-                    throw new ValidationError(`Incoming value of logical types '${canonicalLogicalNames.join('.')} is not compatible with '${logicalTypes.join('.')}`);
+                    throw new ValidationError(
+                        `Incoming value of logical types '${canonicalLogicalNames.join(
+                            '.'
+                        )} is not compatible with '${logicalTypes.join('.')}`
+                    );
                 }
             }
             v = this._fromCanonical(this._canonical);
-        } else
-        if (options.value instanceof Map) {
+        } else if (options.value instanceof Map) {
             // We have a StructMap with already canonical named fields
             for (const [canonicalName, value] of options.value.entries()) {
                 if (value === undefined) {
@@ -209,7 +210,7 @@ export class StructValue extends Value implements ICanonicalSource {
                 v.set(canonicalName, value);
             }
         } else {
-            for (const [name, value] of Object.entries(options.value as {[name: string]: Value & ICanonicalSource})) {
+            for (const [name, value] of Object.entries(options.value as { [name: string]: Value & ICanonicalSource })) {
                 const canonicalName = deriveTypeName(name);
                 if (value === undefined) {
                     continue;
@@ -270,8 +271,8 @@ export class StructValue extends Value implements ICanonicalSource {
         return this._checkSlots().size;
     }
 
-    public get _logicalTypes() { 
-        return ((Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this)) ?? []) as string[]);
+    public get _logicalTypes() {
+        return (Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this)) ?? []) as string[];
     }
 
     protected _deriveCanonicalRepresentation(): ICanonical {
@@ -294,7 +295,9 @@ export class StructValue extends Value implements ICanonicalSource {
             }
 
             const entryCan = toCanonical(entry.value);
-            const value = constructValue(toValueClass(slotDef.clazz as ValueClassLike<Value & ICanonicalSource>), { canonical: entryCan }) as (Value & ICanonicalSource);
+            const value = constructValue(toValueClass(slotDef.clazz as ValueClassLike<Value & ICanonicalSource>), {
+                canonical: entryCan
+            }) as Value & ICanonicalSource;
             result.set(entry.key, value);
             entry = entry.next();
         }
@@ -310,7 +313,9 @@ export class StructValue extends Value implements ICanonicalSource {
         const proto = Object.getPrototypeOf(this);
         const def = Reflect.getOwnMetadata(STRUCT_DEF, proto) as StructDef;
         if (!def) {
-            throw new Error(`Instance of struct class '${this.constructor.name}' does not have a definition, possibly because no '@structvalue()' class decorator is present.`);
+            throw new Error(
+                `Instance of struct class '${this.constructor.name}' does not have a definition, possibly because no '@structvalue()' class decorator is present.`
+            );
         }
         let ok = true;
         for (const [name, value] of v.entries()) {
@@ -323,7 +328,11 @@ export class StructValue extends Value implements ICanonicalSource {
             // This checks not only checks the proper class types (which may be too strict?), it also catches the case in which
             // the input is not a Value at all (but, for example, a ICanonical).
             if (!(value instanceof slotDef.clazz)) {
-                fail(`Value '${name}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${slotDef.clazz.name}'`);
+                fail(
+                    `Value '${name}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${
+                        slotDef.clazz.name
+                    }'`
+                );
                 ok = false;
                 continue;
             }
@@ -332,7 +341,11 @@ export class StructValue extends Value implements ICanonicalSource {
             const valueLogicalTypes = value._logicalTypes;
 
             if (!aExtendsB(valueLogicalTypes, slotLogicalTypes)) {
-                fail(`Value '${name}' with logical types '${slotLogicalTypes.join('.')}' is not compatible with value with logical types '${valueLogicalTypes.join('.')}'`);
+                fail(
+                    `Value '${name}' with logical types '${slotLogicalTypes.join(
+                        '.'
+                    )}' is not compatible with value with logical types '${valueLogicalTypes.join('.')}'`
+                );
                 ok = false;
                 continue;
             }
@@ -397,12 +410,12 @@ export function ensureStructDefForConstructor(constructor: Function, extensions?
     let needsInit = false;
     const prototype = constructor.prototype;
     let def = Reflect.getOwnMetadata(STRUCT_DEF, prototype) as StructDef;
-    
+
     if (!def) {
         const parentDef = Reflect.getMetadata(STRUCT_DEF, prototype);
         def = new StructDef(parentDef);
         if (extensions) {
-            def.withUnknownFieldAction(extensions)
+            def.withUnknownFieldAction(extensions);
         }
         Reflect.defineMetadata(STRUCT_DEF, def, prototype);
         needsInit = true;

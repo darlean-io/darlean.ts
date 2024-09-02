@@ -7,7 +7,8 @@ export class TextValue extends StringValue {}
 stringvalue('text')(TextValue);
 stringvalidation((value) => typeof value === 'string', 'Value must be a string')(TextValue);
 
-@stringvalue() export class NamePart extends TextValue {
+@stringvalue()
+export class NamePart extends TextValue {
     NamePart: discriminative;
 }
 stringvalidation(validateLength(2))(NamePart);
@@ -19,11 +20,12 @@ export class FirstName extends NamePart {
 }
 
 @stringvalidation((value) => value === value.toUpperCase(), 'Must be all uppercase')
-@stringvalue() export class LastName extends NamePart {
+@stringvalue()
+export class LastName extends NamePart {
     LastName: discriminative;
 }
 
-export function validateLength(minLength?: number, maxLength?: number): ((value: string) => string | void) {
+export function validateLength(minLength?: number, maxLength?: number): (value: string) => string | void {
     return (value: string) => {
         if (value.length < (minLength ?? 1)) {
             return `Must have minimum length of ${minLength ?? 1}`;
@@ -86,7 +88,8 @@ describe('Struct value objects', () => {
 
     test('Struct validation', () => {
         @structvalidation((v) => v.has('a') != v.has('b'), 'Must either have a or b')
-        @structvalue() class C extends StructValue {
+        @structvalue()
+        class C extends StructValue {
             get a() {
                 return IntValue.optional();
             }
@@ -143,17 +146,13 @@ describe('Struct value objects', () => {
     ])('Struct should validate types of all members for %s for canonical', (value) => {
         const map = new Map();
         map.set('first-name', value);
-        const input = MapCanonical.from(
-          map,
-          ['person']
-        );
+        const input = MapCanonical.from(map, ['person']);
         if (value instanceof StringCanonical && value.stringValue === 'VALID') {
             expect(Person.fromCanonical(input)).toBeDefined();
         } else {
             expect(() => Person.fromCanonical(input)).toThrow();
         }
     });
-
 
     it.each(['VALID', undefined, 'true', 'false', 42, -12.3, 'no-capitals'])(
         'Struct should validate all members for %s using embedded canonical of correct type with incorrect inner value',

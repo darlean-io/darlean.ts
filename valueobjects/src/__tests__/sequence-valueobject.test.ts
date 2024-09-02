@@ -8,7 +8,8 @@ export class TextValue extends StringValue {}
 stringvalue('text')(TextValue);
 stringvalidation((value) => typeof value === 'string', 'Value must be a string')(TextValue);
 
-@stringvalue() export class NamePart extends TextValue {
+@stringvalue()
+export class NamePart extends TextValue {
     NamePart: discriminative;
 }
 stringvalidation(validateLength(2))(NamePart);
@@ -20,11 +21,12 @@ export class FirstName extends NamePart {
 }
 
 @stringvalidation((value) => value === value.toUpperCase(), 'Must be all uppercase')
-@stringvalue() export class LastName extends NamePart {
+@stringvalue()
+export class LastName extends NamePart {
     LastName: discriminative;
 }
 
-function validateLength(minLength?: number, maxLength?: number): ((value: string) => string | void) {
+function validateLength(minLength?: number, maxLength?: number): (value: string) => string | void {
     return (value: string) => {
         if (value.length < (minLength ?? 1)) {
             return `Must have minimum length of ${minLength ?? 1}`;
@@ -126,12 +128,20 @@ describe('Sequence value objects', () => {
                 .map((x) => (x as IntValue).value)
         ).toEqual([1, 2]);
         expect(
-            Numbers.concatenateFrom([IntValue.from(1), IntValue.from(2)], [IntValue.from(3), IntValue.from(4)], [IntValue.from(5)])
+            Numbers.concatenateFrom(
+                [IntValue.from(1), IntValue.from(2)],
+                [IntValue.from(3), IntValue.from(4)],
+                [IntValue.from(5)]
+            )
                 .extractElements()
                 .map((x) => (x as IntValue).value)
         ).toEqual([1, 2, 3, 4, 5]);
         expect(
-            Numbers.concatenateFrom(Numbers.from([IntValue.from(1), IntValue.from(2)]), Numbers.from([IntValue.from(3), IntValue.from(4)]), Numbers.from([IntValue.from(5)]))
+            Numbers.concatenateFrom(
+                Numbers.from([IntValue.from(1), IntValue.from(2)]),
+                Numbers.from([IntValue.from(3), IntValue.from(4)]),
+                Numbers.from([IntValue.from(5)])
+            )
                 .extractElements()
                 .map((x) => (x as IntValue).value)
         ).toEqual([1, 2, 3, 4, 5]);
@@ -251,7 +261,14 @@ describe('Sequence value objects', () => {
     test('Array slice', () => {
         @sequencevalue(IntValue)
         class Numbers extends SequenceValue<IntValue> {}
-        const input = Numbers.from([IntValue.from(0), IntValue.from(1), IntValue.from(2), IntValue.from(3), IntValue.from(4), IntValue.from(5)]);
+        const input = Numbers.from([
+            IntValue.from(0),
+            IntValue.from(1),
+            IntValue.from(2),
+            IntValue.from(3),
+            IntValue.from(4),
+            IntValue.from(5)
+        ]);
         expect(input.slice(0, 0).map((x) => x.value)).toEqual([]);
         expect(input.slice(1, 1).map((x) => x.value)).toEqual([]);
         expect(input.slice(10, 1).map((x) => x.value)).toEqual([]);
@@ -309,8 +326,9 @@ describe('Sequence value objects', () => {
     });
 
     test('Required', () => {
-        @sequencevalue(() => Person) class PersonList extends SequenceValue<Person> {}
+        @sequencevalue(() => Person)
+        class PersonList extends SequenceValue<Person> {}
         // Tests the proper typing of required. It is quite tricky to get that right.
         expect(PersonList.required()).toBeDefined;
-    })
+    });
 });

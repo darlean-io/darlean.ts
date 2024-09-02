@@ -33,7 +33,7 @@ export class LastName extends NamePart {
     LastName: discriminative;
 }
 
-export function validateLength(minLength?: number, maxLength?: number): ((value: string) => string | void) {
+export function validateLength(minLength?: number, maxLength?: number): (value: string) => string | void {
     return (value: string) => {
         if (value.length < (minLength ?? 1)) {
             return `Must have minimum length of ${minLength ?? 1}`;
@@ -47,7 +47,6 @@ export function validateLength(minLength?: number, maxLength?: number): ((value:
 }
 
 describe('Value objects', () => {
-    
     test('Decorator order mix up', () => {
         @stringvalidation((v) => v.length === 3, 'Length must be 3')
         @stringvalue('my-type')
@@ -197,7 +196,9 @@ describe('Value objects', () => {
         @canonicalvalue()
         class StringOrFloat extends CanonicalValue {}
         expect(StringOrFloat.fromCanonical(StringCanonical.from('Hello', ['string-or-float'])).value.stringValue).toBe('Hello');
-        expect(() => StringOrFloat.fromCanonical(StringCanonical.from('Hello', ['hello'])).value.stringValue).toThrow(ValidationError);
+        expect(() => StringOrFloat.fromCanonical(StringCanonical.from('Hello', ['hello'])).value.stringValue).toThrow(
+            ValidationError
+        );
         expect(() => StringOrFloat.fromCanonical(IntCanonical.from(123))).toThrow(ValidationError);
     });
 });
