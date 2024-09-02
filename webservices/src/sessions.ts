@@ -116,7 +116,8 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
         const validateResult = await this.service.validate<Meta>(jsToken, cookieToken);
 
         if (!validateResult.valid) {
-            new Session(this, validateResult);
+            response.setHeader(HEADER_SESSION_ID, '-');
+            return new Session(this, validateResult);
         }
 
         if (validateResult.valid?.newCookieToken) {
@@ -128,6 +129,8 @@ export class SessionManager<Meta> implements ISessionManager<Meta> {
 
         if (validateResult.valid?.id) {
             response.setHeader(HEADER_SESSION_ID, validateResult.valid.id);
+        } else {
+            response.setHeader(HEADER_SESSION_ID, '-');
         }
 
         return new Session<Meta>(this, validateResult);
