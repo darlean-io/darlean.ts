@@ -1,4 +1,4 @@
-import { CanonicalLike, CanonicalLogicalTypes } from '@darlean/canonical';
+import { CanonicalLike, CanonicalLogicalTypes, ICanonical } from '@darlean/canonical';
 import { CanonicalFieldName, deriveTypeName } from './valueobject';
 
 export const VALIDATORS = 'validators';
@@ -17,6 +17,11 @@ export function required<T>(clazz: Class<T>): T {
 export function optional<T>(clazz: Class<T>): T | undefined {
     return { required: false, clazz: clazz } as unknown as T;
 }
+
+export type MethodKeys<T> = {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    [K in keyof T]: T[K] extends Function ? K : never
+}[keyof T];
 
 export function valueobject(logicalType?: string) {
     // eslint-disable-next-line @typescript-eslint/ban-types
@@ -68,8 +73,13 @@ export function validation<T>(validator: (value: T) => string | boolean | void, 
 }
 
 export interface IValueOptions {
+    cacheCanonical?: boolean;
     value?: unknown;
     canonical?: CanonicalLike;
+}
+
+export interface IFromCanonicalOptions {
+    cacheCanonical?: boolean;
 }
 
 export class Value {
@@ -84,11 +94,7 @@ export class Value {
     }
 
     static get logicalTypes(): CanonicalLogicalTypes {
-        const types = Reflect.getOwnMetadata(LOGICAL_TYPES, this.prototype) as CanonicalLogicalTypes;
-        if (!types) {
-            throw new Error(`No logical types defined for class '${this.name}', possibly due to a missing class decorator.`);
-        }
-        return types;
+        return checkLogicalTypes(this.prototype);
     }
 }
 
@@ -120,4 +126,26 @@ export function aExtendsB(a: CanonicalFieldName[], b: CanonicalFieldName[]) {
         }
     }
     return true;
+}
+
+export function shouldCacheCanonical(canonical: ICanonical, expectedTypes: CanonicalLogicalTypes, cacheCanonical: boolean | undefined ) {
+    // Caching of canonicals is the mechanism in which a value object stores the canonical it is created from, so that when a canonical is
+    // requested later on, this stored (cached) value can be returned. This has 2 reasons:
+    // 1. Efficiency / performance
+    // 2. To preserve the fields in the canonical that are not part of the value.
+    // Caching should NOT be used when the canonical is incomplete. Like for a flex canonical that does not know the proper logical types
+    // nor the actual physical type.
+    // We detect this situation by using 'aExtendsB', which compares the logical types. When a canonical does not extend the expected type, we
+    // should never cache it.
+    // Note: The "canonical.is" can not be used here because it purposely will return true for such flex canonicals, even though it does not contain a logical type.
+    return (cacheCanonical === undefined) ? aExtendsB(canonical.logicalTypes, expectedTypes) : cacheCanonical;
+}
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+export function checkLogicalTypes(proto: Object) {
+    const types = Reflect.getOwnMetadata(LOGICAL_TYPES, proto) as CanonicalLogicalTypes;
+    if (!types) {
+        throw new Error(`No logical types defined for class '${proto.constructor.name}', possibly due to a missing class decorator.`);
+    }
+    return types;
 }

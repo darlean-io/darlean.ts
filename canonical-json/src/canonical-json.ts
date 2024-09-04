@@ -14,6 +14,17 @@ import {
     toCanonical
 } from '@darlean/canonical';
 
+/**
+ * Character used to start a mapping key when it contains canonical meta data (like the logical types).
+ * When regular mapping keys start with ESCAPE, they are prefixed with an extra ESCAPE to descriminate
+ * regular keys from meta data keys.
+ * The escape character is chosen such that it is easily represented in common serialization format key names,
+ * including JSON (which is easy -- it can any regular character as keys are within quotes) and XML (which accepts
+ * underscores as element names).
+ */
+const ESCAPE = '_';
+const ESCAPE_ESCAPE = ESCAPE + ESCAPE;
+
 export class CanonicalJsonSerializer {
     public serializeToString<T extends ICanonicalSource = ICanonicalSource>(
         canonical: CanonicalLike<T>,
@@ -55,22 +66,23 @@ export class CanonicalJsonSerializer {
                 return Buffer.from(canonical.binaryValue).toString('base64') + ' (' + logicals + ' 6)';
             case 'mapping': {
                 const obj: { [key: string]: unknown } = {};
-                obj['type'] = logicals;
                 let entry = canonical.firstMappingEntry;
                 while (entry) {
-                    obj[':' + entry.key] = this.treeifyNode(toCanonical(entry.value));
+                    const key = (entry.key.startsWith(ESCAPE)) ? ESCAPE + entry.key : entry.key;
+                    obj[key] = this.treeifyNode(toCanonical(entry.value));
                     entry = entry.next();
                 }
+                obj[ESCAPE] = logicals;
                 return obj;
             }
             case 'sequence': {
                 const arr: unknown[] = [];
-                arr.push(logicals);
                 let item = canonical.firstSequenceItem;
                 while (item) {
                     arr.push(this.treeifyNode(toCanonical(item.value)));
                     item = item.next();
                 }
+                arr.push(logicals);
                 return arr;
             }
         }
@@ -123,7 +135,7 @@ export class CanonicalJsonDeserializer {
             }
             case 'object': {
                 if (Array.isArray(node)) {
-                    const logicalsRaw = node.splice(0, 1)[0];
+                    const logicalsRaw = node.splice(node.length - 1, 1)[0];
                     const logicals = splitLogicalsRaw(logicalsRaw);
                     const values: ICanonical[] = node.map((x) => this.processNode(x));
                     return ArrayCanonical.from(values, logicals);
@@ -131,12 +143,14 @@ export class CanonicalJsonDeserializer {
                     const dict: { [key: string]: ICanonical } = {};
                     let logicalsRaw = '';
                     for (const [key, value] of Object.entries(node as object)) {
-                        if (key === 'type') {
-                            logicalsRaw = value;
-                        } else if (key.startsWith(':')) {
+                        if ((key.startsWith(ESCAPE)) && (!key.startsWith(ESCAPE_ESCAPE))) {
+                            if (key === ESCAPE) {
+                                logicalsRaw = value;
+                            }
+                        } else if (key.startsWith(ESCAPE)) {
                             dict[key.substring(1)] = this.processNode(value);
                         } else {
-                            throw new Error('Invalid mapping key: ' + key);
+                            dict[key] = this.processNode(value);
                         }
                     }
                     return DictCanonical.from(dict, splitLogicalsRaw(logicalsRaw));

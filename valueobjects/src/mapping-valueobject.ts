@@ -2,10 +2,13 @@ import { ICanonical, ICanonicalSource, isCanonicalLike, MapCanonical, toCanonica
 
 import {
     aExtendsB,
+    checkLogicalTypes,
     Class,
     constructValue,
+    IFromCanonicalOptions,
     IValueOptions,
     LOGICAL_TYPES,
+    shouldCacheCanonical,
     toValueClass,
     validation,
     ValidatorFunc,
@@ -60,19 +63,20 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
 
         let v: MappingMap<TElem> = new Map();
         if (options.canonical) {
-            this._canonical = toCanonical(options.canonical);
-            const logicalTypes = Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this));
-            const canonicalLogicalNames = this._canonical.logicalTypes;
-            for (let idx = 0; idx < logicalTypes.length; idx++) {
-                if (logicalTypes[idx] !== canonicalLogicalNames[idx]) {
-                    throw new ValidationError(
-                        `Incoming value of logical types '${canonicalLogicalNames.join(
-                            '.'
-                        )} is not compatible with '${logicalTypes.join('.')}`
-                    );
-                }
+            const canonical = toCanonical(options.canonical);
+            const logicalTypes = checkLogicalTypes(Object.getPrototypeOf(this));
+            const canonicalLogicalTypes = canonical.logicalTypes;
+            if (!canonical.is(logicalTypes)) {
+                throw new ValidationError(
+                    `Incoming value of logical types '${canonicalLogicalTypes.join(
+                        '.'
+                    )}' is not compatible with '${logicalTypes.join('.')}'`
+                );
             }
-            v = this._fromCanonical(this._canonical) as MappingMap<TElem>;
+            if (shouldCacheCanonical(canonical, logicalTypes, options?.cacheCanonical)) {
+                this._canonical = canonical;
+            }
+            v = this._fromCanonical(canonical, options) as MappingMap<TElem>;
         } else if (options.value instanceof Map) {
             for (const [name, value] of options.value.entries()) {
                 if (value === undefined) {
@@ -159,14 +163,15 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
         return items;
     }
 
-    protected _fromCanonical(canonical: ICanonical) {
+    protected _fromCanonical(canonical: ICanonical, options?: IFromCanonicalOptions) {
         const itemClazz = Reflect.getOwnMetadata(ELEM_CLASS, Object.getPrototypeOf(this)) as ValueClassLike;
         const result: MappingMap<TElem> = new Map();
         let entry = canonical.firstMappingEntry;
         while (entry) {
             const entryCan = toCanonical(entry.value);
             const value = constructValue(toValueClass(itemClazz as ValueClassLike<Value & ICanonicalSource>), {
-                canonical: entryCan
+                canonical: entryCan,
+                cacheCanonical: options?.cacheCanonical
             }) as Value & ICanonicalSource;
             result.set(entry.key, value as TElem);
             entry = entry.next();
@@ -196,7 +201,7 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
             // the input is not a Value at all (but, for example, a ICanonical).
             if (!(value instanceof itemClazz)) {
                 fail(
-                    `Value '${name}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${
+                    `Value for '${name}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${
                         itemClazz.name
                     }'`
                 );
@@ -208,7 +213,7 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
 
             if (!aExtendsB(valueLogicalTypes, expectedLogicalTypes)) {
                 fail(
-                    `Value '${name}' with logical types '${valueLogicalTypes.join(
+                    `Value for '${name}' with logical types '${this._canonical?.logicalTypes.join(
                         '.'
                     )}' is not compatible with expected logical types '${expectedLogicalTypes.join('.')}'`
                 );

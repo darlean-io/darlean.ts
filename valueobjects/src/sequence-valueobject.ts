@@ -10,10 +10,13 @@ import {
 
 import {
     aExtendsB,
+    checkLogicalTypes,
     Class,
     constructValue,
+    IFromCanonicalOptions,
     IValueOptions,
     LOGICAL_TYPES,
+    shouldCacheCanonical,
     toValueClass,
     validation,
     ValidatorFunc,
@@ -61,9 +64,9 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
     public static fromCanonical<
         T extends SequenceValue<TElem2>,
         TElem2 extends Value & ICanonicalSource = T extends SequenceValue<infer X> ? X : never
-    >(this: Class<T>, value: ICanonical) {
-        const options: IValueOptions = { canonical: value };
-        return Reflect.construct(this, [options]);
+    >(this: Class<T>, value: ICanonical, options?: IFromCanonicalOptions) {
+        const valueoptions: IValueOptions = { canonical: value, cacheCanonical: options?.cacheCanonical };
+        return Reflect.construct(this, [valueoptions]);
     }
 
     /**
@@ -242,19 +245,20 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
 
         let v: TElem[] = [];
         if (options.canonical) {
-            this._canonical = toCanonical(options.canonical);
-            const logicalTypes = Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this));
-            const canonicalLogicalNames = this._canonical.logicalTypes;
-            for (let idx = 0; idx < logicalTypes.length; idx++) {
-                if (logicalTypes[idx] !== canonicalLogicalNames[idx]) {
-                    throw new ValidationError(
-                        `Incoming value of logical types '${canonicalLogicalNames.join(
-                            '.'
-                        )} is not compatible with '${logicalTypes.join('.')}`
-                    );
-                }
+            const canonical = toCanonical(options.canonical);
+            const logicalTypes = checkLogicalTypes(Object.getPrototypeOf(this));
+            const canonicalLogicalTypes = canonical.logicalTypes;
+            if (!canonical.is(logicalTypes)) {
+                throw new ValidationError(
+                    `Incoming value of logical types '${canonicalLogicalTypes.join(
+                        '.'
+                    )}' is not compatible with '${logicalTypes.join('.')}'`
+                );
             }
-            v = this._fromCanonical(this._canonical) as TElem[];
+            if (shouldCacheCanonical(canonical, logicalTypes, options?.cacheCanonical)) {
+                this._canonical = canonical;
+            }
+            v = this._fromCanonical(canonical, options) as TElem[];
         } else {
             for (const elem of options.value as TElem[]) {
                 v.push(elem);
@@ -461,13 +465,14 @@ export class SequenceValue<TElem extends Value & ICanonicalSource> extends Value
         return this._checkItems().reduce<U>(callbackfn as any, initialValue[0] as any);
     }
 
-    protected _fromCanonical(canonical: ICanonical) {
+    protected _fromCanonical(canonical: ICanonical, options: IFromCanonicalOptions | undefined) {
         const itemClazz = Reflect.getOwnMetadata(ELEM_CLASS, Object.getPrototypeOf(this)) as ValueClassLike;
         const result: (Value & ICanonicalSource)[] = [];
         let item = canonical.firstSequenceItem;
         while (item) {
             const itemCan = toCanonical(item.value);
             const value = constructValue(toValueClass(itemClazz as ValueClassLike<Value & ICanonicalSource>), {
+                cacheCanonical: options?.cacheCanonical,
                 canonical: itemCan
             }) as Value & ICanonicalSource;
             result.push(value);

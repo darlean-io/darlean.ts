@@ -16,13 +16,15 @@ import {
 import { ValidationError } from './valueobject';
 import 'reflect-metadata';
 import {
-    aExtendsB,
+    checkLogicalTypes,
     Class,
     constructValue,
+    IFromCanonicalOptions,
     IValueOptions,
     LOGICAL_TYPES,
     optional,
     required,
+    shouldCacheCanonical,
     validation,
     ValidatorFunc,
     VALIDATORS,
@@ -47,12 +49,14 @@ export abstract class PrimitiveValue<TPrimitive> extends Value implements ICanon
 
     public static fromCanonical<T extends PrimitiveValue<TPrimitive>, TPrimitive = T extends PrimitiveValue<infer X> ? X : never>(
         this: Class<T>,
-        value: CanonicalLike
+        value: CanonicalLike,
+        options?: IFromCanonicalOptions
     ) {
-        const options: IValueOptions = {
-            canonical: value
+        const valueoptions: IValueOptions = {
+            canonical: value,
+            cacheCanonical: options?.cacheCanonical
         };
-        return Reflect.construct(this, [options]);
+        return Reflect.construct(this, [valueoptions]);
     }
 
     public static required<T>(this: Class<T>): T {
@@ -68,18 +72,21 @@ export abstract class PrimitiveValue<TPrimitive> extends Value implements ICanon
 
         let v: TPrimitive | undefined;
         if (options.canonical) {
-            this._canonical = toCanonical(options.canonical);
-            const logicalTypes = Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this));
-            const canonicalLogicalNames = this._canonical.logicalTypes;
-            if (!aExtendsB(canonicalLogicalNames, logicalTypes)) {
+            const canonical = toCanonical(options.canonical);
+            const logicalTypes = checkLogicalTypes(Object.getPrototypeOf(this));
+            const canonicalLogicalTypes = canonical.logicalTypes;
+            if (!(canonical.is(logicalTypes))) {
                 throw new ValidationError(
-                    `Incoming value of logical types '${canonicalLogicalNames.join(
+                    `Incoming value of logical types '${canonicalLogicalTypes.join(
                         '.'
-                    )} is not compatible with '${logicalTypes.join('.')}`
+                    )}' is not compatible with '${logicalTypes.join('.')}'`
                 );
             }
+            if (shouldCacheCanonical(canonical, logicalTypes, options?.cacheCanonical)) {
+                this._canonical = canonical;
+            }
             try {
-                v = this._fromCanonical(this._canonical);
+                v = this._fromCanonical(canonical);
             } catch (e) {
                 throw new ValidationError(e instanceof Error ? e.message : (e as string));
             }

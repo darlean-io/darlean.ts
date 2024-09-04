@@ -106,15 +106,21 @@ export abstract class BaseCanonical<T extends ICanonicalSource = ICanonicalSourc
         return true;
     }
 
-    public is(base: CanonicalLike<T>) {
+    public is(base: CanonicalLike<T> | CanonicalLogicalTypes) {
         const subTypes = this._logicalTypes;
-        const baseTypes = toCanonical(base).logicalTypes;
-
+        const baseTypes = Array.isArray(base) ? base : toCanonical(base).logicalTypes;
+        
         if (baseTypes.length > subTypes.length) {
             return false;
         }
 
-        for (let idx = 0; idx < baseTypes.length; idx++) {
+        if (baseTypes.length === 0) {
+            return true;
+        }
+
+        // It is usually most efficient to check that the deepest common match is
+        // different or not. The shallowest parts are more likely to match.
+        for (let idx = baseTypes.length - 1; idx >= 0; idx--) {
             if (baseTypes[idx] !== subTypes[idx]) {
                 return false;
             }

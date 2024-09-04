@@ -3,9 +3,13 @@ import { CanonicalFieldName, deriveTypeName, Class, ValidationError } from './va
 import { NoInfer } from './utils';
 import {
     aExtendsB,
+    checkLogicalTypes,
     constructValue,
+    IFromCanonicalOptions,
     IValueOptions,
     LOGICAL_TYPES,
+    MethodKeys,
+    shouldCacheCanonical,
     toValueClass,
     validation,
     ValidatorFunc,
@@ -149,7 +153,7 @@ export class StructValue extends Value implements ICanonicalSource {
      * should be in the exact (native) casing as used in T. They are internally converted into the canonical field names.
      * Their values must be value objects (like StringValue or derived classes); not native types (like string).
      */
-    public static from<T extends StructValue, T2 = NoInfer<T>>(this: Class<T>, value: Omit<T2, keyof StructValue>): T {
+    public static from<T extends StructValue, T2 = NoInfer<T>>(this: Class<T>, value: Omit<T2, keyof StructValue | MethodKeys<T2>>): T {
         const options: IValueOptions = { value };
         return constructValue(this, options);
     }
@@ -167,9 +171,9 @@ export class StructValue extends Value implements ICanonicalSource {
         return constructValue(this, options);
     }
 
-    public static fromCanonical<T extends StructValue>(this: Class<T>, value: ICanonical) {
-        const options: IValueOptions = { canonical: value };
-        return Reflect.construct(this, [options]);
+    public static fromCanonical<T extends StructValue>(this: Class<T>, value: ICanonical, options?: IFromCanonicalOptions) {
+        const valueoptions: IValueOptions = { canonical: value, cacheCanonical: options?.cacheCanonical };
+        return Reflect.construct(this, [valueoptions]);
     }
 
     public static fromSlots<T extends StructValue>(this: Class<T>, value: StructMap) {
@@ -188,19 +192,20 @@ export class StructValue extends Value implements ICanonicalSource {
 
         let v: StructMap = new Map();
         if (options.canonical) {
-            this._canonical = toCanonical(options.canonical);
-            const logicalTypes = Reflect.getOwnMetadata(LOGICAL_TYPES, Object.getPrototypeOf(this));
-            const canonicalLogicalNames = this._canonical.logicalTypes;
-            for (let idx = 0; idx < logicalTypes.length; idx++) {
-                if (logicalTypes[idx] !== canonicalLogicalNames[idx]) {
-                    throw new ValidationError(
-                        `Incoming value of logical types '${canonicalLogicalNames.join(
-                            '.'
-                        )} is not compatible with '${logicalTypes.join('.')}`
-                    );
-                }
+            const canonical = toCanonical(options.canonical);
+            const logicalTypes = checkLogicalTypes(Object.getPrototypeOf(this));
+            if (!(canonical.is(logicalTypes))) {
+                throw new ValidationError(
+                    `Incoming value of logical types '${canonical.logicalTypes.join(
+                        '.'
+                    )}' is not compatible with '${logicalTypes.join('.')}'`
+                );
             }
-            v = this._fromCanonical(this._canonical);
+            if (shouldCacheCanonical(canonical, logicalTypes, options?.cacheCanonical)) {
+                this._canonical = canonical;
+            }
+            
+            v = this._fromCanonical(canonical, options);
         } else if (options.value instanceof Map) {
             // We have a StructMap with already canonical named fields
             for (const [canonicalName, value] of options.value.entries()) {
@@ -284,7 +289,7 @@ export class StructValue extends Value implements ICanonicalSource {
         return this._checkSlots().get(slot);
     }
 
-    protected _fromCanonical(canonical: ICanonical): StructMap {
+    protected _fromCanonical(canonical: ICanonical, options?: IFromCanonicalOptions): StructMap {
         const def = Reflect.getOwnMetadata(STRUCT_DEF, Object.getPrototypeOf(this)) as StructDef;
         const result: StructMap = new Map();
         let entry = canonical.firstMappingEntry;
@@ -296,7 +301,8 @@ export class StructValue extends Value implements ICanonicalSource {
 
             const entryCan = toCanonical(entry.value);
             const value = constructValue(toValueClass(slotDef.clazz as ValueClassLike<Value & ICanonicalSource>), {
-                canonical: entryCan
+                cacheCanonical: options?.cacheCanonical,
+                canonical: entryCan,
             }) as Value & ICanonicalSource;
             result.set(entry.key, value);
             entry = entry.next();

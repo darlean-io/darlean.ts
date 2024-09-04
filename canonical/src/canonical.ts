@@ -63,9 +63,19 @@ export interface ICanonical<TSource extends ICanonicalSource = ICanonicalSource>
      */
     isCanonical(): this is ICanonical<TSource>;
 
+    /**
+     * Returns whether this canonical is equal to another canonical. Two canonicals are equal when they have
+     * the same logical types, physical types and values. Values are compared "by value"; not "by reference".
+     * The order of entries in mappings and structs is not relevant.
+     */
     equals(other?: CanonicalLike<TSource>): boolean;
 
-    is(base: CanonicalLike<TSource>): boolean;
+    /**
+     * Returns whether the current canonical is a subtype of the provided canonical or list of
+     * logical types. A canonical is a subtype of a base when the base logical type array is empty,
+     * or when all base logical type elements match with the current canonical logical type elements.
+     */
+    is(base: CanonicalLike<TSource> | CanonicalLogicalTypes): boolean;
 }
 
 export type CanonicalLike<TSource extends ICanonicalSource = ICanonicalSource> = ICanonical<TSource> | ICanonicalSource;

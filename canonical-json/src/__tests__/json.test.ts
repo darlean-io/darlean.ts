@@ -33,7 +33,7 @@ describe('JSON', () => {
         const ser = new CanonicalJsonSerializer();
         const deser = new CanonicalJsonDeserializer();
         const json = ser.serialize(struct);
-
+        
         const p2 = deser.deserialize(json);
         const struct2: { [key: string]: ICanonical } = {};
         let entry = p2.firstMappingEntry;
@@ -73,5 +73,39 @@ describe('JSON', () => {
         expect(struct2['data'].logicalTypes).toEqual(['binary-data']);
 
         expect(p2.logicalTypes).toEqual(['person']);
+    });
+
+    test('Special struct keys', () => {
+        const struct = DictCanonical.from(
+            {
+                '': StringCanonical.from('', []),
+                '_': StringCanonical.from('_', []),
+                '__': StringCanonical.from('__', []),
+                
+                'key': StringCanonical.from('key', []),
+                '_key': StringCanonical.from('_key', []),
+                '__key': StringCanonical.from('__key', []),
+            },
+            ['my-struct']
+        );
+
+        const ser = new CanonicalJsonSerializer();
+        const deser = new CanonicalJsonDeserializer();
+        const json = ser.serialize(struct);
+        const deserialized = deser.deserialize(json);
+        
+        const struct2: { [key: string]: ICanonical } = {};
+        let entry = deserialized.firstMappingEntry;
+        while (entry) {
+            struct2[entry.key] = toCanonical(entry.value);
+            entry = entry.next();
+        }
+        expect(deserialized.logicalTypes).toEqual(['my-struct']);
+        expect(struct2[''].stringValue).toBe('');
+        expect(struct2['_'].stringValue).toBe('_');
+        expect(struct2['__'].stringValue).toBe('__');
+        expect(struct2['key'].stringValue).toBe('key');
+        expect(struct2['_key'].stringValue).toBe('_key');
+        expect(struct2['__key'].stringValue).toBe('__key');
     });
 });
