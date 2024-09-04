@@ -68,7 +68,7 @@ export class CanonicalJsonSerializer {
                 const obj: { [key: string]: unknown } = {};
                 let entry = canonical.firstMappingEntry;
                 while (entry) {
-                    const key = (entry.key.startsWith(ESCAPE)) ? ESCAPE + entry.key : entry.key;
+                    const key = entry.key.startsWith(ESCAPE) ? ESCAPE + entry.key : entry.key;
                     obj[key] = this.treeifyNode(toCanonical(entry.value));
                     entry = entry.next();
                 }
@@ -143,7 +143,7 @@ export class CanonicalJsonDeserializer {
                     const dict: { [key: string]: ICanonical } = {};
                     let logicalsRaw = '';
                     for (const [key, value] of Object.entries(node as object)) {
-                        if ((key.startsWith(ESCAPE)) && (!key.startsWith(ESCAPE_ESCAPE))) {
+                        if (key.startsWith(ESCAPE) && !key.startsWith(ESCAPE_ESCAPE)) {
                             if (key === ESCAPE) {
                                 logicalsRaw = value;
                             }

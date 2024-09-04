@@ -1,10 +1,17 @@
-import { CanonicalLike, CanonicalPhysicalType, ICanonical, ICanonicalSource, IMappingEntry, ISequenceItem } from "../../canonical/src/canonical";
+import {
+    CanonicalLike,
+    CanonicalPhysicalType,
+    ICanonical,
+    ICanonicalSource,
+    IMappingEntry,
+    ISequenceItem
+} from '../../canonical/src/canonical';
 
 /**
  * FlexCanonical is an implementation of a canonical that does not have type information
  * inside. Depending on which method is invoked, it tries to convert the internal value to
  * the request type of value.
- * 
+ *
  * FlexCanonical is useful to map parsed JSON/XML (that normally does not contain logical and/or physical
  * type annotations) on value objects.
  */
@@ -12,22 +19,22 @@ export class FlexCanonical<TSource extends ICanonicalSource> implements ICanonic
     constructor(private value: unknown) {}
 
     get physicalType(): CanonicalPhysicalType {
-        throw new Error("Method not implemented for a flex canonical.");
+        throw new Error('Method not implemented for a flex canonical.');
     }
     get logicalTypes(): string[] {
         return [];
     }
     get noneValue(): undefined {
-        if ((this.value === undefined) || (this.value === '')) {
+        if (this.value === undefined || this.value === '') {
             return undefined;
         }
         throw this.fail('a none value');
     }
     get boolValue(): boolean {
-        if ((this.value === false) || (this.value === 'false')) {
+        if (this.value === false || this.value === 'false') {
             return false;
         }
-        if ((this.value === true) || (this.value === 'true')) {
+        if (this.value === true || this.value === 'true') {
             return true;
         }
         throw this.fail('a bool value');
@@ -38,7 +45,7 @@ export class FlexCanonical<TSource extends ICanonicalSource> implements ICanonic
         }
         if (typeof this.value === 'string') {
             const nr = Number(this.value);
-            if (!(Number.isNaN(nr))) {
+            if (!Number.isNaN(nr)) {
                 return nr;
             }
         }
@@ -49,7 +56,7 @@ export class FlexCanonical<TSource extends ICanonicalSource> implements ICanonic
             return this.value;
         }
         const nr = Number(this.value);
-        if (!(Number.isNaN(nr))) {
+        if (!Number.isNaN(nr)) {
             return nr;
         }
         throw this.fail('a float value');
@@ -66,7 +73,7 @@ export class FlexCanonical<TSource extends ICanonicalSource> implements ICanonic
         }
         if (typeof this.value === 'string') {
             const asNumber = Number(this.value);
-            if (!(Number.isNaN(asNumber))) {
+            if (!Number.isNaN(asNumber)) {
                 // We have a number, indicating ms since epoch
                 return new Date(asNumber);
             }
@@ -102,14 +109,14 @@ export class FlexCanonical<TSource extends ICanonicalSource> implements ICanonic
                     value: new FlexCanonical(array[idx]),
                     next
                 } as ISequenceItem<TSource>;
-            }
+            };
             return next();
         }
         throw this.fail('a sequence value');
     }
     get firstMappingEntry(): IMappingEntry<TSource> | undefined {
         if (typeof this.value === 'object') {
-            const entries = Object.entries(this.value as {[key: string]: unknown});
+            const entries = Object.entries(this.value as { [key: string]: unknown });
             let idx = -1;
             const next = () => {
                 idx++;
@@ -121,19 +128,19 @@ export class FlexCanonical<TSource extends ICanonicalSource> implements ICanonic
                     value: new FlexCanonical(entries[idx][1]),
                     next
                 } as IMappingEntry<TSource>;
-            }
+            };
             return next();
         }
         throw this.fail('a mapping value');
     }
     get size(): number | undefined {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     isCanonical(): this is ICanonical<TSource> {
         return true;
     }
     equals(_other?: CanonicalLike<TSource> | undefined): boolean {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     is(_base: CanonicalLike<TSource>): boolean {
         // A flex canonical is always any other base. We don't have any type information
@@ -144,5 +151,4 @@ export class FlexCanonical<TSource extends ICanonicalSource> implements ICanonic
     private fail(kind: string) {
         throw new Error(`The flex canonical is not ${kind}`);
     }
-
 }

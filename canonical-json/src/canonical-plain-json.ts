@@ -1,9 +1,4 @@
-import {
-    CanonicalLike,
-    ICanonical,
-    ICanonicalSource,
-    toCanonical
-} from '@darlean/canonical';
+import { CanonicalLike, ICanonical, ICanonicalSource, toCanonical } from '@darlean/canonical';
 import { FlexCanonical } from './flex-canonical';
 
 /**

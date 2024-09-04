@@ -33,7 +33,7 @@ describe('JSON', () => {
         const ser = new CanonicalJsonSerializer();
         const deser = new CanonicalJsonDeserializer();
         const json = ser.serialize(struct);
-        
+
         const p2 = deser.deserialize(json);
         const struct2: { [key: string]: ICanonical } = {};
         let entry = p2.firstMappingEntry;
@@ -79,12 +79,12 @@ describe('JSON', () => {
         const struct = DictCanonical.from(
             {
                 '': StringCanonical.from('', []),
-                '_': StringCanonical.from('_', []),
-                '__': StringCanonical.from('__', []),
-                
-                'key': StringCanonical.from('key', []),
-                '_key': StringCanonical.from('_key', []),
-                '__key': StringCanonical.from('__key', []),
+                _: StringCanonical.from('_', []),
+                __: StringCanonical.from('__', []),
+
+                key: StringCanonical.from('key', []),
+                _key: StringCanonical.from('_key', []),
+                __key: StringCanonical.from('__key', [])
             },
             ['my-struct']
         );
@@ -93,7 +93,7 @@ describe('JSON', () => {
         const deser = new CanonicalJsonDeserializer();
         const json = ser.serialize(struct);
         const deserialized = deser.deserialize(json);
-        
+
         const struct2: { [key: string]: ICanonical } = {};
         let entry = deserialized.firstMappingEntry;
         while (entry) {
