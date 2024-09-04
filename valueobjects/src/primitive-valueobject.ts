@@ -75,7 +75,7 @@ export abstract class PrimitiveValue<TPrimitive> extends Value implements ICanon
             const canonical = toCanonical(options.canonical);
             const logicalTypes = checkLogicalTypes(Object.getPrototypeOf(this));
             const canonicalLogicalTypes = canonical.logicalTypes;
-            if (!(canonical.is(logicalTypes))) {
+            if (!canonical.is(logicalTypes)) {
                 throw new ValidationError(
                     `Incoming value of logical types '${canonicalLogicalTypes.join(
                         '.'

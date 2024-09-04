@@ -1,4 +1,19 @@
-import { BinaryValue, binaryvalue, boolvalue, BoolValue, FloatValue, floatvalue, intvalidation, intvalue, IntValue, MomentValue, momentvalue, stringvalidation, stringvalue, StringValue } from '../primitive-valueobject';
+import {
+    BinaryValue,
+    binaryvalue,
+    boolvalue,
+    BoolValue,
+    FloatValue,
+    floatvalue,
+    intvalidation,
+    intvalue,
+    IntValue,
+    MomentValue,
+    momentvalue,
+    stringvalidation,
+    stringvalue,
+    StringValue
+} from '../primitive-valueobject';
 import { discriminative } from '../valueobject';
 import { structvalue, StructValue } from '../struct-valueobject';
 import { sequencevalue, SequenceValue } from '../sequence-valueobject';
@@ -166,10 +181,10 @@ describe('Complex object', () => {
         });
         const serializer = new CanonicalPlainJsonSerializer();
         const deserializer = new CanonicalPlainJsonDeserializer();
-        
+
         const json = serializer.serializeToString(person);
         const clonedCanonical = deserializer.deserializeFromString(json);
-        const cloned = Person.fromCanonical(clonedCanonical, {cacheCanonical: false});
+        const cloned = Person.fromCanonical(clonedCanonical, { cacheCanonical: false });
         const cloned2 = Person.fromCanonical(clonedCanonical);
 
         for (const p of [person, cloned, cloned2]) {
@@ -192,7 +207,6 @@ describe('Complex object', () => {
             expect(p._peekCanonicalRepresentation().logicalTypes).toEqual(['person']);
         }
     });
-
 });
 /*
 describe('ObjectValue Decorator', () => {
@@ -330,4 +344,3 @@ describe('ObjectValue Decorator', () => {
         ).not.toThrow();
     });
 }); */
-

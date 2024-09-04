@@ -20,7 +20,7 @@ export function optional<T>(clazz: Class<T>): T | undefined {
 
 export type MethodKeys<T> = {
     // eslint-disable-next-line @typescript-eslint/ban-types
-    [K in keyof T]: T[K] extends Function ? K : never
+    [K in keyof T]: T[K] extends Function ? K : never;
 }[keyof T];
 
 export function valueobject(logicalType?: string) {
@@ -128,7 +128,11 @@ export function aExtendsB(a: CanonicalFieldName[], b: CanonicalFieldName[]) {
     return true;
 }
 
-export function shouldCacheCanonical(canonical: ICanonical, expectedTypes: CanonicalLogicalTypes, cacheCanonical: boolean | undefined ) {
+export function shouldCacheCanonical(
+    canonical: ICanonical,
+    expectedTypes: CanonicalLogicalTypes,
+    cacheCanonical: boolean | undefined
+) {
     // Caching of canonicals is the mechanism in which a value object stores the canonical it is created from, so that when a canonical is
     // requested later on, this stored (cached) value can be returned. This has 2 reasons:
     // 1. Efficiency / performance
@@ -138,14 +142,16 @@ export function shouldCacheCanonical(canonical: ICanonical, expectedTypes: Canon
     // We detect this situation by using 'aExtendsB', which compares the logical types. When a canonical does not extend the expected type, we
     // should never cache it.
     // Note: The "canonical.is" can not be used here because it purposely will return true for such flex canonicals, even though it does not contain a logical type.
-    return (cacheCanonical === undefined) ? aExtendsB(canonical.logicalTypes, expectedTypes) : cacheCanonical;
+    return cacheCanonical === undefined ? aExtendsB(canonical.logicalTypes, expectedTypes) : cacheCanonical;
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export function checkLogicalTypes(proto: Object) {
     const types = Reflect.getOwnMetadata(LOGICAL_TYPES, proto) as CanonicalLogicalTypes;
     if (!types) {
-        throw new Error(`No logical types defined for class '${proto.constructor.name}', possibly due to a missing class decorator.`);
+        throw new Error(
+            `No logical types defined for class '${proto.constructor.name}', possibly due to a missing class decorator.`
+        );
     }
     return types;
 }

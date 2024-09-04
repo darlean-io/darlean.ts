@@ -153,7 +153,10 @@ export class StructValue extends Value implements ICanonicalSource {
      * should be in the exact (native) casing as used in T. They are internally converted into the canonical field names.
      * Their values must be value objects (like StringValue or derived classes); not native types (like string).
      */
-    public static from<T extends StructValue, T2 = NoInfer<T>>(this: Class<T>, value: Omit<T2, keyof StructValue | MethodKeys<T2>>): T {
+    public static from<T extends StructValue, T2 = NoInfer<T>>(
+        this: Class<T>,
+        value: Omit<T2, keyof StructValue | MethodKeys<T2>>
+    ): T {
         const options: IValueOptions = { value };
         return constructValue(this, options);
     }
@@ -194,7 +197,7 @@ export class StructValue extends Value implements ICanonicalSource {
         if (options.canonical) {
             const canonical = toCanonical(options.canonical);
             const logicalTypes = checkLogicalTypes(Object.getPrototypeOf(this));
-            if (!(canonical.is(logicalTypes))) {
+            if (!canonical.is(logicalTypes)) {
                 throw new ValidationError(
                     `Incoming value of logical types '${canonical.logicalTypes.join(
                         '.'
@@ -204,7 +207,7 @@ export class StructValue extends Value implements ICanonicalSource {
             if (shouldCacheCanonical(canonical, logicalTypes, options?.cacheCanonical)) {
                 this._canonical = canonical;
             }
-            
+
             v = this._fromCanonical(canonical, options);
         } else if (options.value instanceof Map) {
             // We have a StructMap with already canonical named fields
@@ -302,7 +305,7 @@ export class StructValue extends Value implements ICanonicalSource {
             const entryCan = toCanonical(entry.value);
             const value = constructValue(toValueClass(slotDef.clazz as ValueClassLike<Value & ICanonicalSource>), {
                 cacheCanonical: options?.cacheCanonical,
-                canonical: entryCan,
+                canonical: entryCan
             }) as Value & ICanonicalSource;
             result.set(entry.key, value);
             entry = entry.next();
