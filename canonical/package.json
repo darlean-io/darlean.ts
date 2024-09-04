@@ -1,6 +1,6 @@
 {
   "name": "@darlean/canonical",
-  "version": "2.0.0-alpha.8",
+  "version": "2.0.0-alpha.9",
   "description": "Library for representing data type-safe in a languiage and platform indepent way.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

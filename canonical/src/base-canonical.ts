@@ -109,7 +109,7 @@ export abstract class BaseCanonical<T extends ICanonicalSource = ICanonicalSourc
     public is(base: CanonicalLike<T> | CanonicalLogicalTypes) {
         const subTypes = this._logicalTypes;
         const baseTypes = Array.isArray(base) ? base : toCanonical(base).logicalTypes;
-        
+
         if (baseTypes.length > subTypes.length) {
             return false;
         }
