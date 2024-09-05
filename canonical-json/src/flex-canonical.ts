@@ -150,7 +150,7 @@ export class FlexCanonical<TSource extends ICanonicalSource> implements ICanonic
     }
     public getMappingValue(key: string): CanonicalLike<TSource> | undefined {
         if (typeof this.value === 'object') {
-            const value = (this.value as {[key: string]: unknown})[key];
+            const value = (this.value as { [key: string]: unknown })[key];
             if (value === undefined) {
                 return undefined;
             }
