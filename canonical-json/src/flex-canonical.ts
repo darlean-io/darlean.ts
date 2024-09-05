@@ -148,7 +148,28 @@ export class FlexCanonical<TSource extends ICanonicalSource> implements ICanonic
         // to any other value, which renders the flex canonical useless.
         return true;
     }
+    public getMappingValue(key: string): CanonicalLike<TSource> | undefined {
+        if (typeof this.value === 'object') {
+            const value = (this.value as {[key: string]: unknown})[key];
+            if (value === undefined) {
+                return undefined;
+            }
+            return new FlexCanonical(value);
+        }
+        throw this.fail('a mapping value');
+    }
+    public getSequenceItem(index: number): CanonicalLike<TSource> | undefined {
+        if (Array.isArray(this.value)) {
+            const value = this.value[index];
+            if (value === undefined) {
+                return undefined;
+            }
+            return new FlexCanonical(value);
+        }
+        throw this.fail('a sequence value');
+    }
+
     private fail(kind: string) {
-        throw new Error(`The flex canonical is not ${kind}`);
+        return new Error(`The flex canonical is not ${kind}`);
     }
 }

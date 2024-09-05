@@ -76,6 +76,18 @@ export interface ICanonical<TSource extends ICanonicalSource = ICanonicalSource>
      * or when all base logical type elements match with the current canonical logical type elements.
      */
     is(base: CanonicalLike<TSource> | CanonicalLogicalTypes): boolean;
+
+    /**
+     * Returns the value for the specified key when this canonical represents a mapping, Returns undefined when 
+     * the key is not present. Throws an error when the canonical is not a mapping.
+     */
+    getMappingValue(key: string): CanonicalLike<TSource> | undefined;
+
+    /**
+     * Returns the value for the specified index when this canonical represents a sequence. Returns undefined when 
+     * the index is out of bounds. Throws an error when the canonical is not a sequence.
+     */
+    getSequenceItem(index: number): CanonicalLike<TSource> | undefined;
 }
 
 export type CanonicalLike<TSource extends ICanonicalSource = ICanonicalSource> = ICanonical<TSource> | ICanonicalSource;

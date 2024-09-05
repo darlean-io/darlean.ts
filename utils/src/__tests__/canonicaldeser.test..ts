@@ -1,7 +1,7 @@
 import { IDeSer } from '../deser';
 import { MultiDeSer } from '../multideser';
 import { CanonicalJsonDeSer } from '../canonicaldeser';
-import { DictCanonical, ICanonical, StringCanonical } from '@darlean/canonical';
+import { DictCanonical, ICanonical, StringCanonical, toCanonicalOrUndefined } from '@darlean/canonical';
 
 const desers: [string, IDeSer][] = [
     ['multi', new MultiDeSer()],
@@ -19,9 +19,8 @@ describe('Canonical Deser', () => {
 
         const serialized = deser.serialize(data);
         const deserialized = deser.deserialize(serialized) as ICanonical;
-        const struct = deserialized.asDict();
         expect(deserialized.logicalTypes).toEqual(['data']);
-        expect(struct['hello'].stringValue).toBe('World');
-        expect(struct['hello'].logicalTypes).toEqual(['hello']);
+        expect(toCanonicalOrUndefined(deserialized.getMappingValue('hello'))?.stringValue).toBe('World');
+        expect(toCanonicalOrUndefined(deserialized.getMappingValue('hello'))?.logicalTypes).toEqual(['hello']);
     });
 });

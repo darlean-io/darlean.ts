@@ -81,6 +81,10 @@ export class MapCanonical<T extends ICanonicalSource = ICanonicalSource> extends
             }
         };
     }
+
+    public getMappingValue(key: string): CanonicalLike<T> | undefined {
+        return this.value.get(key);
+    }
 }
 
 /**
@@ -157,5 +161,9 @@ export class DictCanonical<T extends ICanonicalSource = ICanonicalSource> extend
         }
 
         return true;
+    }
+
+    public getMappingValue(key: string): CanonicalLike<T> | undefined {
+        return this.value[key];
     }
 }
