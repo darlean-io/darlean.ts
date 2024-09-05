@@ -56,6 +56,6 @@
     "tsconfig": "./tsconfig.json"
   },
   "dependencies": {
-    "@darlean/canonical": "^2.0.0-alpha.5"
+    "@darlean/canonical": "^2.0.0-alpha.9"
   }
 }

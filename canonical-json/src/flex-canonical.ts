@@ -5,7 +5,7 @@ import {
     ICanonicalSource,
     IMappingEntry,
     ISequenceItem
-} from '../../canonical/src/canonical';
+} from '@darlean/canonical';
 
 /**
  * FlexCanonical is an implementation of a canonical that does not have type information
