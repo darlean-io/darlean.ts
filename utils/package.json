@@ -1,6 +1,6 @@
 {
   "name": "@darlean/utils",
-  "version": "2.0.0-alpha.15",
+  "version": "2.0.0-alpha.16",
   "description": "Utility library for Darlean. Can be used stand-alone with no dependencies on the other Darlean packages.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -51,8 +51,8 @@
     "tsconfig": "./tsconfig.json"
   },
   "dependencies": {
-    "@darlean/canonical": "^2.0.0-alpha.5",
-    "@darlean/canonical-json": "^2.0.0-alpha.4",
+    "@darlean/canonical": "^2.0.0-alpha.9",
+    "@darlean/canonical-json": "^2.0.0-alpha.9",
     "bson": "^4.7.2"
   }
 }

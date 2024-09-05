@@ -34,10 +34,10 @@ export class CanonicalJsonDeSer implements IDeSer {
     }
 
     public trySerialize(value: unknown): Buffer | undefined {
-        if (value === undefined || !(value as ICanonicalSource<unknown>)?._peekCanonicalRepresentation) {
+        if (value === undefined || !(value as ICanonicalSource)?._peekCanonicalRepresentation) {
             return undefined;
         }
-        const asCanonicalSource = value as ICanonicalSource<unknown>;
+        const asCanonicalSource = value as ICanonicalSource;
         const canonical = asCanonicalSource._peekCanonicalRepresentation();
         const buf = this.serializer.serialize(canonical);
         return Buffer.concat([CJ_HEADER_PREFIX_BUF, buf]);
