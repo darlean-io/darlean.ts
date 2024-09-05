@@ -506,15 +506,17 @@ export class ActorRunnerBuilder {
             id,
             portal: this.portal,
             persistence: <T>(specifier?: string) => {
+                const typePersistence = (
+                    typeof persistenceFactory === 'function' ? persistenceFactory(type, specifier) : persistenceFactory
+                ) as IPersistence<T>;
+
                 // The id-length is there to prevent malicious code from accessing persistent data
                 // from other actors.
                 // When actor 1 has id ['a', 'b'] and stores state in ['c];
                 // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
                 // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
-                const typePersistence = (
-                    typeof persistenceFactory === 'function' ? persistenceFactory(type, specifier) : persistenceFactory
-                ) as IPersistence<T>;
                 const sub = typePersistence.sub([type, id.length.toString(), ...id]);
+
                 return new MigrationPersistence(
                     sub as IPersistence<IMigrationState>,
                     mc
