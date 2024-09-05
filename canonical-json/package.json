@@ -1,6 +1,6 @@
 {
   "name": "@darlean/canonical-json",
-  "version": "2.0.0-alpha.8",
+  "version": "2.0.0-alpha.9",
   "description": "Library to (de)serialize canonical value objects from/to JSON.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
