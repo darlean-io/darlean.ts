@@ -37,36 +37,21 @@ class TablePersistable<T> extends CustomPersistable<T> {
     }
 }
 
-export interface IInternalItem {
-    [key: string]: unknown;
-}
-
 /**
  * Implementation of persistence that uses a table as persistence.
  *
  * Although this class implements persistence, it does not implement {@link IPersistence}, because it is too fundamentally
  * different. One such difference is that it only understands "just keys", not "partition" or "sort" keys.
  */
-export class TablePersistence<T, TInternal extends IInternalItem = IInternalItem> implements ITablePersistence<T> {
+export class TablePersistence<T> implements ITablePersistence<T> {
     private service: ITablesService;
     private specifier: string | undefined;
     private indexer: (item: T) => ITableIndexItem[];
-    private packer?: (item: T) => TInternal;
-    private unpacker?: (item: TInternal) => T;
 
-    constructor(
-        service: ITablesService,
-        indexer: (item: T) => ITableIndexItem[],
-        private deser: IDeSer,
-        specifier?: string,
-        packer?: (item: T) => TInternal,
-        unpacker?: (item: TInternal) => T
-    ) {
+    constructor(service: ITablesService, indexer: (item: T) => ITableIndexItem[], private deser: IDeSer, specifier?: string) {
         this.service = service;
         this.specifier = specifier;
         this.indexer = indexer;
-        this.packer = packer;
-        this.unpacker = unpacker;
     }
 
     public async search(options: ITableSearchRequest): Promise<ITableSearchResponse> {
@@ -171,9 +156,8 @@ export class TablePersistence<T, TInternal extends IInternalItem = IInternalItem
             representation: 'fields'
         });
 
-        const value = result.data as TInternal;
-
-        return [this.unpack(value), result.version, result.baseline];
+        const value = result.data as T;
+        return [value, result.version, result.baseline];
     }
 
     public async storeImpl(
@@ -191,19 +175,5 @@ export class TablePersistence<T, TInternal extends IInternalItem = IInternalItem
             version
         });
         return result;
-    }
-
-    private pack(value: T): TInternal {
-        if (this.packer) {
-            return this.packer(value);
-        }
-        return value as unknown as TInternal;
-    }
-
-    private unpack(value: TInternal): T {
-        if (this.unpacker) {
-            return this.unpacker(value);
-        }
-        return value as unknown as T;
     }
 }
