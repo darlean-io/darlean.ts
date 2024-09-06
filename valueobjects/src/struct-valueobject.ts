@@ -176,18 +176,18 @@ export class StructValue extends Value implements ICanonicalSource {
 
     public static fromCanonical<T extends StructValue>(this: Class<T>, value: ICanonical, options?: IFromCanonicalOptions) {
         const valueoptions: IValueOptions = { canonical: value, cacheCanonical: options?.cacheCanonical };
-        return Reflect.construct(this, [valueoptions]);
+        return constructValue(this, valueoptions);
     }
 
     public static fromSlots<T extends StructValue>(this: Class<T>, value: StructMap) {
         const options: IValueOptions = { value };
-        return Reflect.construct(this, [options]);
+        return constructValue(this, options);
     }
 
     /**
      * Creates a new struct value instance using the provided value. Regardless of whether the value is an ICanonical or
-     * a NativeStruct (object), the field names must already be canonicalized. That also counts for field names of nested
-     * values.
+     * a Map, the field names must already be canonicalized. That also counts for field names of nested
+     * values. When value is an object (`{..}`), the field names must *not* yet be canonicalized.
      * @param value
      */
     constructor(options: IValueOptions) {
@@ -261,6 +261,19 @@ export class StructValue extends Value implements ICanonicalSource {
             return false;
         }
         return this._peekCanonicalRepresentation().equals(other);
+    }
+
+    /**
+     * Derives a new instance from this instance by copying all current values; adding values from
+     * `value` that are defined; and removing values from `value` that are explicitly undefined.
+     */
+    public derive(value: Partial<Omit<this, keyof StructValue>>): this {
+        const map: StructMap = new Map( this._entries());
+        for (const [key, v] of Object.entries(value)) {
+            map.set(deriveTypeName(key), v as Value & ICanonicalSource);
+        }
+        const options: IValueOptions = { value: map };
+        return constructValue(Object.getPrototypeOf(this).constructor, options);
     }
 
     private _keys(): IterableIterator<CanonicalFieldName> {

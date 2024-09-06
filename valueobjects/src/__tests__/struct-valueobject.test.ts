@@ -212,4 +212,22 @@ describe('Struct value objects', () => {
         expect(p.firstName).toBeInstanceOf(FirstName);
         expect(p.firstName.value).toBe('Jantje');
     });
+
+    test('Derive', () => {
+        const p = Person.from({
+            firstName: FirstName.from('Jantje'),
+            lastName: LastName.from('DEBOER')
+        });
+
+        const p0 = p.derive({});
+        const p1 = p.derive({
+            firstName: FirstName.from('Pietje'),
+            lastName: undefined
+        });
+
+        expect(p0.firstName.value).toBe('Jantje');
+        expect(p0.lastName?.value).toBe('DEBOER');
+        expect(p1.firstName.value).toBe('Pietje');
+        expect(p1.lastName).toBeUndefined();
+    })
 });
