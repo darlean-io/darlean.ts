@@ -268,7 +268,7 @@ export class StructValue extends Value implements ICanonicalSource {
      * `value` that are defined; and removing values from `value` that are explicitly undefined.
      */
     public derive(value: Partial<Omit<this, keyof StructValue>>): this {
-        const map: StructMap = new Map( this._entries());
+        const map: StructMap = new Map(this._entries());
         for (const [key, v] of Object.entries(value)) {
             map.set(deriveTypeName(key), v as Value & ICanonicalSource);
         }

@@ -229,5 +229,5 @@ describe('Struct value objects', () => {
         expect(p0.lastName?.value).toBe('DEBOER');
         expect(p1.firstName.value).toBe('Pietje');
         expect(p1.lastName).toBeUndefined();
-    })
+    });
 });
