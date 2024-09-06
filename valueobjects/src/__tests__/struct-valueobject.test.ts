@@ -213,14 +213,14 @@ describe('Struct value objects', () => {
         expect(p.firstName.value).toBe('Jantje');
     });
 
-    test('Derive', () => {
+    test('fromBase', () => {
         const p = Person.from({
             firstName: FirstName.from('Jantje'),
             lastName: LastName.from('DEBOER')
         });
 
-        const p0 = p.derive({});
-        const p1 = p.derive({
+        const p0 = Person.fromBase(p, {});
+        const p1 = Person.fromBase(p, {
             firstName: FirstName.from('Pietje'),
             lastName: undefined
         });

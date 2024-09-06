@@ -174,6 +174,27 @@ export class StructValue extends Value implements ICanonicalSource {
         return constructValue(this, options);
     }
 
+    /**
+     * Creates a new struct value from a base value (of the same type) that is enricheded with a partial
+     * (subset of the fields) of T. The fields should be in the exact casing as used in T. They are internally converted into
+     * the canonical field names.
+     * Their values must be value objects (like StringValue or derived classes); not native types (like string). Defined values
+     * (that is, not having the value `undefined`) override the corresponding value in the output struct; values that are explicitly
+     * undefined remove cause the corresponding key not to be present in the output struct.
+     */
+    public static fromBase<T extends StructValue>(
+        this: Class<T>,
+        base: NoInfer<T>,
+        value: Partial<Omit<NoInfer<T>, keyof StructValue>>
+    ): T {
+        const map: StructMap = new Map((base as StructValue)._entries());
+        for (const [key, v] of Object.entries(value)) {
+            map.set(deriveTypeName(key), v as Value & ICanonicalSource);
+        }
+        const options: IValueOptions = { value: map };
+        return constructValue(this, options);
+    }
+
     public static fromCanonical<T extends StructValue>(this: Class<T>, value: ICanonical, options?: IFromCanonicalOptions) {
         const valueoptions: IValueOptions = { canonical: value, cacheCanonical: options?.cacheCanonical };
         return constructValue(this, valueoptions);
@@ -261,19 +282,6 @@ export class StructValue extends Value implements ICanonicalSource {
             return false;
         }
         return this._peekCanonicalRepresentation().equals(other);
-    }
-
-    /**
-     * Derives a new instance from this instance by copying all current values; adding values from
-     * `value` that are defined; and removing values from `value` that are explicitly undefined.
-     */
-    public derive(value: Partial<Omit<this, keyof StructValue>>): this {
-        const map: StructMap = new Map(this._entries());
-        for (const [key, v] of Object.entries(value)) {
-            map.set(deriveTypeName(key), v as Value & ICanonicalSource);
-        }
-        const options: IValueOptions = { value: map };
-        return constructValue(Object.getPrototypeOf(this).constructor, options);
     }
 
     private _keys(): IterableIterator<CanonicalFieldName> {
