@@ -68,7 +68,7 @@
     "NOTICE"
   ],
   "dependencies": {
-    "@darlean/core": "^2.0.0-alpha.23",
+    "@darlean/core": "^2.0.0-alpha.28",
     "@darlean/persistence-suite": "^2.0.0-alpha.0",
     "@darlean/runtime-suite": "^2.0.0-alpha.0",
     "@darlean/webgateways-suite": "^2.0.0-alpha.5",
