@@ -154,10 +154,10 @@ export class FsPersistenceWorker {
 
             let length = 0;
             let lastSK: string | undefined;
-            let nrows = 0;
+            let nScannedRows = 0;
 
             for (const row of statement.iterate(values)) {
-                nrows++;
+                nScannedRows++;
                 const data = row as { [FIELD_PK]?: string; [FIELD_SK]?: string; [FIELD_VALUE]?: Buffer };
                 if (
                     !requiresContent ||
@@ -193,7 +193,12 @@ export class FsPersistenceWorker {
                     lastSK = data.sk;
                 }
             }
-            const canHaveMore = options.maxItems !== undefined && nrows >= options.maxItems;
+            // When we get here, the sql result set has been emptied. (Otherwise, when the response would have reached its maximum length,
+            // we would already have returned early within the previous loop). So we know there is no more data.
+            // However, we consider it client responsibility to determine whether to continue with a continuation token,
+            // because we cannot determine whether the client limits the maxItems because oif technical/performance reasons
+            // of because of functional reasons (clients want to obtain at most maxItems items).
+            const canHaveMore = options.maxItems !== undefined && nScannedRows >= options.maxItems;
             if (canHaveMore) {
                 const ct: IContinuationToken = { sk: lastSK ?? '' };
                 const ctEncoded = Buffer.from(JSON.stringify(ct)).toString('base64');

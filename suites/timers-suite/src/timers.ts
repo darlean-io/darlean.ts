@@ -169,7 +169,7 @@ export class TimerActor implements IActivatable, IDeactivatable, ITimersService 
         // Note: In between, parallel requests to 'schedule' may adjust nextTime
         const options2: ITableSearchRequest = {
             index: TIMER_MOMENT_INDEX,
-            maxItems: 1
+            maxChunkItems: 1
         };
 
         for await (const item of this.persistence.searchItems(options2)) {
