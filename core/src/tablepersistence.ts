@@ -1,5 +1,6 @@
 import {
     CustomPersistable,
+    IMultiChunkTableSearchRequest,
     IPersistable,
     ITableIndexItem,
     ITablePersistence,
@@ -65,7 +66,7 @@ export class TablePersistence<T> implements ITablePersistence<T> {
                 specifier: this.specifier,
                 tableProjection: options.tableProjection,
                 continuationToken: options.continuationToken,
-                maxItems: options.maxItems,
+                maxChunkItems: options.maxChunkItems ?? options.maxItems,
                 indexRepresentation: options.indexRepresentation,
                 tableRepresentation: options.tableRepresentation
             };
@@ -93,7 +94,7 @@ export class TablePersistence<T> implements ITablePersistence<T> {
                 tableProjection: options.tableProjection,
                 indexProjection: options.indexProjection,
                 continuationToken: options.continuationToken,
-                maxItems: options.maxItems,
+                maxChunkItems: options.maxChunkItems,
                 tableRepresentation: options.tableRepresentation,
                 indexRepresentation: options.indexRepresentation
             };
@@ -113,21 +114,41 @@ export class TablePersistence<T> implements ITablePersistence<T> {
         }
     }
 
-    public async *searchChunks(options: ITableSearchRequest): AsyncGenerator<ITableSearchResponse, void> {
+    public async *searchChunks(options: ITableSearchRequest & IMultiChunkTableSearchRequest): AsyncGenerator<ITableSearchResponse, void> {
         let response: ITableSearchResponse | undefined;
-        while (!response || response.continuationToken) {
+        let nRowsRemaining = options.maxTotalItems ?? undefined;
+        while ((!response || response.continuationToken) && (nRowsRemaining === undefined || nRowsRemaining > 0)) {
             options.continuationToken = response?.continuationToken;
+            if (nRowsRemaining !== undefined) {
+                options.maxChunkItems = ((options.maxChunkItems ?? options.maxItems ?? 0) > nRowsRemaining) ? nRowsRemaining : options.maxChunkItems ?? options.maxItems;
+            }
+            
             response = await this.search(options);
             yield response;
+            if (nRowsRemaining !== undefined) {
+                nRowsRemaining -= response.items.length;
+            } 
         }
     }
 
-    public async *searchItems(options: ITableSearchRequest): AsyncGenerator<ITableSearchItem, void> {
+    public async *searchItems(options: ITableSearchRequest & IMultiChunkTableSearchRequest): AsyncGenerator<ITableSearchItem, void> {
         let response: ITableSearchResponse | undefined;
-        while (!response || response.continuationToken) {
+        let nRowsRemaining = options.maxTotalItems ?? undefined;
+        while ((!response || response.continuationToken) && (nRowsRemaining === undefined || nRowsRemaining > 0)) {
             options.continuationToken = response?.continuationToken;
+            if (nRowsRemaining !== undefined) {
+                options.maxChunkItems = ((options.maxChunkItems ?? options.maxItems ?? 0) > nRowsRemaining) ? nRowsRemaining : options.maxChunkItems ?? options.maxItems;
+            }
+
             response = await this.search(options);
             for (const item of response.items) {
+                if (nRowsRemaining !== undefined) {
+                    nRowsRemaining--;
+                    if (nRowsRemaining < 0) {
+                        return;
+                    }
+                }
+
                 yield item;
             }
         }

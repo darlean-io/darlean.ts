@@ -1,4 +1,5 @@
 import { action, ActorSuite, IActorSuite } from '@darlean/base';
+import { randomUUID } from 'crypto';
 
 export const RECYCLE_ACTOR = 'RecycleActor';
 export const RECYCLE_ACTOR_WITH_MAX_AGE = 'RecycleActorWithMaxAge';
@@ -6,13 +7,17 @@ export const RECYCLE_ACTOR_WITH_MAX_AGE = 'RecycleActorWithMaxAge';
 export interface IInvokeResult {
     node: string;
     id: string;
+    instance: string;
     counter: number;
 }
 
 export class RecycleActor {
     private counter = -1;
+    private instance = '';
 
-    constructor(private node: string, private id: string, private finalizer: () => void) {}
+    constructor(private node: string, private id: string, private finalizer: () => void) {
+        this.instance = randomUUID();
+    }
 
     @action({ locking: 'shared' })
     public async invoke(): Promise<IInvokeResult> {
@@ -20,6 +25,7 @@ export class RecycleActor {
         return {
             node: this.node,
             id: this.id,
+            instance: this.instance,
             counter: this.counter
         };
     }

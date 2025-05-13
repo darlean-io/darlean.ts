@@ -49,7 +49,7 @@ async function tablepersistence_store_search(actor: TableStorageTestActor, time:
         while (true) {
             results = await tp.search({
                 keys: [{ operator: 'prefix', value: '12' }],
-                maxItems: 10,
+                maxChunkItems: 10,
                 continuationToken: results?.continuationToken
             });
             n++;
@@ -72,7 +72,7 @@ async function tablepersistence_store_search(actor: TableStorageTestActor, time:
         let results: ITableSearchResponse | undefined;
         for await (const chunk of tp.searchChunks({
             keys: [{ operator: 'prefix', value: '12' }],
-            maxItems: 10,
+            maxChunkItems: 10,
             continuationToken: results?.continuationToken
         })) {
             n++;
@@ -91,7 +91,7 @@ async function tablepersistence_store_search(actor: TableStorageTestActor, time:
         let results: ITableSearchResponse | undefined;
         for await (const item of tp.searchItems({
             keys: [{ operator: 'prefix', value: '12' }],
-            maxItems: 10,
+            maxChunkItems: 10,
             continuationToken: results?.continuationToken
         })) {
             items.push(item);

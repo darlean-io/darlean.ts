@@ -1,6 +1,7 @@
 import {
     CustomPersistable,
     IMigrationState,
+    IMultiChunkTableSearchRequest,
     IPersistable,
     IPersistence,
     IPersistenceQueryOptions,
@@ -76,11 +77,11 @@ export class MigrationTablePersistence<T extends IMigrationState> implements ITa
         return this.superPersistence.search(options);
     }
 
-    public searchChunks(options: ITableSearchRequest): AsyncGenerator<ITableSearchResponse, void> {
+    public searchChunks(options: ITableSearchRequest & IMultiChunkTableSearchRequest): AsyncGenerator<ITableSearchResponse, void> {
         return this.superPersistence.searchChunks(options);
     }
 
-    public searchItems(options: ITableSearchRequest): AsyncGenerator<ITableSearchItem, void> {
+    public searchItems(options: ITableSearchRequest & IMultiChunkTableSearchRequest): AsyncGenerator<ITableSearchItem, void> {
         return this.superPersistence.searchItems(options);
     }
 

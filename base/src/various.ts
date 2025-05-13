@@ -109,6 +109,10 @@ export interface IPersistence<T> {
 
 //----- Table persistence -------
 
+export interface IMultiChunkTableSearchRequest {
+    maxTotalItems?: number;
+}
+
 /**
  * Persistence that uses a Darlean Table as underlying storage. The interface is different from the similar
  * {@link IPersistence}, but the returned {@link IPersistable} instances from the {@link persistable} and {@link load}
@@ -123,12 +127,12 @@ export interface ITablePersistence<T> {
      * Convenience wrapper around {@link search} that returns an asynchronous iterator that can be used
      * to iterate over the result chunks.
      */
-    searchChunks(options: ITableSearchRequest): AsyncGenerator<ITableSearchResponse, void>;
+    searchChunks(options: ITableSearchRequest & IMultiChunkTableSearchRequest): AsyncGenerator<ITableSearchResponse, void>;
     /**
      * Convenience wrapper around {@link search} that returns an asynchronous iterator that can be used
      * to iterate over the individual result items.
      */
-    searchItems(options: ITableSearchRequest): AsyncGenerator<ITableSearchItem, void>;
+    searchItems(options: ITableSearchRequest & IMultiChunkTableSearchRequest): AsyncGenerator<ITableSearchItem, void>;
     /**
      * Returns a new {@link IPersistable} instance with the key and initial value.
      * @remarks This method just returns a new {@link IPersistence} with an optional default value set; it does

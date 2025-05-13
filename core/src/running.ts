@@ -26,6 +26,7 @@ import {
     IMigrationState,
     IMultiTypeInstanceContainer,
     IPersistence,
+    IPersistenceOptions,
     IPersistenceService,
     IPortal,
     IRemote,
@@ -150,7 +151,7 @@ export class ActorRunner {
 export class ActorRunnerBuilder {
     protected actors: IActorRegistrationOptions<object, IMigrationState>[];
     protected portal?: IPortal;
-    protected persistenceFactory?: IPersistence<unknown> | ((actorType: string, specifier?: string) => IPersistence<unknown>);
+    protected persistenceFactory?: IPersistence<unknown> | ((specifier?: string) => IPersistence<unknown>);
     protected appId: string;
     protected transport?: ITransport;
     protected remote?: IRemote;
@@ -237,7 +238,7 @@ export class ActorRunnerBuilder {
      * Overrides the default distributed persistence which is automatically enabled when {@link setPersistence} is not invoked.
      * @param persistence
      */
-    public setPersistence(factory: IPersistence<unknown> | ((actorType: string, specifier?: string) => IPersistence<unknown>)) {
+    public setPersistence(factory: IPersistence<unknown> | ((specifier?: string) => IPersistence<unknown>)) {
         this.persistenceFactory = factory;
     }
 
@@ -255,7 +256,7 @@ export class ActorRunnerBuilder {
         this.portal = portal;
         this.deser = new MultiDeSer();
         if (!this.persistenceFactory) {
-            this.persistenceFactory = this.createPersistence(portal, this.deser);
+            this.persistenceFactory = this.createPersistenceFactory(portal);
         }
         const ar = new ActorRunner(portal);
         this.configurePortal(ar);
@@ -472,8 +473,13 @@ export class ActorRunnerBuilder {
         return new TransportRemote(appId, transport, container);
     }
 
-    private createPersistence(portal: IPortal, deser: IDeSer): (type: string, specifier?: string) => IPersistence<unknown> {
-        return (_type, specifier?) => {
+    private createPersistenceFactory(portal: IPortal): (specifier?: string) => IPersistence<unknown> {
+        if (!this.deser) {
+            throw new Error('No deser');
+        }
+        const deser = this.deser;
+
+        return (specifier?) => {
             const servicePortal = portal.typed<IPersistenceService>(PERSISTENCE_SERVICE);
             const service = servicePortal.retrieve([]);
             return new DistributedPersistence(service, deser, specifier);
@@ -486,7 +492,7 @@ export class ActorRunnerBuilder {
         timers: IVolatileTimer[],
         mc: IMigrationController<MigrationState>
     ): IActorCreateContext<MigrationState> {
-        type = normalizeActorType(type);
+        const normalizedType = normalizeActorType(type);
 
         if (!this.portal) {
             throw new Error('No portal assigned');
@@ -505,22 +511,48 @@ export class ActorRunnerBuilder {
         return {
             id,
             portal: this.portal,
-            persistence: <T>(specifier?: string) => {
+            persistence: <T>(specifierOrOptions?: string | IPersistenceOptions) => {
+                const options: IPersistenceOptions = (typeof specifierOrOptions === 'string') ? {
+                    scope: 'actor',
+                    id: id,
+                    actorType: normalizedType,
+                    specifier: specifierOrOptions,
+                    migrations: true,
+                } : {
+                    scope: specifierOrOptions?.scope ?? 'actor',
+                    id: specifierOrOptions?.id ?? id,
+                    actorType: specifierOrOptions?.actorType ?? normalizedType,
+                    specifier: specifierOrOptions?.specifier,
+                    migrations: specifierOrOptions?.migrations ?? true,
+                };
+
                 const typePersistence = (
-                    typeof persistenceFactory === 'function' ? persistenceFactory(type, specifier) : persistenceFactory
+                    typeof persistenceFactory === 'function' ? persistenceFactory(options.specifier) : persistenceFactory
                 ) as IPersistence<T>;
 
-                // The id-length is there to prevent malicious code from accessing persistent data
-                // from other actors.
-                // When actor 1 has id ['a', 'b'] and stores state in ['c];
-                // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
-                // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
-                const sub = typePersistence.sub([type, id.length.toString(), ...id]);
+                let p: IPersistence<IMigrationState> = typePersistence as IPersistence<IMigrationState>;
+                
+                if (options.scope === 'actor') {
+                    if (!options.actorType) {
+                        throw new Error('No actor type');
+                    }
 
-                return new MigrationPersistence(
-                    sub as IPersistence<IMigrationState>,
-                    mc
-                ) as IPersistence<unknown> as IPersistence<T>;
+                    if (!options.id) {
+                        throw new Error('No actor id');
+                    }    
+
+                    // The id-length is there to prevent malicious code from accessing persistent data
+                    // from other actors.
+                    // When actor 1 has id ['a', 'b'] and stores state in ['c];
+                    // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
+                    // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
+                    p = typePersistence.sub([options.actorType, options.id.length.toString(), ...options.id]) as IPersistence<IMigrationState>;
+                }
+
+                if (options.migrations) {
+                    return new MigrationPersistence(p, mc) as IPersistence<unknown> as IPersistence<T>;
+                }
+                return p;
             },
             tablePersistence: <T>(options: ITablePersistenceOptions<T>) => {
                 if (!this.portal) {
@@ -534,7 +566,7 @@ export class ActorRunnerBuilder {
                 }
                 const tableId =
                     options.scope === 'actor'
-                        ? [type, id.length.toString(), ...id, options.id.length.toString(), ...options.id]
+                        ? [normalizedType, id.length.toString(), ...id, options.id.length.toString(), ...options.id]
                         : options.id;
                 const service = this.portal.retrieve<ITablesService>(TABLES_SERVICE, tableId);
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
