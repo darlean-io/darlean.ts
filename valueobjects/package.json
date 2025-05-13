@@ -1,6 +1,6 @@
 {
   "name": "@darlean/valueobjects",
-  "version": "2.0.0-alpha.15",
+  "version": "2.0.0-alpha.16",
   "description": "Library for DDD-like value objects that can be validated, serialized and represented in other programming languages as native objects with native naming.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

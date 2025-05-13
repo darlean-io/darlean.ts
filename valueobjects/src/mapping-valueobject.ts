@@ -201,9 +201,9 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
             // the input is not a Value at all (but, for example, a ICanonical).
             if (!(value instanceof itemClazz)) {
                 fail(
-                    `Value for attribute '${name}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${
-                        itemClazz.name
-                    }'`
+                    `Value for attribute '${name}' with class '${
+                        Object.getPrototypeOf(value).constructor.name
+                    }' is not an instance of '${itemClazz.name}'`
                 );
                 ok = false;
                 continue;
