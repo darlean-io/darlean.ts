@@ -201,7 +201,7 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
             // the input is not a Value at all (but, for example, a ICanonical).
             if (!(value instanceof itemClazz)) {
                 fail(
-                    `Value for '${name}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${
+                    `Value for attribute '${name}' with class '${Object.getPrototypeOf(value).constructor.name}' is not an instance of '${
                         itemClazz.name
                     }'`
                 );
@@ -213,7 +213,7 @@ export class MappingValue<TElem extends Value & ICanonicalSource> extends Value 
 
             if (!aExtendsB(valueLogicalTypes, expectedLogicalTypes)) {
                 fail(
-                    `Value for '${name}' with logical types '${this._canonical?.logicalTypes.join(
+                    `Value for attribute '${name}' with logical types '${this._canonical?.logicalTypes.join(
                         '.'
                     )}' is not compatible with expected logical types '${expectedLogicalTypes.join('.')}'`
                 );
