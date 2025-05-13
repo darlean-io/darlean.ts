@@ -261,7 +261,7 @@ export class TableActor implements ITablesService {
                 filterSortKeyOffset: 2, // 'index' + name
                 projectionFilter: projection,
                 continuationToken: request.continuationToken,
-                maxItems: request.maxItems
+                maxItems: request.maxChunkItems ?? request.maxItems,
             });
             const response: ITableSearchResponse = {
                 items: [],
@@ -337,7 +337,7 @@ export class TableActor implements ITablesService {
                 filterSortKeyOffset: 1, // 'base'
                 projectionFilter: projection,
                 continuationToken: request.continuationToken,
-                maxItems: request.maxItems
+                maxItems: request.maxChunkItems ?? request.maxItems
             });
             const response: ITableSearchResponse = {
                 items: [],

@@ -68,7 +68,11 @@ export interface ITableSearchRequest {
     tableProjection?: string[];
     indexProjection?: string[];
     continuationToken?: string;
+    /**
+     * @deprecated Use maxChunkItems instead
+     */
     maxItems?: number;
+    maxChunkItems?: number;
     tableRepresentation?: 'fields' | 'buffer';
     indexRepresentation?: 'fields' | 'buffer';
 }

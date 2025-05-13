@@ -121,6 +121,32 @@ export interface IActorRegistrationOptions<
     migrations?: IMigrationOptions<MigrationState, MigrationContext> | IMigrationDefinition<MigrationState, MigrationContext>[];
 }
 
+export interface IPersistenceOptions {
+    
+    /**
+     * Indicates whether the persistence must be bound to the current actor or is global to the cluster.
+     * For 'actor', the persistence partition key includes at least the actor type + the id.
+     * For 'cluster', the persistence partition key includes the id (but not the actor type).
+     */
+    scope: 'actor' | 'cluster';
+    /**
+     * The persistence specifier.
+     */
+    specifier?: string;
+    /**
+     * The actor id (for scope = 'actor') or the value of the partition key (for scope = 'cluster')
+     */
+    id?: string[];
+    /**
+     * The actor type (for scope = 'actor') that becomes part of the partition key.
+     */
+    actorType?: string;
+    /**
+     * When present, enables or disables automatic migrations.
+     */
+    migrations?: boolean;
+}
+
 export interface ITablePersistenceOptions<T> {
     /**
      * The id of the table. Depending on scope, the provided id must be unique within the entire cluster
@@ -159,6 +185,12 @@ export interface IActorCreateContext<MigrationState extends IMigrationState = IM
      * * `shoppingcart.archive` to store the state of shopping carts that have been fully processed
      */
     persistence<T>(specifier?: string): IPersistence<T>;
+
+    /**
+     * Acquire a persistence interface that can be used to load and store state.
+     * @param options An options object.
+     */
+     persistence<T>(options: IPersistenceOptions): IPersistence<T>;
 
     /**
      * Acquire a table persistence interface that can be used by the created actor to load and persist its state.

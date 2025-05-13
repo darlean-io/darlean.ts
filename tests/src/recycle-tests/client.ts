@@ -17,7 +17,7 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
         const N_SUBSEQUENT_CALLS = 5;
         const N_ACTORS = 100;
 
-        const counts: Map<string, number> = new Map();
+        const countsByNode: Map<string, number> = new Map();
         let maxCounter = -1;
 
         for (let i = 0; i < N_CALLS; i++) {
@@ -27,13 +27,13 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
             for (let j = 0; j < N_SUBSEQUENT_CALLS; j++) {
                 const result = await actor.invoke();
                 if (id === 0) {
-                    counts.set(result.node, (counts.get(result.node) ?? 0) + 1);
+                    countsByNode.set(result.node, (countsByNode.get(result.node) ?? 0) + 1);
                     maxCounter = Math.max(maxCounter, result.counter);
                 }
             }
         }
 
-        check(true, counts.size > 1, 'Must have received calls from multiple actor instances');
+        check(true, countsByNode.size > 1, 'Must have received calls from multiple actor instances');
         check(N_SUBSEQUENT_CALLS - 1, maxCounter, 'Actors must be recycled after every single invocation');
     });
 
@@ -41,7 +41,7 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
         const N_CALLS = 10;
         const N_SUBSEQUENT_CALLS = 5;
 
-        const counts: Map<string, number> = new Map();
+        const countsByNode: Map<string, number> = new Map();
         let maxCounter = -1;
         const id = 0;
 
@@ -50,14 +50,14 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
 
             for (let j = 0; j < N_SUBSEQUENT_CALLS; j++) {
                 const result = await actor.invoke();
-                counts.set(result.node, (counts.get(result.node) ?? 0) + 1);
+                countsByNode.set(result.node, (countsByNode.get(result.node) ?? 0) + 1);
                 maxCounter = Math.max(maxCounter, result.counter);
             }
 
             await actor.triggerFinalization();
         }
 
-        check(true, counts.size > 1, 'Must have received calls from multiple actor instances');
+        check(true, countsByNode.size > 1, 'Must have received calls from multiple actor instances');
         check(N_SUBSEQUENT_CALLS - 1, maxCounter, 'Actors must be recycled after every single invocation');
     });
 
@@ -65,22 +65,31 @@ async function test(actorPortal: ITypedPortal<RecycleActor>, portalWithMaxAge: I
         const N_CALLS = 10;
         const N_SUBSEQUENT_CALLS = 5;
 
-        const counts: Map<string, number> = new Map();
+        const countsByNode: Map<string, number> = new Map();
+        const countsByInstance: Map<string, number> = new Map();
         let maxCounter = -1;
         const id = 0;
 
+        // When an actor is recycled, the framework *attempts* to use a different node, but it is not
+        // guaranteed. The framework randomly choses a node, so it can also be the same node. Therefore,
+        // we have quite a long sleep (3sec) combined with N_CALLS = 10 will last 30 seconds in total,
+        // which means 5-6 times a new instance. Chances are high that we will at least have more than
+        // one node.
         for (let i = 0; i < N_CALLS; i++) {
             const actor = portalWithMaxAge.retrieve([id.toString()]);
 
             for (let j = 0; j < N_SUBSEQUENT_CALLS; j++) {
                 const result = await actor.invoke();
-                counts.set(result.node, (counts.get(result.node) ?? 0) + 1);
+                countsByNode.set(result.node, (countsByNode.get(result.node) ?? 0) + 1);
+                countsByInstance.set(result.instance, (countsByInstance.get(result.instance) ?? 0) + 1);
+                
                 maxCounter = Math.max(maxCounter, result.counter);
             }
-            await sleep(1000);
+            await sleep(3000);
         }
         
-        check(true, counts.size > 1, 'Must have received calls from multiple actor instances');
+        check(true, countsByInstance.size > 1, 'Must have received calls from multiple actor instances');
+        check(true, countsByNode.size > 1, 'Must have received calls from multiple actor nodes');
     });
 }
 
