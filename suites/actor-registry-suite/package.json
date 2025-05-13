@@ -1,6 +1,6 @@
 {
   "name": "@darlean/actor-registry-suite",
-  "version": "2.0.0-alpha.7",
+  "version": "2.0.0-alpha.8",
   "description": "Actor Registry Suite",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
