@@ -512,26 +512,29 @@ export class ActorRunnerBuilder {
             id,
             portal: this.portal,
             persistence: <T>(specifierOrOptions?: string | IPersistenceOptions) => {
-                const options: IPersistenceOptions = (typeof specifierOrOptions === 'string') ? {
-                    scope: 'actor',
-                    id: id,
-                    actorType: normalizedType,
-                    specifier: specifierOrOptions,
-                    migrations: true,
-                } : {
-                    scope: specifierOrOptions?.scope ?? 'actor',
-                    id: specifierOrOptions?.id ?? id,
-                    actorType: specifierOrOptions?.actorType ?? normalizedType,
-                    specifier: specifierOrOptions?.specifier,
-                    migrations: specifierOrOptions?.migrations ?? true,
-                };
+                const options: IPersistenceOptions =
+                    typeof specifierOrOptions === 'string'
+                        ? {
+                              scope: 'actor',
+                              id: id,
+                              actorType: normalizedType,
+                              specifier: specifierOrOptions,
+                              migrations: true
+                          }
+                        : {
+                              scope: specifierOrOptions?.scope ?? 'actor',
+                              id: specifierOrOptions?.id ?? id,
+                              actorType: specifierOrOptions?.actorType ?? normalizedType,
+                              specifier: specifierOrOptions?.specifier,
+                              migrations: specifierOrOptions?.migrations ?? true
+                          };
 
                 const typePersistence = (
                     typeof persistenceFactory === 'function' ? persistenceFactory(options.specifier) : persistenceFactory
                 ) as IPersistence<T>;
 
                 let p: IPersistence<IMigrationState> = typePersistence as IPersistence<IMigrationState>;
-                
+
                 if (options.scope === 'actor') {
                     if (!options.actorType) {
                         throw new Error('No actor type');
@@ -539,14 +542,18 @@ export class ActorRunnerBuilder {
 
                     if (!options.id) {
                         throw new Error('No actor id');
-                    }    
+                    }
 
                     // The id-length is there to prevent malicious code from accessing persistent data
                     // from other actors.
                     // When actor 1 has id ['a', 'b'] and stores state in ['c];
                     // actor 2 with id ['a'] and state in ['b', 'c'] would mess with actor 1's data.
                     // Including id length prevents this: ['type', '2', 'a', 'b', 'c'] !== ['type', '1', 'a', 'b', 'c'].
-                    p = typePersistence.sub([options.actorType, options.id.length.toString(), ...options.id]) as IPersistence<IMigrationState>;
+                    p = typePersistence.sub([
+                        options.actorType,
+                        options.id.length.toString(),
+                        ...options.id
+                    ]) as IPersistence<IMigrationState>;
                 }
 
                 if (options.migrations) {

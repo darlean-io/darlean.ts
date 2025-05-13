@@ -77,7 +77,9 @@ export class MigrationTablePersistence<T extends IMigrationState> implements ITa
         return this.superPersistence.search(options);
     }
 
-    public searchChunks(options: ITableSearchRequest & IMultiChunkTableSearchRequest): AsyncGenerator<ITableSearchResponse, void> {
+    public searchChunks(
+        options: ITableSearchRequest & IMultiChunkTableSearchRequest
+    ): AsyncGenerator<ITableSearchResponse, void> {
         return this.superPersistence.searchChunks(options);
     }
 
