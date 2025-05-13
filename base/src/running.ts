@@ -122,7 +122,6 @@ export interface IActorRegistrationOptions<
 }
 
 export interface IPersistenceOptions {
-    
     /**
      * Indicates whether the persistence must be bound to the current actor or is global to the cluster.
      * For 'actor', the persistence partition key includes at least the actor type + the id.
@@ -190,7 +189,7 @@ export interface IActorCreateContext<MigrationState extends IMigrationState = IM
      * Acquire a persistence interface that can be used to load and store state.
      * @param options An options object.
      */
-     persistence<T>(options: IPersistenceOptions): IPersistence<T>;
+    persistence<T>(options: IPersistenceOptions): IPersistence<T>;
 
     /**
      * Acquire a table persistence interface that can be used by the created actor to load and persist its state.
